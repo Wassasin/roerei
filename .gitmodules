@@ -1,0 +1,3 @@
+[submodule "contrib/coq"]
+	path = contrib/coq
+	url = git@github.com:coq/coq.git
