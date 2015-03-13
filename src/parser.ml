@@ -137,6 +137,7 @@ let parse src _args =
 
                 forget (accept_start "target" i);
                 let target = i_aconstr i in
+                accept_end i;
 
                 accept_end i;
                 Acic.AProds(!decls, target)
@@ -155,6 +156,7 @@ let parse src _args =
 
                 forget (accept_start "target" i);
                 let target = i_aconstr i in
+                accept_end i;
 
                 accept_end i;
                 Acic.ALambdas(!decls, target)
