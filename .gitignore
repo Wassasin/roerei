@@ -7,3 +7,13 @@
 *.cmx
 *.cmxs
 *.cmxa
+
+# OCamlbuild
+_build
+*.native
+*.byte
+*.d.native
+*.p.byte
+
+*.xml
+src/parser
