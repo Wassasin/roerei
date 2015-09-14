@@ -172,6 +172,14 @@ let rec i_aconstr i =
             let no_type = int_of_string (lookup_tag "noType" tags) in
             accept_end i;
             Acic.AInd(id, (None, []), uri, no_type)
+    | "MUTCONSTRUCT" ->
+            let tags = accept_start "MUTCONSTRUCT" i in
+            let id = lookup_tag "id" tags in
+            let uri = lookup_tag "uri" tags in
+            let no_type = int_of_string (lookup_tag "noType" tags) in
+            let no_constr = int_of_string (lookup_tag "noConstr" tags) in
+            accept_end i;
+            Acic.AConstruct(id, (None, []), uri, no_type, no_constr)
     | "MUTCASE" ->
             let tags = accept_start "MUTCASE" i in
             let id = lookup_tag "id" tags in
