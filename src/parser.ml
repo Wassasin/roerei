@@ -172,6 +172,34 @@ let rec i_aconstr i =
             let no_type = int_of_string (lookup_tag "noType" tags) in
             accept_end i;
             Acic.AInd(id, (None, []), uri, no_type)
+    | "FIX" ->
+            let tags = accept_start "FIX" i in
+            let id = lookup_tag "id" tags in
+            let no_fun = int_of_string (lookup_tag "noFun" tags) in
+            
+            let ainductivefun_list = ref [] in
+            while not (peek_end i) do
+                let tags = accept_start "FixFunction" i in
+                let id = lookup_tag "id" tags in
+                let name = lookup_tag "name" tags in
+                let rec_index = int_of_string(lookup_tag "recIndex" tags) in
+                
+                forget (accept_start "type" i);
+                let fun_type = i_aconstr i in
+                accept_end i;
+
+                forget (accept_start "body" i);
+                let fun_body = i_aconstr i in
+                accept_end i;
+
+                accept_end i;
+
+                ainductivefun_list := (id, name, rec_index, fun_type, fun_body) :: !ainductivefun_list;
+            done;
+            ainductivefun_list := List.rev !ainductivefun_list;
+
+            accept_end i;
+            Acic.AFix(id, no_fun, !ainductivefun_list)
     | name ->
             ignore_block i;
             pr_err (str "warning:ignored aconstr %s" name);
@@ -201,8 +229,33 @@ let parse_constanttype src _args =
 
     i_constanttype_file i
 
+let parse_constantbody src _args =
+    let i = Xmlm.make_input ~strip:true (`Channel src) in
+
+    let i_constantbody i =
+        let tags = accept_start "ConstantBody" i in
+        let id = lookup_tag "id" tags in
+        let name = lookup_tag "for" tags in
+
+        let aconstr_type = i_aconstr i in
+        accept_end i;
+
+        (id, name, aconstr_type)
+    in
+
+    let i_constantbody_file i =
+        accept_dtd i;
+        let ct = i_constantbody i in
+        assert (Xmlm.eoi i);
+        ct
+    in
+
+    i_constantbody_file i
+
+
 let main () =
     let ct = with_inf parse_constanttype "to_nat.con.xml" () in
+    let cb = with_inf parse_constantbody "to_nat.con.body.xml" () in 
     pr_err "done"
 
 let () = main ()
