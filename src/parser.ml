@@ -172,6 +172,31 @@ let rec i_aconstr i =
             let no_type = int_of_string (lookup_tag "noType" tags) in
             accept_end i;
             Acic.AInd(id, (None, []), uri, no_type)
+    | "MUTCASE" ->
+            let tags = accept_start "MUTCASE" i in
+            let id = lookup_tag "id" tags in
+            let uri = lookup_tag "uriType" tags in
+            let no_type = int_of_string (lookup_tag "noType" tags) in
+            
+            forget (accept_start "patternsType" i);
+            let patterns_type = i_aconstr i in
+            accept_end i;
+
+            forget (accept_start "inductiveTerm" i);
+            let inductive_term = i_aconstr i in
+            accept_end i;
+
+            let pattern_list = ref [] in
+            while not (peek_end i) do
+                forget(accept_start "pattern" i);
+                let pattern = i_aconstr i in
+                accept_end i;
+                pattern_list := pattern :: !pattern_list
+            done;
+            pattern_list := List.rev !pattern_list;
+
+            accept_end i;
+            Acic.ACase(id, uri, no_type, patterns_type, inductive_term, !pattern_list)
     | "FIX" ->
             let tags = accept_start "FIX" i in
             let id = lookup_tag "id" tags in
