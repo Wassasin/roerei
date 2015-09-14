@@ -270,10 +270,10 @@ let parse_constantbody src _args =
         let id = lookup_tag "id" tags in
         let name = lookup_tag "for" tags in
 
-        let aconstr_type = i_aconstr i in
+        let aconstr_body = i_aconstr i in
         accept_end i;
 
-        (id, name, aconstr_type)
+        (id, name, aconstr_body)
     in
 
     let i_constantbody_file i =
@@ -288,7 +288,15 @@ let parse_constantbody src _args =
 
 let main () =
     let ct = with_inf parse_constanttype "to_nat.con.xml" () in
-    let cb = with_inf parse_constantbody "to_nat.con.body.xml" () in 
-    pr_err "done"
+    let cb = with_inf parse_constantbody "to_nat.con.body.xml" () in
+
+    match ct, cb with
+    | Some (type_id, type_name, type_aconstr),
+      Some (body_id, body_name, body_aconstr) ->
+        assert (type_id = body_id); (* body_name is better than type_name *)
+        let obj = Acic.AConstant (body_id, body_name, Some body_aconstr, type_aconstr, []) in
+    
+        pr_err "done"
+    | _ -> pr_err "err"
 
 let () = main ()
