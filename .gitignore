@@ -16,4 +16,5 @@ _build
 *.p.byte
 
 *.xml
-src/parser
+*.xml.gz
+src/main
