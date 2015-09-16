@@ -13,26 +13,22 @@ let print_occurances xs =
     List.iter (fun (str, c) -> Printf.eprintf "%s: %i\n" str c) xs_sorted 
 
 let main () =
-    let ct = Parser.with_inf Parser.parse_constanttype "to_nat.con.xml" () in
-    let cb = Parser.with_inf Parser.parse_constantbody "to_nat.con.body.xml" () in
+    let (type_id, type_name, type_aconstr) = Parser.parse_constanttype "to_nat.con.xml.gz" in
+    let (body_id, body_name, body_aconstr) = Parser.parse_constantbody "to_nat.con.body.xml.gz" in
 
-    match ct, cb with
-    | Some (type_id, type_name, type_aconstr),
-      Some (body_id, body_name, body_aconstr) ->
-        assert (type_id = body_id); (* body_name is better than type_name *)
-        let obj = Acic.AConstant (body_id, body_name, Some body_aconstr, type_aconstr, []) in
+    assert (type_id = body_id); (* body_name is better than type_name *)
+    let obj = Acic.AConstant (body_id, body_name, Some body_aconstr, type_aconstr, []) in
 
-        let definitions = Interpreter.fetch_uris type_aconstr in
-        let dependencies = Interpreter.fetch_uris body_aconstr in
+    let definitions = Interpreter.fetch_uris type_aconstr in
+    let dependencies = Interpreter.fetch_uris body_aconstr in
 
-        print "defs";
-        print_occurances definitions; 
+    print "defs";
+    print_occurances definitions; 
 
-        print "deps";
-        print_occurances dependencies;
-    
-        print "done"
-    | _ -> print "err"
+    print "deps";
+    print_occurances dependencies;
+
+    print "done"
 
 let () = main ()
 

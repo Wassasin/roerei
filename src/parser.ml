@@ -9,14 +9,27 @@ let apply f x ~finally y =
     finally y;
     result
 
-let with_inf f inf v =
-    try
-        let ic = if inf <> "" then open_in_bin inf else stdin in
-        let close ic = if inf <> "" then close_in ic else () in
-        Some (apply (f ic) v ~finally:close ic)
-    with
-    | Sys_error e -> pr_err (str " %s" e); None
-    | Failure e -> pr_err (str "%s:%s" inf e); None
+let gzip_open_in file =
+    let ch = Gzip.open_in file in
+    IO.create_in
+    ~read:(fun () -> Gzip.input_char ch)
+    ~input:(Gzip.input ch)
+    ~close:(fun () -> Gzip.close_in ch)
+
+let std_open_in file =
+    let ch = open_in_bin file in
+    IO.create_in
+    ~read:(fun () -> input_char ch)
+    ~input:(input ch)
+    ~close:(fun () -> close_in ch)
+
+let xml_open_in : string -> Xmlm.input = fun src ->
+    let ch =
+        if Filename.check_suffix src ".gz"
+            then gzip_open_in src
+            else std_open_in src
+    in
+    Xmlm.make_input ~strip:true (`Fun (fun () -> IO.read_byte ch))
 
 let string_of_node node =
     match node with
@@ -238,10 +251,8 @@ let rec i_aconstr i =
             pr_err (str "warning:ignored aconstr %s" name);
             Acic.AVar("warning placeholder", "")  (* Placeholder *)
 
-
-let parse_constanttype src _args =
-    let i = Xmlm.make_input ~strip:true (`Channel src) in
-
+let parse_constanttype src =
+    let i = xml_open_in src in
     let i_constanttype i =
         let tags = accept_start "ConstantType" i in
         let id = lookup_tag "id" tags in
@@ -262,9 +273,8 @@ let parse_constanttype src _args =
 
     i_constanttype_file i
 
-let parse_constantbody src _args =
-    let i = Xmlm.make_input ~strip:true (`Channel src) in
-
+let parse_constantbody src =
+    let i = xml_open_in src in
     let i_constantbody i =
         let tags = accept_start "ConstantBody" i in
         let id = lookup_tag "id" tags in
