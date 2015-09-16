@@ -2,4 +2,4 @@
 set -e
 set +x
 
-ocamlfind ocamlc -g -o parser -linkpkg -package xmlm prelude.ml acic.ml parser.ml
+ocamlfind ocamlc -g -o main -linkpkg -package xmlm prelude.ml acic.ml interpreter.ml counter.ml parser.ml main.ml

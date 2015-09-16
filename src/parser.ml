@@ -284,19 +284,3 @@ let parse_constantbody src _args =
     in
 
     i_constantbody_file i
-
-
-let main () =
-    let ct = with_inf parse_constanttype "to_nat.con.xml" () in
-    let cb = with_inf parse_constantbody "to_nat.con.body.xml" () in
-
-    match ct, cb with
-    | Some (type_id, type_name, type_aconstr),
-      Some (body_id, body_name, body_aconstr) ->
-        assert (type_id = body_id); (* body_name is better than type_name *)
-        let obj = Acic.AConstant (body_id, body_name, Some body_aconstr, type_aconstr, []) in
-    
-        pr_err "done"
-    | _ -> pr_err "err"
-
-let () = main ()
