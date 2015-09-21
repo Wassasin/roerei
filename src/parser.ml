@@ -9,6 +9,18 @@ let apply f x ~finally y =
     finally y;
     result
 
+let protect ~f ~(finally: unit -> unit) =
+    let result = ref None in
+    try
+        result := Some (f ());
+        raise Exit
+    with
+        Exit as e ->
+        finally ();
+        (match !result with Some x -> x | None -> raise e)
+        | e ->
+        finally (); raise e
+
 let gzip_open_in file =
     let ch = Gzip.open_in file in
     IO.create_in
@@ -23,13 +35,17 @@ let std_open_in file =
     ~input:(input ch)
     ~close:(fun () -> close_in ch)
 
-let xml_open_in : string -> Xmlm.input = fun src ->
+let xml_exec src f =
     let ch =
         if Filename.check_suffix src ".gz"
             then gzip_open_in src
             else std_open_in src
     in
-    Xmlm.make_input ~strip:true (`Fun (fun () -> IO.read_byte ch))
+    protect
+        ~f:(fun () ->
+            let i = Xmlm.make_input ~strip:true (`Fun (fun () -> IO.read_byte ch)) in
+            f i)
+        ~finally:(fun () -> IO.close_in ch)
 
 let string_of_node node =
     match node with
@@ -122,6 +138,16 @@ let rec i_aconstr i =
             let binder = lookup_tag "binder" tags in
             accept_end i;
             Acic.ARel(id, value, idref, binder)
+    | "VAR" ->
+            let tags = accept_start "VAR" i in
+            let id = lookup_tag "id" tags in
+            let uri = lookup_tag "uri" tags in
+            accept_end i;
+            Acic.AVar(id, uri)
+    | "SORT" ->
+            forget (accept_start "SORT" i);
+            accept_end i;
+            Acic.ARel("", 0, "", "warning SORT placeholder")  (* Placeholder *)     
     | "PROD" ->
             forget (accept_start "PROD" i);
 
@@ -141,6 +167,25 @@ let rec i_aconstr i =
 
             accept_end i;
             Acic.AProds(!decls, target)
+    | "LETIN" ->
+            forget (accept_start "LETIN" i);
+
+            let defs = ref [] in
+            while peek_start i = "def" do
+                let tags = accept_start "def" i in
+                let id = lookup_tag "id" tags in
+                let name = binder_to_name(lookup_tag_opt "binder" tags) in
+                defs := (id, name, i_aconstr i) :: !defs;
+                accept_end i;
+            done;
+            defs := List.rev !defs;
+
+            forget (accept_start "target" i);
+            let target = i_aconstr i in
+            accept_end i;
+
+            accept_end i;
+            Acic.ALetIns(!defs, target)
     | "LAMBDA" ->
             forget (accept_start "LAMBDA" i);
 
@@ -249,48 +294,50 @@ let rec i_aconstr i =
     | name ->
             ignore_block i;
             pr_err (str "warning:ignored aconstr %s" name);
-            Acic.AVar("warning placeholder", "")  (* Placeholder *)
+            Acic.ARel("", 0, "", "warning placeholder")  (* Placeholder *)     
 
 let parse_constanttype src =
-    let i = xml_open_in src in
-    let i_constanttype i =
-        let tags = accept_start "ConstantType" i in
-        let id = lookup_tag "id" tags in
-        let name = lookup_tag "name" tags in
+    xml_exec src (fun i ->
+        let i_constanttype i =
+            let tags = accept_start "ConstantType" i in
+            let id = lookup_tag "id" tags in
+            let name = lookup_tag "name" tags in
 
-        let aconstr_type = i_aconstr i in
-        accept_end i;
+            let aconstr_type = i_aconstr i in
+            accept_end i;
 
-        (id, name, aconstr_type)
-    in
+            (id, name, aconstr_type)
+        in
 
-    let i_constanttype_file i =
-        accept_dtd i;
-        let ct = i_constanttype i in
-        assert (Xmlm.eoi i);
-        ct
-    in
+        let i_constanttype_file i =
+            accept_dtd i;
+            let ct = i_constanttype i in
+            assert (Xmlm.eoi i);
+            ct
+        in
 
-    i_constanttype_file i
+        i_constanttype_file i
+    )
 
 let parse_constantbody src =
-    let i = xml_open_in src in
-    let i_constantbody i =
-        let tags = accept_start "ConstantBody" i in
-        let id = lookup_tag "id" tags in
-        let name = lookup_tag "for" tags in
+    xml_exec src (fun i ->
+        let i_constantbody i =
+            let tags = accept_start "ConstantBody" i in
+            let id = lookup_tag "id" tags in
+            let name = lookup_tag "for" tags in
 
-        let aconstr_body = i_aconstr i in
-        accept_end i;
+            let aconstr_body = i_aconstr i in
+            accept_end i;
 
-        (id, name, aconstr_body)
-    in
+            (id, name, aconstr_body)
+        in
 
-    let i_constantbody_file i =
-        accept_dtd i;
-        let ct = i_constantbody i in
-        assert (Xmlm.eoi i);
-        ct
-    in
+        let i_constantbody_file i =
+            accept_dtd i;
+            let ct = i_constantbody i in
+            assert (Xmlm.eoi i);
+            ct
+        in
 
-    i_constantbody_file i
+        i_constantbody_file i
+    )
