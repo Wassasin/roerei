@@ -298,6 +298,16 @@ let rec i_aconstr i =
 
             accept_end i;
             Acic.AFix(id, no_fun, !ainductivefun_list)
+    | "instantiate" ->
+            forget (accept_start "instantiate" i);
+            let result = i_aconstr i in
+            while not (peek_end i) do
+                forget (accept_start "arg" i);
+                ignore_block i;
+                accept_end i;
+            done;
+            accept_end i;
+            result
     | name ->
             ignore_block i;
             pr_err (str "warning:ignored aconstr %s" name);
