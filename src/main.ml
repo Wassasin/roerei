@@ -24,32 +24,31 @@ let main () =
     iter_files_rec "/home/wgeraedts/src/Coq" (fun path ->
         if Filename.check_suffix path ".con.xml.gz" then (
             print path;
-            let (type_id, type_name, type_aconstr) = Parser.parse_constanttype path in
-            print_occurances (Interpreter.fetch_uris type_aconstr))
-        else if Filename.check_suffix path ".con.body.xml.gz" then (
+            let body_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.body.xml.gz" path in
+            let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
+            let (type_id, _type_name, type_aconstr) = Parser.parse_constanttype path in
+            print "type";
+            print_occurances (Interpreter.fetch_uris type_aconstr);
+            if Sys.file_exists body_path then
+                let (body_id, body_uri, body_aconstr) = Parser.parse_constantbody body_path in
+                assert (type_id = body_id);
+                print "body";
+                print_occurances (Interpreter.fetch_uris body_aconstr)
+            else
+                print "no body";
+            )
+        else if Filename.check_suffix path ".ind.xml.gz" then (
             print path;
-            let (body_id, body_name, body_aconstr) = Parser.parse_constantbody path in
-            print_occurances (Interpreter.fetch_uris body_aconstr))
-        else if Filename.check_suffix path ".con.types.xml.gz" then ()
+            let ind = Parser.parse_inductivedef path in
+            print_occurances (Interpreter.fetch_type_uris ind))
+        else if List.exists (Filename.check_suffix path) [
+            ".ind.types.xml.gz";
+            ".con.types.xml.gz"; ".con.body.xml.gz";
+            ".var.xml.gz"; ".var.types.xml.gz"
+        ] then () (* Irrelevant *)
         else
             Printf.eprintf "UNKNOWN %s\n%!" path
     )
-    (*let (type_id, type_name, type_aconstr) = Parser.parse_constanttype "to_nat.con.xml.gz" in
-    let (body_id, body_name, body_aconstr) = Parser.parse_constantbody "to_nat.con.body.xml.gz" in
-
-    assert (type_id = body_id); (* body_name is better than type_name *)
-    let obj = Acic.AConstant (body_id, body_name, Some body_aconstr, type_aconstr, []) in
-
-    let definitions = Interpreter.fetch_uris type_aconstr in
-    let dependencies = Interpreter.fetch_uris body_aconstr in
-
-    print "defs";
-    print_occurances definitions; 
-
-    print "deps";
-    print_occurances dependencies;
-
-    print "done"*)
 
 let () = main ()
 

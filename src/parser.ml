@@ -324,12 +324,12 @@ let parse_constantbody src =
         let i_constantbody i =
             let tags = accept_start "ConstantBody" i in
             let id = lookup_tag "id" tags in
-            let name = lookup_tag "for" tags in
+            let uri = lookup_tag "for" tags in
 
             let aconstr_body = i_aconstr i in
             accept_end i;
 
-            (id, name, aconstr_body)
+            (id, uri, aconstr_body)
         in
 
         let i_constantbody_file i =
@@ -340,4 +340,55 @@ let parse_constantbody src =
         in
 
         i_constantbody_file i
+    )
+
+let parse_inductivedef src =
+    xml_exec src (fun i ->
+        let i_inductivetype i =
+            let tags = accept_start "InductiveType" i in
+            let id = lookup_tag "id" tags in
+            let name = lookup_tag "name" tags in
+            let inductive = bool_of_string (lookup_tag "inductive" tags) in
+            
+            forget (accept_start "arity" i);
+            let arity = i_aconstr i in
+            accept_end i;
+
+            let constructors = ref [] in
+            while not (peek_end i) do
+                let tags = accept_start "Constructor" i in
+                let name = lookup_tag "name" tags in
+                constructors := (name, i_aconstr i) :: !constructors;
+                accept_end i;
+            done;
+            constructors := List.rev !constructors;
+
+            accept_end i;
+            (id, name, inductive, arity, !constructors)
+        in
+        
+        let i_inductivedef i =
+            let tags = accept_start "InductiveDefinition" i in
+            let id = lookup_tag "id" tags in
+            let no_params = int_of_string (lookup_tag "noParams" tags) in
+            
+            let types = ref [] in
+            while not (peek_end i) do
+                types := i_inductivetype i :: !types;
+            done;
+            types := List.rev !types;
+            assert ((List.length !types) = 1); (* Not clear how this could be different *)
+            
+            accept_end i;
+            Acic.AInductiveDefinition(id, !types, [], no_params)
+        in
+
+        let i_inductivedef_file i =
+            accept_dtd i;
+            let ct = i_inductivedef i in
+            assert (Xmlm.eoi i);
+            ct
+        in
+
+        i_inductivedef_file i
     )
