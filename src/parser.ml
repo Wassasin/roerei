@@ -1,6 +1,6 @@
 let str = Printf.sprintf
 let exec = Filename.basename Sys.executable_name
-let pr_err s = Printf.eprintf "%s:%s\n" exec s
+let pr_err s = Printf.eprintf "%s:%s\n%!" exec s
 
 let forget x = ()
 
@@ -147,7 +147,14 @@ let rec i_aconstr i =
     | "SORT" ->
             forget (accept_start "SORT" i);
             accept_end i;
-            Acic.ARel("", 0, "", "warning SORT placeholder")  (* Placeholder *)     
+            Acic.ARel("", 0, "", "warning SORT placeholder")  (* Placeholder *)
+    | "CAST" ->
+            let tags = accept_start "CAST" i in
+            let id = lookup_tag "id" tags in
+            let cast_term = i_aconstr i in
+            let cast_type = i_aconstr i in
+            accept_end i;
+            Acic.ACast(id, cast_term, cast_type)
     | "PROD" ->
             forget (accept_start "PROD" i);
 
