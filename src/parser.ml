@@ -359,6 +359,31 @@ let parse_constantbody src =
         i_constantbody_file i
     )
 
+let parse_constanttypes src =
+    xml_exec src (fun i ->
+        let i_constanttypes i =
+            let tags = accept_start "InnerTypes" i in
+            let types_of = lookup_tag "of" tags in
+     
+            while not (peek_end i) do
+                ignore_block i;
+            done;
+            
+            accept_end i;
+
+            types_of
+        in
+
+        let i_constanttypes_file i =
+            accept_dtd i;
+            let ct = i_constanttypes i in
+            assert (Xmlm.eoi i);
+            ct
+        in
+
+        i_constanttypes_file i
+    )
+
 let parse_inductivedef src =
     xml_exec src (fun i ->
         let i_inductivetype i =

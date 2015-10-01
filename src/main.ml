@@ -27,6 +27,9 @@ let main () =
             let body_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.body.xml.gz" path in
             let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
             let (type_id, _type_name, type_aconstr) = Parser.parse_constanttype path in
+            let types_uri = Parser.parse_constanttypes types_path in
+            print "for";
+            print types_uri;
             print "type";
             print_occurances (Interpreter.fetch_uris type_aconstr);
             if Sys.file_exists body_path then
