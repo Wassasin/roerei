@@ -1,5 +1,8 @@
 let main () =
-    let os = open_out "repo.msgpack" in
+    let repo = "repo.msgpack" in
+    if Sys.file_exists repo then
+        raise (Failure "Repo already exists; please remove repo before recalling executable");
+    let os = open_out repo in
     let yield_obj : Object.summary -> unit = fun x ->
         Printf.fprintf os "%s\n%!" (Msgpack.Serialize.serialize_string (Object.msgpack_of_summary x))
     in
