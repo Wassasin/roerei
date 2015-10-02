@@ -151,8 +151,15 @@ let rec i_aconstr i =
     | "CAST" ->
             let tags = accept_start "CAST" i in
             let id = lookup_tag "id" tags in
+
+            forget (accept_start "term" i);
             let cast_term = i_aconstr i in
+            accept_end i;
+
+            forget (accept_start "type" i);
             let cast_type = i_aconstr i in
+            accept_end i;
+
             accept_end i;
             Acic.ACast(id, cast_term, cast_type)
     | "PROD" ->

@@ -45,13 +45,13 @@ let fetch_uris x =
                 List.flatten (List.map fetch_uris_sub pts)
             ]
         | Acic.AFix(_id, no_fun, funlist) ->
-            assert (no_fun == 0);
+            assert (no_fun <= 1);
             let f (_id, _name, _rec_index, fun_type, fun_body) =
                 List.flatten (List.map fetch_uris_sub [fun_type; fun_body])
             in
             List.flatten (List.map f funlist)
         | Acic.ACoFix(_id, no_fun, funlist) ->
-            assert (no_fun == 0);
+            assert (no_fun <= 1);
             let f (_id, _name, fun_type, fun_body) =
                 List.flatten (List.map fetch_uris_sub [fun_type; fun_body])
             in

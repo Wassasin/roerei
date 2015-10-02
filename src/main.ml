@@ -19,20 +19,24 @@ let rec iter_files_rec dir f =
             then iter_files_rec path f
             else f path
     ) (Sys.readdir dir)
-    
-let yield_obj : Object.summary -> unit =
-    fun (obj_uri, obj_type_uris, obj_value_uris_opt) ->
-    print "for";
-    print obj_uri;
-    print "types";
-    print_frequency obj_type_uris;
-    match obj_value_uris_opt with
-    | Some obj_value_uris ->
-            print "body";
-            print_frequency obj_value_uris
-    | None -> print "no body"
 
+let print_obj : Object.summary -> unit =
+    fun (obj_uri, obj_type_uris, obj_value_uris_opt) ->
+        print "for";
+        print obj_uri;
+        print "types";
+        print_frequency obj_type_uris;
+        match obj_value_uris_opt with
+        | Some obj_value_uris ->
+                print "body";
+                print_frequency obj_value_uris
+        | None -> print "no body"
+    
 let main () =
+    let os = open_out "repo.msgpack" in
+    let yield_obj : Object.summary -> unit = fun x ->
+        Printf.fprintf os "%s\n%!" (Msgpack.Serialize.serialize_string (Object.msgpack_of_summary x))
+    in
     iter_files_rec "/home/wgeraedts/src/Coq" (fun path ->
         if Filename.check_suffix path ".con.xml.gz" then (
             print path;
@@ -64,7 +68,8 @@ let main () =
         ] then () (* Irrelevant *)
         else
             Printf.eprintf "UNKNOWN %s\n%!" path
-    )
+    );
+    close_out os
 
 let () = main ()
 
