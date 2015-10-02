@@ -1,11 +1,13 @@
 (* Prelude types as taken from Coq or Coq XML plugin *)
 (* See coq/plugins/xml/acic.ml and relevant kernel files *)
 
+open Msgpack_conv
+
 type existential_key = int  (* from Term *)
 type identifier = string  (* from Names *)
 
 type id = string  (* the type of the (annotated) node identifiers *)
-type uri = string
+type uri = string with conv(msgpack)
 
 (* Names *)
 type module_ident = identifier
