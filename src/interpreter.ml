@@ -29,33 +29,31 @@ let fetch_uris x =
         | Acic.ALetIns(args, aconstr) ->
                 fetch_uris_prodlike args aconstr
         | Acic.AApp(_id, aconstr_list) ->
-            List.flatten (List.map fetch_uris_sub aconstr_list)
+                List.flatten (List.map fetch_uris_sub aconstr_list)
         | Acic.AConst(_id, _ens, uri) -> [uri]
         | Acic.AInd(_id, _ens, uri, no_type) ->
-                assert (no_type == 0);
-                [uri]
+                [String.concat "-" [uri; string_of_int no_type]]
         | Acic.AConstruct(_id, _ens, uri, no_type, no_constr) ->
-                assert (no_type == 0);
-                [String.concat "-" [uri; string_of_int no_constr]]
+                [String.concat "-" [uri; string_of_int no_type; string_of_int no_constr]]
         | Acic.ACase(_id, uri, no_type, pt, it, pts) ->
-                assert (no_type == 0);
-            uri :: List.flatten [
-                fetch_uris_sub pt;
-                fetch_uris_sub it;
-                List.flatten (List.map fetch_uris_sub pts)
-            ]
+                let uri = String.concat "-" [uri; string_of_int no_type] in
+                uri :: List.flatten [
+                    fetch_uris_sub pt;
+                    fetch_uris_sub it;
+                    List.flatten (List.map fetch_uris_sub pts)
+                ]
         | Acic.AFix(_id, no_fun, funlist) ->
-            assert (no_fun <= 1);
-            let f (_id, _name, _rec_index, fun_type, fun_body) =
-                List.flatten (List.map fetch_uris_sub [fun_type; fun_body])
-            in
-            List.flatten (List.map f funlist)
+                assert (no_fun <= 0);
+                let f (_id, _name, _rec_index, fun_type, fun_body) =
+                    List.flatten (List.map fetch_uris_sub [fun_type; fun_body])
+                in
+                List.flatten (List.map f funlist)
         | Acic.ACoFix(_id, no_fun, funlist) ->
-            assert (no_fun <= 1);
-            let f (_id, _name, fun_type, fun_body) =
-                List.flatten (List.map fetch_uris_sub [fun_type; fun_body])
-            in
-            List.flatten (List.map f funlist)
+                assert (no_fun <= 0);
+                let f (_id, _name, fun_type, fun_body) =
+                    List.flatten (List.map fetch_uris_sub [fun_type; fun_body])
+                in
+                List.flatten (List.map f funlist)
         in
      filter (fetch_uris_sub x)
 

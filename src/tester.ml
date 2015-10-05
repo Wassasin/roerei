@@ -1,4 +1,6 @@
 let main () =
+    (* let definitions =  *)
+
     let repo = "repo.msgpack" in
     if not (Sys.file_exists repo) then
         raise (Failure "Repo does not yet exist; please run ./preloader first");
@@ -8,9 +10,8 @@ let main () =
         while true do
             line := String.concat "" [!line; input_line is];
             try
-                let (uri, _, _) = Object.summary_of_msgpack_exn (Msgpack.Serialize.deserialize_string !line) in
-                Util.print uri;
-                (*Object.print_summary summary;*)
+                let summary = Object.summary_of_msgpack_exn (Msgpack.Serialize.deserialize_string !line) in
+                Object.print_summary summary;
                 line := ""
             with e ->
                 line := String.concat "" [!line; "\n"]
