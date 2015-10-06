@@ -17,4 +17,7 @@ _build
 
 *.xml
 *.xml.gz
-src/main
+src/preloader
+src/tester
+src/Coq
+src/repo.msgpack
