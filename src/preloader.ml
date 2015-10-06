@@ -1,5 +1,10 @@
 module StringSet = Set.Make (String) ;;
 
+let count_all : ((Prelude.uri -> unit) -> unit) -> Object.freq_item list = fun f ->
+    let map : Counter.t ref = ref Counter.empty in
+    f (fun x -> map := Counter.touch x !map);
+    Counter.to_list !map
+
 let main () =
     let loaded = ref StringSet.empty in
     
@@ -26,11 +31,11 @@ let main () =
             let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
             let types_uri = Parser.parse_constanttypes types_path in 
             let (type_id, _type_name, type_aconstr) = Parser.parse_constanttype path in
-            let type_uris = Object.count_occurances (Interpreter.fetch_uris type_aconstr) in
+            let type_uris = count_all (fun f -> Interpreter.fetch_uris f type_aconstr) in
             if Sys.file_exists body_path then
                 let (body_id, body_uri, body_aconstr) = Parser.parse_constantbody body_path in
                 assert (type_id = body_id);
-                let body_uris = Object.count_occurances (Interpreter.fetch_uris body_aconstr) in
+                let body_uris = count_all (fun f -> Interpreter.fetch_uris f body_aconstr) in
                 yield_obj (path, types_uri, type_uris, (Some body_uris))
             else
                 yield_obj (path, types_uri, type_uris, None)
@@ -39,7 +44,7 @@ let main () =
             let types_path = Str.global_replace (Str.regexp "\\.ind\\.xml\\.gz") ".ind.types.xml.gz" path in
             let types_uri = Parser.parse_constanttypes types_path in 
             let ind = Parser.parse_inductivedef path in
-            let type_uris = Object.count_occurances (Interpreter.fetch_type_uris ind) in
+            let type_uris = count_all (fun f -> Interpreter.fetch_type_uris f ind) in
             yield_obj (path, types_uri, type_uris, None)
         ) else if List.exists (Filename.check_suffix path) [
             ".ind.types.xml.gz";
