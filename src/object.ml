@@ -1,5 +1,4 @@
 open Msgpack_conv
-open Util
 
 type uri = string with conv(msgpack) (* Redef of Prelude.uri *)
 
@@ -23,12 +22,12 @@ let print_frequency : freq_item list -> unit = fun xs ->
 
 let print_summary : summary -> unit =
     fun (file_path, obj_uri, obj_type_uris, obj_value_uris_opt) ->
-        print "for";
+        Util.print "for";
         Printf.printf "%s (in %s)\n%!" obj_uri file_path;
-        print "types";
+        Util.print "types";
         print_frequency obj_type_uris;
         match obj_value_uris_opt with
         | Some obj_value_uris ->
-                print "body";
+                Util.print "body";
                 print_frequency obj_value_uris
-        | None -> print "no body"
+        | None -> Util.print "no body"

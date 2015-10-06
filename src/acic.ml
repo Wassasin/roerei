@@ -15,7 +15,7 @@ type aconstr =
   | AApp       of id * aconstr list
   | AConst     of id * explicit_named_substitution * uri
   | AInd       of id * explicit_named_substitution * uri * int
-  | AConstruct of id * explicit_named_substitution * uri * int * int
+  | AConstruct of id * explicit_named_substitution * uri * int * int (* no_type (0-indexed), no_constr (1-indexed) *)
   | ACase      of id * uri * int * aconstr * aconstr * aconstr list
   | AFix       of id * int * ainductivefun list
   | ACoFix     of id * int * acoinductivefun list
