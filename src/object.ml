@@ -6,7 +6,7 @@ type uri = string with conv(msgpack) (* Redef of Prelude.uri *)
 type freq_item =
     uri * int with conv(msgpack)
 
-type summary = uri * freq_item list * freq_item list option
+type summary = string * uri * freq_item list * freq_item list option
     with conv(msgpack)
 
 let count_occurances : Prelude.uri list -> freq_item list  = fun xs ->
@@ -22,9 +22,9 @@ let print_frequency : freq_item list -> unit = fun xs ->
     List.iter (fun (str, c) -> Printf.printf "%s: %i\n%!" str c) xs_sorted 
 
 let print_summary : summary -> unit =
-    fun (obj_uri, obj_type_uris, obj_value_uris_opt) ->
+    fun (file_path, obj_uri, obj_type_uris, obj_value_uris_opt) ->
         print "for";
-        print obj_uri;
+        Printf.printf "%s (in %s)\n%!" obj_uri file_path;
         print "types";
         print_frequency obj_type_uris;
         match obj_value_uris_opt with

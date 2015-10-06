@@ -426,7 +426,6 @@ let parse_inductivedef src =
                 types := i_inductivetype i :: !types;
             done;
             types := List.rev !types;
-            assert ((List.length !types) = 1); (* Not clear how this could be different *)
             
             accept_end i;
             Acic.AInductiveDefinition(id, !types, [], no_params)
