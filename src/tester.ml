@@ -1,10 +1,11 @@
+open Dataset
+
 module UriSet = Set.Make (String) ;;
 module UriMap = Map.Make (String) ;;
 
 let main () =
     let objects = ref UriSet.empty in
     let dependencies = ref UriSet.empty in
-    let rows = ref [] in
 
     Storage.repository_load (fun (_, uri, type_uris, body_uris) ->
         List.iter (fun (x, _) ->
@@ -13,44 +14,53 @@ let main () =
         ) type_uris;
         Util.may (List.iter (fun (x, _) ->
             objects := UriSet.add x !objects
-        )) body_uris;
-        rows := uri :: !rows
+        )) body_uris
     );
-    rows := List.rev !rows;
 
     let theorems = ref (UriSet.diff !objects !dependencies) in (* Heuristic by Kaliszyk *)
 
-    Printf.printf "Rows:         %i\n%!" (List.length !rows);
     Printf.printf "Dependencies: %i\n%!" (UriSet.cardinal !dependencies);
     Printf.printf "Theorems:     %i\n%!" (UriSet.cardinal !theorems);
 
-    let columns = ref (UriSet.elements !dependencies) in
-    let matrix = ref (Array.make_matrix (List.length !columns) (List.length !rows) 0) in
-
+    let dataset : Dataset.t =
+        let _rows = UriSet.elements !theorems in 
+        let _columns = UriSet.elements !dependencies in
+        {
+            rows = _rows;
+            columns = _columns;
+            matrix = Dataset.create_matrix (List.length _columns) (List.length _rows) 0;
+        } in
+    
     let column_map = ref UriMap.empty in
-    List.iteri (fun i x -> column_map := UriMap.add x i !column_map) !columns;
+    List.iteri (fun i x -> column_map := UriMap.add x i !column_map) dataset.columns;
 
     let row_map = ref UriMap.empty in
-    List.iteri (fun i x -> row_map := UriMap.add x i !row_map) !rows;
+    List.iteri (fun i x -> row_map := UriMap.add x i !row_map) dataset.rows;
 
     Util.print "Initializing feature matrix...";
 
     Storage.repository_load (fun (_, uri, type_uris, _) ->
-        let y = UriMap.find uri !row_map in
-        List.iter (fun (type_uri, type_uri_count) ->
-            let x = UriMap.find type_uri !column_map in
-            (!matrix).(x).(y) <- type_uri_count
-        ) type_uris;
+        try
+            let y = UriMap.find uri !row_map in
+            List.iter (fun (type_uri, type_uri_count) ->
+                let x = UriMap.find type_uri !column_map in
+                Dataset.set dataset.matrix x y type_uri_count
+            ) type_uris
+        with Not_found ->
+            ()
     );
 
+    let occurances_total = ref 0 in
     let occurances_count = ref 0 in
-    Array.iter (Array.iter (fun b ->
-        if b != 0 then
-            occurances_count := !occurances_count + 1
-        else
-            ()
-    )) !matrix;
-    Printf.printf "Occurances:   %i\n%!" !occurances_count
+    Dataset.iter_nonempty (fun _x _y v ->
+        occurances_count := !occurances_count + 1;
+        occurances_total := !occurances_total + v
+    ) dataset.matrix;
+    Printf.printf "Occurances:   %i - %i\n%!" !occurances_count !occurances_total;
+
+    let os = open_out_bin Storage.dataset_file in
+    Printf.fprintf os "%s%!" (Msgpack.Serialize.serialize_string (Dataset.msgpack_of_t dataset));
+    close_out os
 
 
 let () = main ()

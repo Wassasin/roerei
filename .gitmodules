@@ -1,0 +1,3 @@
+[submodule "contrib/msgpack-ocaml"]
+	path = contrib/msgpack-ocaml
+	url = ssh://git@github.com/Wassasin/msgpack-ocaml

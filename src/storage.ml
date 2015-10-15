@@ -1,4 +1,5 @@
 let repository_file = "repo.msgpack"
+let dataset_file = "dataset.msgpack"
 
 let repository_exists = Sys.file_exists repository_file
 
@@ -19,7 +20,7 @@ let repository_load : (Object.summary -> unit) -> unit = fun f ->
                     raise e
                 );
                 line := ""
-            with e ->
+            with Msgpack_conv.Error(_) ->
                 line := String.concat "" [!line; "\n"]
         done
     with End_of_file ->
