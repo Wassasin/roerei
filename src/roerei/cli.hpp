@@ -87,10 +87,8 @@ public:
 
 		if(opt.action == "test")
 		{
-			storage s;
-
 			std::set<uri_t> objects, dependencies;
-			s.read_summaries([&](summary_t&& s) {
+			storage::read_summaries([&](summary_t&& s) {
 				for(auto&& t : s.type_uris)
 				{
 					objects.emplace(t.uri); // Copy

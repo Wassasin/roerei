@@ -15,11 +15,11 @@ namespace roerei
 class storage
 {
 private:
-	std::string const repo_path = "./repo.msgpack";
+	storage() = delete;
 
 public:
 	template<typename F, typename = std::enable_if_t<is_function<F, void(summary_t&&)>::value>>
-	void read_summaries(F f);
+	static void read_summaries(F f);
 };
 
 template<typename F, typename>
@@ -31,6 +31,7 @@ void storage::read_summaries(F f)
 	 * EOB is encountered.
 	 */
 
+	static const std::string repo_path = "./repo.msgpack";
 	static const std::string __bogus = "__bogus";
 
 	if(!boost::filesystem::exists(repo_path))
