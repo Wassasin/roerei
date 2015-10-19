@@ -1,8 +1,13 @@
 #pragma once
 
+#include <roerei/serialize_fusion.hpp>
+#include <roerei/deserialize_fusion.hpp>
+
+#include <roerei/msgpack_serializer.hpp>
 #include <roerei/msgpack_deserializer.hpp>
 
 #include <roerei/summary.hpp>
+#include <roerei/dataset.hpp>
 #include <roerei/common.hpp>
 
 #include <boost/filesystem.hpp>
@@ -20,6 +25,9 @@ private:
 public:
 	template<typename F, typename = std::enable_if_t<is_function<F, void(summary_t&&)>::value>>
 	static void read_summaries(F const& f);
+
+	static void write_dataset(dataset_t const& d);
+	static dataset_t read_dataset();
 };
 
 template<typename F, typename>
@@ -102,6 +110,45 @@ void storage::read_summaries(F const& f)
 			line += '\n';
 		}
 	}
+}
+
+void storage::write_dataset(const dataset_t &d)
+{
+	static std::string const dataset_path = "./dataset.msgpack";
+
+	msgpack_serializer s;
+	serialize(s, "dataset", d);
+
+	std::ofstream os(dataset_path, std::ios::binary);
+
+	s.dump([&](const char* buf, size_t len) {
+		os.write(buf, len);
+	});
+}
+
+dataset_t storage::read_dataset()
+{
+	static std::string const dataset_path = "./dataset.msgpack";
+
+	if(!boost::filesystem::exists(dataset_path))
+		throw std::runtime_error("Dataset does not exist");
+
+	std::ifstream is(dataset_path, std::ios::binary);
+	std::string buf;
+
+	is.seekg(0, std::ios::end);
+	buf.reserve(is.tellg());
+	is.seekg(0, std::ios::beg);
+
+	buf.assign(
+		(std::istreambuf_iterator<char>(is)), // Most Vexing Parse Parenthesis; necessary.
+		std::istreambuf_iterator<char>()
+	);
+
+	msgpack_deserializer d;
+	d.feed(buf);
+
+	return deserialize<dataset_t>(d, "dataset");
 }
 
 }

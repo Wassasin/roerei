@@ -57,6 +57,7 @@ private:
 					<< "Usage: ./roerei [options] action" << std::endl
 					<< std::endl
 					<< "Actions:" << std::endl
+					<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
 					<< "  test           placeholder action" << std::endl
 					<< std::endl
 					<< o_general;
@@ -86,7 +87,7 @@ public:
 
 		if(opt.action == "test")
 		{
-			auto const d(generator::construct_from_repo());
+			auto const d(storage::read_dataset());
 
 			size_t i = 0, total = 0;
 			for(size_t j = 0; j < d.matrix.m; ++j)
@@ -98,6 +99,11 @@ public:
 				}
 			}
 			std::cout << "Total: " << total << " (" << i << ")" << std::endl;
+		}
+		else if(opt.action == "generate")
+		{
+			auto const d(generator::construct_from_repo());
+			storage::write_dataset(d);
 		}
 		else
 		{

@@ -17,6 +17,7 @@ struct dataset_t
 
 	dataset_t(dataset_t&&) = default;
 	dataset_t(dataset_t&) = delete;
+	dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _dependencies, matrix_t&& _matrix);
 
 	template<typename CONTAINER>
 	dataset_t(CONTAINER&& _objects, CONTAINER&& _dependencies);
@@ -41,8 +42,19 @@ dataset_t::dataset_t(CONTAINER&& _objects, CONTAINER&& _dependencies)
 	: objects(detail::construct_move_elements(_objects))
 	, dependencies(detail::construct_move_elements(_dependencies))
 	, matrix(objects.size(), dependencies.size())
-{
+{}
+
+dataset_t::dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _dependencies, matrix_t&& _matrix)
+	: objects(std::move(_objects))
+	, dependencies(std::move(_dependencies))
+	, matrix(std::move(_matrix))
+{}
 
 }
 
-}
+BOOST_FUSION_ADAPT_STRUCT(
+		roerei::dataset_t,
+		(std::vector<roerei::uri_t>, objects)
+		(std::vector<roerei::uri_t>, dependencies)
+		(roerei::dataset_t::matrix_t, matrix)
+)
