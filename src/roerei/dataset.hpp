@@ -9,18 +9,18 @@
 namespace roerei
 {
 
-struct dataset
+struct dataset_t
 {
 	typedef boost::numeric::ublas::compressed_matrix<uint16_t> matrix_t;
 
 	std::vector<uri_t> const objects, dependencies;
 	matrix_t matrix;
 
-	dataset(dataset&&) = default;
-	dataset(dataset const&) = delete;
+	dataset_t(dataset_t&&) = default;
+	dataset_t(dataset_t&) = delete;
 
 	template<typename CONTAINER>
-	dataset(CONTAINER&& _objects, CONTAINER&& _dependencies);
+	dataset_t(CONTAINER&& _objects, CONTAINER&& _dependencies);
 };
 
 namespace detail
@@ -37,7 +37,7 @@ namespace detail
 }
 
 template<typename CONTAINER>
-dataset::dataset(CONTAINER&& _objects, CONTAINER&& _dependencies)
+dataset_t::dataset_t(CONTAINER&& _objects, CONTAINER&& _dependencies)
 	: objects(detail::construct_move_elements(_objects))
 	, dependencies(detail::construct_move_elements(_dependencies))
 	, matrix(objects.size(), dependencies.size())
