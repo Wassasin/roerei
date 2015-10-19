@@ -1,3 +1,9 @@
 [submodule "contrib/msgpack-ocaml"]
 	path = contrib/msgpack-ocaml
 	url = ssh://git@github.com/Wassasin/msgpack-ocaml
+[submodule "contrib/wubwubcmake"]
+	path = contrib/wubwubcmake
+	url = ssh://git@github.com/nicknick/wubwubcmake
+[submodule "contrib/msgpack-c"]
+	path = contrib/msgpack-c
+	url = ssh://git@github.com/msgpack/msgpack-c

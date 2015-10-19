@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 2.6)
+
+add_subdirectory(contrib/msgpack-c)
+
+project(roerei)
+list(APPEND msgpack_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/contrib/msgpack-c/include")
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/contrib/wubwubcmake/modules")
+
+include("contrib/wubwubcmake/enable_cpp14.cmake")
+include("contrib/wubwubcmake/warning_settings.cmake")
+add_sane_warning_flags()
+
+list(APPEND Roerei_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/")
+
+add_subdirectory("src/roerei")
