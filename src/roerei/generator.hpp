@@ -3,8 +3,6 @@
 #include <roerei/storage.hpp>
 #include <roerei/dataset.hpp>
 
-#include <boost/numeric/ublas/matrix_proxy.hpp>
-
 #include <set>
 
 namespace roerei
@@ -51,19 +49,19 @@ public:
 		size_t i = 0, total = 0;
 		storage::read_summaries([&](summary_t&& s) {
 			size_t row = objects_map.at(s.uri);
-			boost::numeric::ublas::matrix_row<decltype(d.matrix)> v(d.matrix, row);
+			auto v(d.matrix[row]);
 
 			for(auto const& t : s.type_uris)
 			{
 				size_t col = dependencies_map.at(t.uri);
-				v(col) = t.freq;
+				v[col] = t.freq;
 				i++;
 				total += t.freq;
 			}
 		});
 		std::cout << "Loaded dataset" << std::endl;
 		std::cout << "Total: " << total << " (" << i << ")" << std::endl;
-		return d;
+		return std::move(d);
 	}
 };
 

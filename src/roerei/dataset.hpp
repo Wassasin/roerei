@@ -1,8 +1,7 @@
 #pragma once
 
 #include <roerei/uri.hpp>
-
-#include <boost/numeric/ublas/matrix_sparse.hpp>
+#include <roerei/sparse_matrix.hpp>
 
 #include <vector>
 
@@ -11,7 +10,7 @@ namespace roerei
 
 struct dataset_t
 {
-	typedef boost::numeric::ublas::compressed_matrix<uint16_t> matrix_t;
+	typedef sparse_matrix_t<uint16_t> matrix_t;
 
 	std::vector<uri_t> const objects, dependencies;
 	matrix_t matrix;

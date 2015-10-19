@@ -86,18 +86,17 @@ public:
 
 		if(opt.action == "test")
 		{
-			auto d(generator::construct_from_repo());
+			auto const d(generator::construct_from_repo());
 
 			size_t i = 0, total = 0;
-			for(auto it1 = d.matrix.begin1(); it1 != d.matrix.end1(); it1++)
+			for(size_t j = 0; j < d.matrix.m; ++j)
 			{
-				for(auto it2 = it1.begin(); it2 != it1.end(); it2++)
+				for(auto const& kvp : d.matrix[j])
 				{
 					i++;
-					total += *it2;
+					total += kvp.second;
 				}
 			}
-
 			std::cout << "Total: " << total << " (" << i << ")" << std::endl;
 		}
 		else
