@@ -28,6 +28,7 @@ namespace detail
 	static inline std::vector<uri_t> construct_move_elements(B&& ys)
 	{
 		std::vector<uri_t> xs;
+		xs.reserve(ys.size());
 		for(auto&& y : ys)
 			xs.emplace_back(std::move(y));
 
