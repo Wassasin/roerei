@@ -19,11 +19,11 @@ private:
 
 public:
 	template<typename F, typename = std::enable_if_t<is_function<F, void(summary_t&&)>::value>>
-	static void read_summaries(F f);
+	static void read_summaries(F const& f);
 };
 
 template<typename F, typename>
-void storage::read_summaries(F f)
+void storage::read_summaries(F const& f)
 {
 	/* The summary repository consists of summary_t objects separated by newlines.
 	 * These objects do not conform to the serialize_fusion standard.
