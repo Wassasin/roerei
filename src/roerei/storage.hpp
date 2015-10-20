@@ -39,7 +39,7 @@ void storage::read_summaries(F const& f)
 	 * EOB is encountered.
 	 */
 
-	static const std::string repo_path = "./repo.msgpack";
+	static const std::string repo_path = "./data/repo.msgpack";
 	static const std::string __bogus = "__bogus";
 
 	if(!boost::filesystem::exists(repo_path))
@@ -114,7 +114,7 @@ void storage::read_summaries(F const& f)
 
 void storage::write_dataset(const dataset_t &d)
 {
-	static std::string const dataset_path = "./dataset.msgpack";
+	static std::string const dataset_path = "./data/dataset.msgpack";
 
 	msgpack_serializer s;
 	serialize(s, "dataset", d);
@@ -128,7 +128,7 @@ void storage::write_dataset(const dataset_t &d)
 
 dataset_t storage::read_dataset()
 {
-	static std::string const dataset_path = "./dataset.msgpack";
+	static std::string const dataset_path = "./data/dataset.msgpack";
 
 	if(!boost::filesystem::exists(dataset_path))
 		throw std::runtime_error("Dataset does not exist");
