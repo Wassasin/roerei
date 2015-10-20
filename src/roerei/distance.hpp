@@ -42,6 +42,26 @@ private:
 				ys_it++;
 			}
 		}
+
+		while(xs_it != xs.end())
+		{
+			f(xs_it->first, xs_it->second, 0);
+			xs_it++;
+		}
+
+		while(ys_it != ys.end())
+		{
+			f(ys_it->first, 0, ys_it->second);
+			ys_it++;
+		}
+	}
+
+	static inline float absdiff(T const x, T const y)
+	{
+		if(x > y)
+			return std::fdim(x, y);
+		else
+			return std::fdim(y, x);
 	}
 
 public:
@@ -53,7 +73,7 @@ public:
 
 		float sum = 0.0f;
 		yield_nonempty_pairs(xs, ys, [&](size_t const i, T const& x, T const& y) {
-			sum += std::pow(std::fdim(x, y), p);
+			sum += std::pow(absdiff(x, y), p);
 		});
 		return std::pow(sum, 1.0f / P);
 	}

@@ -3,6 +3,7 @@
 #include <roerei/generator.hpp>
 #include <roerei/partition.hpp>
 #include <roerei/distance.hpp>
+#include <roerei/knn.hpp>
 
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -90,15 +91,26 @@ public:
 		if(opt.action == "test")
 		{
 			auto const d(storage::read_dataset());
+			knn c(5, d.matrix);
+
+			auto print_f([&](dataset_t::matrix_t::const_row_proxy_t const& row) {
+				for(auto const& kvp : row)
+					std::cout << " " << kvp.second << '*' << kvp.first;
+				std::cout << std::endl;
+			});
 
 			for(size_t i = 0; i < d.matrix.m; ++i)
 			{
-				float sum = 0.0f;
-				for(size_t j = i+1; j < d.matrix.m; ++j)
+				std::cout << i << ":";
+				print_f(d.matrix[i]);
+				std::cout << "----" << std::endl;
+
+				for(auto const& kvp : c.predict(d.matrix[i]))
 				{
-					sum += distance<dataset_t::value_t>::euclidean(d.matrix[i], d.matrix[j]);
+					std::cout << kvp.first << ": " << kvp.second << " <=";
+					print_f(d.matrix[kvp.first]);
 				}
-				std::cout << i << ": " << sum << std::endl;
+				std::cout << std::endl;
 			}
 
 		}
