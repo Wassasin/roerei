@@ -15,9 +15,10 @@ _build
 *.d.native
 *.p.byte
 
-*.xml
-*.xml.gz
-src/preloader
-src/tester
-src/Coq
-src/repo.msgpack
+data
+build
+CMakeLists.txt.user
+
+src/preloader/preloader
+src/preloader/tester
+src/preloader/Coq

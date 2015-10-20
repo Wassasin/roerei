@@ -5,6 +5,9 @@ set +x
 rm -rf build
 mkdir -p build
 pushd build
+
+ln -s ../data .
+
 CC="clang" CXX="clang++" cmake ..
 popd
 
