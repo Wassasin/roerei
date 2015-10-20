@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
+set(MSGPACK_BUILD_TESTS OFF CACHE BOOL "Build msgpack tests")
+set(MSGPACK_BUILD_EXAMPLES OFF CACHE BOOL "Build msgpack examples")
+
 add_subdirectory(contrib/msgpack-c)
 
 project(roerei)
