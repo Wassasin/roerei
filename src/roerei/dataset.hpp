@@ -10,7 +10,8 @@ namespace roerei
 
 struct dataset_t
 {
-	typedef sparse_matrix_t<uint16_t> matrix_t;
+	typedef uint16_t value_t;
+	typedef sparse_matrix_t<value_t> matrix_t;
 
 	std::vector<uri_t> const objects, dependencies;
 	matrix_t matrix;

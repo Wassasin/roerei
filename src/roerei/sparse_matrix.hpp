@@ -43,6 +43,11 @@ public:
 			return row.end();
 		}
 
+		size_t size() const
+		{
+			return parent.n;
+		}
+
 		size_t nonempty_size() const
 		{
 			return row.size();
@@ -76,6 +81,11 @@ public:
 		typename row_t::const_iterator end() const
 		{
 			return row.end();
+		}
+
+		size_t size() const
+		{
+			return parent.n;
 		}
 
 		size_t nonempty_size() const

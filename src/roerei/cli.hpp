@@ -1,6 +1,8 @@
 #pragma once
 
 #include <roerei/generator.hpp>
+#include <roerei/partition.hpp>
+#include <roerei/distance.hpp>
 
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -89,16 +91,16 @@ public:
 		{
 			auto const d(storage::read_dataset());
 
-			size_t i = 0, total = 0;
-			for(size_t j = 0; j < d.matrix.m; ++j)
+			for(size_t i = 0; i < d.matrix.m; ++i)
 			{
-				for(auto const& kvp : d.matrix[j])
+				float sum = 0.0f;
+				for(size_t j = i+1; j < d.matrix.m; ++j)
 				{
-					i++;
-					total += kvp.second;
+					sum += distance<dataset_t::value_t>::euclidean(d.matrix[i], d.matrix[j]);
 				}
+				std::cout << i << ": " << sum << std::endl;
 			}
-			std::cout << "Total: " << total << " (" << i << ")" << std::endl;
+
 		}
 		else if(opt.action == "generate")
 		{
