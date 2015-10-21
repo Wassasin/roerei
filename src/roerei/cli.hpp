@@ -91,7 +91,7 @@ public:
 		if(opt.action == "test")
 		{
 			auto const d(storage::read_dataset());
-			knn c(5, d.matrix);
+			knn c(5, d.feature_matrix);
 
 			auto print_f([&](dataset_t::matrix_t::const_row_proxy_t const& row) {
 				for(auto const& kvp : row)
@@ -99,16 +99,16 @@ public:
 				std::cout << std::endl;
 			});
 
-			for(size_t i = 0; i < d.matrix.m; ++i)
+			for(size_t i = 0; i < d.feature_matrix.m; ++i)
 			{
 				std::cout << i << ":";
-				print_f(d.matrix[i]);
+				print_f(d.feature_matrix[i]);
 				std::cout << "----" << std::endl;
 
-				for(auto const& kvp : c.predict(d.matrix[i]))
+				for(auto const& kvp : c.predict(d.feature_matrix[i]))
 				{
 					std::cout << kvp.first << ": " << kvp.second << " <=";
-					print_f(d.matrix[kvp.first]);
+					print_f(d.feature_matrix[kvp.first]);
 				}
 				std::cout << std::endl;
 			}

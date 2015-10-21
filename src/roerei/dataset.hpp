@@ -13,15 +13,15 @@ struct dataset_t
 	typedef uint16_t value_t;
 	typedef sparse_matrix_t<value_t> matrix_t;
 
-	std::vector<uri_t> const objects, dependencies;
-	matrix_t matrix;
+	std::vector<uri_t> const objects, features, dependencies;
+	matrix_t feature_matrix, dependency_matrix;
 
 	dataset_t(dataset_t&&) = default;
 	dataset_t(dataset_t&) = delete;
-	dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _dependencies, matrix_t&& _matrix);
+	dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _features, std::vector<uri_t>&& _dependencies, matrix_t&& _feature_matrix, matrix_t&& _dependency_matrix);
 
 	template<typename CONTAINER>
-	dataset_t(CONTAINER&& _objects, CONTAINER&& _dependencies);
+	dataset_t(CONTAINER&& _objects, CONTAINER&& _features, CONTAINER&& _dependencies);
 };
 
 namespace detail
@@ -39,16 +39,20 @@ namespace detail
 }
 
 template<typename CONTAINER>
-dataset_t::dataset_t(CONTAINER&& _objects, CONTAINER&& _dependencies)
+dataset_t::dataset_t(CONTAINER&& _objects, CONTAINER&& _features, CONTAINER&& _dependencies)
 	: objects(detail::construct_move_elements(_objects))
+	, features(detail::construct_move_elements(_features))
 	, dependencies(detail::construct_move_elements(_dependencies))
-	, matrix(objects.size(), dependencies.size())
+	, feature_matrix(objects.size(), features.size())
+	, dependency_matrix(objects.size(), dependencies.size())
 {}
 
-dataset_t::dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _dependencies, matrix_t&& _matrix)
+dataset_t::dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _features, std::vector<uri_t>&& _dependencies, matrix_t&& _feature_matrix, matrix_t&& _dependency_matrix)
 	: objects(std::move(_objects))
+	, features(std::move(_features))
 	, dependencies(std::move(_dependencies))
-	, matrix(std::move(_matrix))
+	, feature_matrix(std::move(_feature_matrix))
+	, dependency_matrix(std::move(_dependency_matrix))
 {}
 
 }
@@ -56,6 +60,8 @@ dataset_t::dataset_t(std::vector<uri_t>&& _objects, std::vector<uri_t>&& _depend
 BOOST_FUSION_ADAPT_STRUCT(
 		roerei::dataset_t,
 		(std::vector<roerei::uri_t>, objects)
+		(std::vector<roerei::uri_t>, features)
 		(std::vector<roerei::uri_t>, dependencies)
-		(roerei::dataset_t::matrix_t, matrix)
+		(roerei::dataset_t::matrix_t, feature_matrix)
+		(roerei::dataset_t::matrix_t, dependency_matrix)
 )
