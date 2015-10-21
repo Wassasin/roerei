@@ -70,7 +70,14 @@ public:
 		T const& operator[](size_t j) const
 		{
 			assert(j < parent.n);
-			return row[j];
+			try
+			{
+				return row.at(j);
+			}
+			catch(std::out_of_range)
+			{
+				return 0;
+			}
 		}
 
 		typename row_t::const_iterator begin() const
