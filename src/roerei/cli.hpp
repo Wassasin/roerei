@@ -94,22 +94,108 @@ public:
 			knn c(5, d.feature_matrix);
 
 			auto print_f([&](dataset_t::matrix_t::const_row_proxy_t const& row) {
+				std::cout << "[";
 				for(auto const& kvp : row)
 					std::cout << " " << kvp.second << '*' << kvp.first;
-				std::cout << std::endl;
+				std::cout << " ]";
 			});
 
 			for(size_t i = 0; i < d.feature_matrix.m; ++i)
 			{
-				std::cout << i << ":";
+				std::cout << i << " " << d.objects[i] << " ";
 				print_f(d.feature_matrix[i]);
-				std::cout << "----" << std::endl;
+				std::cout << std::endl;
 
-				for(auto const& kvp : c.predict(d.feature_matrix[i]))
+				std::cout << "-- Required" << std::endl;
 				{
-					std::cout << kvp.first << ": " << kvp.second << " <=";
-					print_f(d.feature_matrix[kvp.first]);
+					bool empty = true;
+					for(auto const& kvp : d.dependency_matrix[i])
+					{
+						empty = false;
+						std::cout << kvp.second << "*" << kvp.first << " " << d.dependencies[kvp.first] << std::endl;
+					}
+					if(empty)
+						std::cout << "Empty set" << std::endl;
 				}
+
+				std::cout << "-- Similar" << std::endl;
+
+				std::map<size_t, float> suggestions; // <id, weighted freq>
+
+				std::list<knn::distance_t> predictions(c.predict(d.feature_matrix[i]));
+				std::reverse(predictions.begin(), predictions.end());
+				for(auto const& kvp : predictions)
+				{
+					if(kvp.first == i)
+						continue;
+
+					std::cout << kvp.second << " <= " << kvp.first << " " << d.objects[kvp.first] << " ";
+					print_f(d.feature_matrix[kvp.first]);
+					std::cout << std::endl;
+
+					float weight = 1.0f / (kvp.second + 1.0f); // "Similarity", higher is more similar
+
+					for(auto dep_kvp : d.dependency_matrix[kvp.first])
+						suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
+				}
+
+				std::vector<std::pair<size_t, float>> suggestions_sorted;
+				for(auto const& kvp : suggestions)
+					suggestions_sorted.emplace_back(kvp);
+
+				std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<size_t, float> const& x, std::pair<size_t, float> const& y) {
+					return x.second > y.second;
+				});
+
+				std::set<size_t> required_deps, suggested_deps, found_deps, missing_deps;
+				for(auto const& kvp : d.dependency_matrix[i])
+					required_deps.insert(kvp.first);
+
+				for(size_t j = 0; j < suggestions_sorted.size() && j < 100; ++j)
+					suggested_deps.insert(suggestions_sorted[j].first);
+
+				std::set_intersection(
+					required_deps.begin(), required_deps.end(),
+					suggested_deps.begin(), suggested_deps.end(),
+					std::inserter(found_deps, found_deps.begin())
+				);
+
+				std::set_difference(
+					required_deps.begin(), required_deps.end(),
+					found_deps.begin(), found_deps.end(),
+					std::inserter(missing_deps, missing_deps.begin())
+				);
+
+				std::cout << "-- Suggestions" << std::endl;
+				for(size_t j = 0; j < suggestions_sorted.size(); j++)
+				{
+					auto const& kvp = suggestions_sorted[j];
+					if(required_deps.find(kvp.first) != required_deps.end())
+						std::cout << "! ";
+
+					std::cout << kvp.second << " <= " << kvp.first << " " << d.dependencies[kvp.first] << std::endl;
+				}
+
+				std::cout << "-- Missing" << std::endl;
+				{
+					bool empty = true;
+					for(size_t j : missing_deps)
+					{
+						empty = false;
+						std::cout << d.dependency_matrix[i][j] << "*" << j << " " << d.dependencies[j] << std::endl;
+					}
+					if(empty)
+						std::cout << "Empty set" << std::endl;
+				}
+
+				std::cout << "-- Metrics" << std::endl;
+				float c_required = required_deps.size();
+				float c_suggested = suggested_deps.size();
+				float c_found = found_deps.size();
+
+				std::cout << "100Cover: " << c_found/c_required << std::endl;
+				std::cout << "100Precision: " << c_found/c_suggested << std::endl;
+
 				std::cout << std::endl;
 			}
 
