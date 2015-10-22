@@ -14,7 +14,7 @@ class sparse_matrix_t
 public:
 	typedef std::map<size_t, T> row_t;
 
-	template<typename MATRIX, typename ROW, typename ITERATOR>
+	template<typename MATRIX, typename ITERATOR>
 	class row_proxy_base_t
 	{
 	public:
@@ -24,18 +24,21 @@ public:
 		friend MATRIX;
 
 		MATRIX& parent;
-		ROW& row;
 
-		row_proxy_base_t(MATRIX& _parent, ROW& _row)
+	public:
+		size_t const row_i;
+
+	private:
+		row_proxy_base_t(MATRIX& _parent, size_t const _row_i)
 			: parent(_parent)
-			, row(_row)
+			, row_i(_row_i)
 		{}
 
 	public:
 		T& operator[](size_t j)
 		{
 			assert(j < parent.n);
-			return row[j];
+			return parent.data[row_i][j];
 		}
 
 		T const& operator[](size_t j) const
@@ -43,7 +46,7 @@ public:
 			assert(j < parent.n);
 			try
 			{
-				return row.at(j);
+				return parent.data[row_i].at(j);
 			}
 			catch(std::out_of_range)
 			{
@@ -53,12 +56,12 @@ public:
 
 		iterator begin() const
 		{
-			return row.begin();
+			return parent.data[row_i].begin();
 		}
 
 		iterator end() const
 		{
-			return row.end();
+			return parent.data[row_i].end();
 		}
 
 		size_t size() const
@@ -68,12 +71,12 @@ public:
 
 		size_t nonempty_size() const
 		{
-			return row.size();
+			return parent.data[row_i].size();
 		}
 	};
 
-	typedef row_proxy_base_t<sparse_matrix_t<T>, row_t, typename row_t::iterator> row_proxy_t;
-	typedef row_proxy_base_t<sparse_matrix_t<T> const, row_t const, typename row_t::const_iterator> const_row_proxy_t;
+	typedef row_proxy_base_t<sparse_matrix_t<T>, typename row_t::iterator> row_proxy_t;
+	typedef row_proxy_base_t<sparse_matrix_t<T> const, typename row_t::const_iterator> const_row_proxy_t;
 
 public:
 	const size_t m, n;
@@ -94,13 +97,13 @@ public:
 	row_proxy_t operator[](size_t i)
 	{
 		assert(i < m);
-		return row_proxy_t(*this, data[i]);
+		return row_proxy_t(*this, i);
 	}
 
 	const_row_proxy_t const operator[](size_t i) const
 	{
 		assert(i < m);
-		return const_row_proxy_t(*this, data[i]);
+		return const_row_proxy_t(*this, i);
 	}
 };
 
