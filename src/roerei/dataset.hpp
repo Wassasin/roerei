@@ -3,6 +3,8 @@
 #include <roerei/uri.hpp>
 #include <roerei/sparse_matrix.hpp>
 
+#include <boost/fusion/include/adapt_struct.hpp>
+
 #include <vector>
 
 namespace roerei

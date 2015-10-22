@@ -1,5 +1,6 @@
 #pragma once
 
+#include <roerei/cv.hpp>
 #include <roerei/generator.hpp>
 #include <roerei/partition.hpp>
 #include <roerei/distance.hpp>
@@ -61,6 +62,7 @@ private:
 					<< std::endl
 					<< "Actions:" << std::endl
 					<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
+					<< "  cv             test performance using cross-validation" << std::endl
 					<< "  test           placeholder action" << std::endl
 					<< std::endl
 					<< o_general;
@@ -193,12 +195,26 @@ public:
 				float c_suggested = suggested_deps.size();
 				float c_found = found_deps.size();
 
-				std::cout << "100Cover: " << c_found/c_required << std::endl;
-				std::cout << "100Precision: " << c_found/c_suggested << std::endl;
+				float oocover = c_found/c_required;
+				float ooprecision = c_found/c_suggested;
+
+				if(required_deps.empty())
+				{
+					oocover = 1.0f;
+					ooprecision = 1.0f;
+				}
+
+				std::cout << "100Cover: " << oocover << std::endl;
+				std::cout << "100Precision: " << ooprecision << std::endl;
 
 				std::cout << std::endl;
 			}
+		}
+		else if(opt.action == "cv")
+		{
+			auto const d(storage::read_dataset());
 
+			cv::exec(d, 10, 3);
 		}
 		else if(opt.action == "generate")
 		{

@@ -44,7 +44,8 @@ public:
 		, trainingset(_trainingset)
 	{}
 
-	std::list<distance_t> predict(dataset_t::matrix_t::const_row_proxy_t const& row);
+	template<typename ROW>
+	std::list<distance_t> predict(ROW const& row);
 };
 
 void knn::best_set_t::try_add(knn::distance_t const& s)
@@ -64,13 +65,14 @@ void knn::best_set_t::try_add(knn::distance_t const& s)
 	items.pop_front();
 }
 
-std::list<knn::distance_t> knn::predict(dataset_t::matrix_t::const_row_proxy_t const& row)
+template<typename ROW>
+std::list<knn::distance_t> knn::predict(ROW const& row)
 {
 	best_set_t set(k);
 
 	for(size_t i = 0; i < trainingset.m; ++i)
 	{
-		float d = distance<dataset_t::value_t>::euclidean(trainingset[i], row);
+		float d = distance::euclidean<dataset_t::value_t, dataset_t::matrix_t::const_row_proxy_t, ROW>(trainingset[i], row);
 		set.try_add(std::make_pair(i, d));
 	}
 

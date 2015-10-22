@@ -16,8 +16,7 @@ private:
 	partition() = delete;
 
 public:
-	//static std::vector<std::vector<size_t>> generate(size_t n, boost::optional<uint64_t> seed = boost::none)
-	static void generate(size_t n, size_t parts, boost::optional<uint64_t> seed = boost::none)
+	static std::vector<size_t> generate_bare(size_t n, size_t parts, boost::optional<uint64_t> seed = boost::none)
 	{
 		std::vector<size_t> result(n);
 
@@ -44,10 +43,7 @@ public:
 		std::mt19937 g(*seed);
 		std::shuffle(result.begin(), result.end(), g);
 
-		for(size_t i = 0; i < n; ++i)
-		{
-			std::cout << i << ": " << result[i] << std::endl;
-		}
+		return result;
 	}
 };
 

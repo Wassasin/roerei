@@ -14,14 +14,19 @@ class sparse_matrix_t
 public:
 	typedef std::map<size_t, T> row_t;
 
-	class row_proxy_t
+	template<typename MATRIX, typename ROW, typename ITERATOR>
+	class row_proxy_base_t
 	{
-		friend class sparse_matrix_t<T>;
+	public:
+		typedef ITERATOR iterator;
 
-		sparse_matrix_t<T>& parent;
-		row_t& row;
+	private:
+		friend MATRIX;
 
-		row_proxy_t(sparse_matrix_t<T>& _parent, row_t& _row)
+		MATRIX& parent;
+		ROW& row;
+
+		row_proxy_base_t(MATRIX& _parent, ROW& _row)
 			: parent(_parent)
 			, row(_row)
 		{}
@@ -33,40 +38,6 @@ public:
 			return row[j];
 		}
 
-		typename row_t::iterator begin()
-		{
-			return row.begin();
-		}
-
-		typename row_t::iterator end()
-		{
-			return row.end();
-		}
-
-		size_t size() const
-		{
-			return parent.n;
-		}
-
-		size_t nonempty_size() const
-		{
-			return row.size();
-		}
-	};
-
-	class const_row_proxy_t
-	{
-		friend class sparse_matrix_t<T>;
-
-		sparse_matrix_t<T> const& parent;
-		row_t const& row;
-
-		const_row_proxy_t(sparse_matrix_t<T> const& _parent, row_t const& _row)
-			: parent(_parent)
-			, row(_row)
-		{}
-
-	public:
 		T const& operator[](size_t j) const
 		{
 			assert(j < parent.n);
@@ -80,12 +51,12 @@ public:
 			}
 		}
 
-		typename row_t::const_iterator begin() const
+		iterator begin() const
 		{
 			return row.begin();
 		}
 
-		typename row_t::const_iterator end() const
+		iterator end() const
 		{
 			return row.end();
 		}
@@ -100,6 +71,9 @@ public:
 			return row.size();
 		}
 	};
+
+	typedef row_proxy_base_t<sparse_matrix_t<T>, row_t, typename row_t::iterator> row_proxy_t;
+	typedef row_proxy_base_t<sparse_matrix_t<T> const, row_t const, typename row_t::const_iterator> const_row_proxy_t;
 
 public:
 	const size_t m, n;
@@ -134,6 +108,9 @@ namespace detail
 {
 
 template<typename T, typename S>
+struct serialize_value;
+
+template<typename T, typename S>
 struct serialize_value<sparse_matrix_t<T>, S>
 {
 	static inline void exec(S& s, std::string const& name, sparse_matrix_t<T> const& m)
@@ -157,6 +134,9 @@ struct serialize_value<sparse_matrix_t<T>, S>
 		}
 	}
 };
+
+template<typename T, typename D>
+struct deserialize_value;
 
 template<typename T, typename D>
 struct deserialize_value<sparse_matrix_t<T>, D>
