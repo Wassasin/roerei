@@ -8,6 +8,7 @@
 namespace roerei
 {
 
+template<typename MATRIX>
 class knn
 {
 public:
@@ -30,25 +31,35 @@ private:
 		{}
 
 		void try_add(distance_t const& s);
-
 	};
 
 private:
 	size_t k;
-	dataset_t::matrix_t const& trainingset;
-
+	MATRIX const& trainingset;
 
 public:
-	knn(size_t const _k, dataset_t::matrix_t const& _trainingset)
+	knn(size_t const _k, MATRIX const& _trainingset)
 		: k(_k)
 		, trainingset(_trainingset)
 	{}
 
 	template<typename ROW>
-	std::list<distance_t> predict(ROW const& row);
+	std::list<distance_t> predict(ROW const& row)
+	{
+		best_set_t set(k);
+
+		for(size_t i = 0; i < trainingset.m; ++i)
+		{
+			float d = distance::euclidean<decltype(trainingset[i].begin()->second), decltype(trainingset[i]), ROW>(trainingset[i], row);
+			set.try_add(std::make_pair(i, d));
+		}
+
+		return set.items;
+	}
 };
 
-void knn::best_set_t::try_add(knn::distance_t const& s)
+template<typename MATRIX>
+void knn<MATRIX>::best_set_t::try_add(knn::distance_t const& s)
 {
 	auto it = std::lower_bound(items.begin(), items.end(), s, comp);
 
@@ -63,20 +74,6 @@ void knn::best_set_t::try_add(knn::distance_t const& s)
 
 	items.emplace(it, s);
 	items.pop_front();
-}
-
-template<typename ROW>
-std::list<knn::distance_t> knn::predict(ROW const& row)
-{
-	best_set_t set(k);
-
-	for(size_t i = 0; i < trainingset.m; ++i)
-	{
-		float d = distance::euclidean<dataset_t::value_t, dataset_t::matrix_t::const_row_proxy_t, ROW>(trainingset[i], row);
-		set.try_add(std::make_pair(i, d));
-	}
-
-	return set.items;
 }
 
 }

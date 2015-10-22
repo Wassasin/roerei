@@ -93,7 +93,7 @@ public:
 		if(opt.action == "test")
 		{
 			auto const d(storage::read_dataset());
-			knn c(5, d.feature_matrix);
+			knn<decltype(d.feature_matrix)> c(5, d.feature_matrix);
 
 			auto print_f([&](dataset_t::matrix_t::const_row_proxy_t const& row) {
 				std::cout << "[";
@@ -124,7 +124,7 @@ public:
 
 				std::map<size_t, float> suggestions; // <id, weighted freq>
 
-				std::list<knn::distance_t> predictions(c.predict(d.feature_matrix[i]));
+				auto predictions(c.predict(d.feature_matrix[i]));
 				std::reverse(predictions.begin(), predictions.end());
 				for(auto const& kvp : predictions)
 				{
