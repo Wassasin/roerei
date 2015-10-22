@@ -143,6 +143,11 @@ public:
 
 			return true;
 		}
+
+		bool operator!=(row_iterator_base_t const& rhs) const
+		{
+			return !this->operator==(rhs);
+		}
 	};
 
 	typedef row_iterator_base_t<row_proxy_t> row_iterator_t;
@@ -179,24 +184,24 @@ public:
 		return const_row_proxy_t(*this, i);
 	}
 
-	row_iterator_t begin()
+	iterator begin()
 	{
-		return row_iterator_t(*this);
+		return iterator(*this);
 	}
 
-	const_row_iterator_t begin() const
+	const_iterator begin() const
 	{
 		return const_row_iterator_t(*this);
 	}
 
-	row_iterator_t end()
+	iterator end()
 	{
-		return row_iterator_t();
+		return iterator();
 	}
 
-	const_row_iterator_t end() const
+	const_iterator end() const
 	{
-		return const_row_iterator_t();
+		return const_iterator();
 	}
 };
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <roerei/dataset.hpp>
+#include <roerei/distance.hpp>
 
 #include <list>
 #include <algorithm>
@@ -44,14 +45,14 @@ public:
 	{}
 
 	template<typename ROW>
-	std::list<distance_t> predict(ROW const& row)
+	std::list<distance_t> predict(ROW const& ys)
 	{
 		best_set_t set(k);
 
-		for(size_t i = 0; i < trainingset.m; ++i)
+		for(auto const& xs : trainingset)
 		{
-			float d = distance::euclidean<decltype(trainingset[i].begin()->second), decltype(trainingset[i]), ROW>(trainingset[i], row);
-			set.try_add(std::make_pair(i, d));
+			float d = distance::euclidean<decltype(xs.begin()->second), decltype(xs), ROW>(xs, ys);
+			set.try_add(std::make_pair(xs.row_i, d));
 		}
 
 		return set.items;
