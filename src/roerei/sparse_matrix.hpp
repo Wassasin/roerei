@@ -2,6 +2,8 @@
 
 #include <roerei/common.hpp>
 
+#include <boost/optional.hpp>
+
 #include <vector>
 #include <map>
 
@@ -19,6 +21,7 @@ public:
 	{
 	public:
 		typedef ITERATOR iterator;
+		typedef MATRIX parent_t;
 
 	private:
 		friend MATRIX;
@@ -78,6 +81,76 @@ public:
 	typedef row_proxy_base_t<sparse_matrix_t<T>, typename row_t::iterator> row_proxy_t;
 	typedef row_proxy_base_t<sparse_matrix_t<T> const, typename row_t::const_iterator> const_row_proxy_t;
 
+	template<typename PROXY>
+	class row_iterator_base_t // ForwardIterator
+	{
+	private:
+		typedef typename PROXY::parent_t parent_t;
+
+		struct internal_t
+		{
+			size_t row_i;
+			parent_t& parent;
+
+			internal_t(parent_t& _parent)
+				: row_i(0)
+				, parent(_parent)
+			{}
+
+			bool is_end() const
+			{
+				return row_i >= parent.m;
+			}
+		};
+
+		boost::optional<internal_t> x;
+
+	public:
+		row_iterator_base_t()
+			: x()
+		{}
+
+		row_iterator_base_t(parent_t& _parent)
+			: x(_parent)
+		{}
+
+		PROXY operator*() const
+		{
+			assert(x);
+			return PROXY(x->parent, x->row_i);
+		}
+
+		row_iterator_base_t<PROXY>& operator++()
+		{
+			assert(x);
+			++(x->row_i);
+			return *this;
+		}
+
+		bool operator==(row_iterator_base_t const& rhs) const
+		{
+			if(x && rhs.x)
+				return (
+					x->row_i == rhs.x->row_i &&
+					&x->parent == &rhs.x->parent
+				);
+
+			if(x)
+				return x->is_end();
+
+			if(rhs.x)
+				return rhs.x->is_end();
+
+			return true;
+		}
+	};
+
+	typedef row_iterator_base_t<row_proxy_t> row_iterator_t;
+	typedef row_iterator_base_t<const_row_proxy_t> const_row_iterator_t;
+
+	typedef row_iterator_t iterator;
+	typedef const_row_iterator_t const_iterator;
+
 public:
 	const size_t m, n;
 
@@ -104,6 +177,26 @@ public:
 	{
 		assert(i < m);
 		return const_row_proxy_t(*this, i);
+	}
+
+	row_iterator_t begin()
+	{
+		return row_iterator_t(*this);
+	}
+
+	const_row_iterator_t begin() const
+	{
+		return const_row_iterator_t(*this);
+	}
+
+	row_iterator_t end()
+	{
+		return row_iterator_t();
+	}
+
+	const_row_iterator_t end() const
+	{
+		return const_row_iterator_t();
 	}
 };
 
