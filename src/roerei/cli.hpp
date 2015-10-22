@@ -2,9 +2,7 @@
 
 #include <roerei/cv.hpp>
 #include <roerei/generator.hpp>
-#include <roerei/partition.hpp>
-#include <roerei/distance.hpp>
-#include <roerei/knn.hpp>
+#include <roerei/performance.hpp>
 
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -104,6 +102,8 @@ public:
 
 			for(size_t i = 0; i < d.feature_matrix.m; ++i)
 			{
+				performance::result_t result(performance::measure(d, c, d.feature_matrix[i]));
+
 				std::cout << i << " " << d.objects[i] << " ";
 				print_f(d.feature_matrix[i]);
 				std::cout << std::endl;
@@ -121,12 +121,7 @@ public:
 				}
 
 				std::cout << "-- Similar" << std::endl;
-
-				std::map<size_t, float> suggestions; // <id, weighted freq>
-
-				auto predictions(c.predict(d.feature_matrix[i]));
-				std::reverse(predictions.begin(), predictions.end());
-				for(auto const& kvp : predictions)
+				for(auto const& kvp : result.predictions)
 				{
 					if(kvp.first == i)
 						continue;
@@ -134,45 +129,13 @@ public:
 					std::cout << kvp.second << " <= " << kvp.first << " " << d.objects[kvp.first] << " ";
 					print_f(d.feature_matrix[kvp.first]);
 					std::cout << std::endl;
-
-					float weight = 1.0f / (kvp.second + 1.0f); // "Similarity", higher is more similar
-
-					for(auto dep_kvp : d.dependency_matrix[kvp.first])
-						suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
 				}
 
-				std::vector<std::pair<size_t, float>> suggestions_sorted;
-				for(auto const& kvp : suggestions)
-					suggestions_sorted.emplace_back(kvp);
-
-				std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<size_t, float> const& x, std::pair<size_t, float> const& y) {
-					return x.second > y.second;
-				});
-
-				std::set<size_t> required_deps, suggested_deps, found_deps, missing_deps;
-				for(auto const& kvp : d.dependency_matrix[i])
-					required_deps.insert(kvp.first);
-
-				for(size_t j = 0; j < suggestions_sorted.size() && j < 100; ++j)
-					suggested_deps.insert(suggestions_sorted[j].first);
-
-				std::set_intersection(
-					required_deps.begin(), required_deps.end(),
-					suggested_deps.begin(), suggested_deps.end(),
-					std::inserter(found_deps, found_deps.begin())
-				);
-
-				std::set_difference(
-					required_deps.begin(), required_deps.end(),
-					found_deps.begin(), found_deps.end(),
-					std::inserter(missing_deps, missing_deps.begin())
-				);
-
 				std::cout << "-- Suggestions" << std::endl;
-				for(size_t j = 0; j < suggestions_sorted.size(); j++)
+				for(size_t j = 0; j < result.suggestions_sorted.size(); j++)
 				{
-					auto const& kvp = suggestions_sorted[j];
-					if(required_deps.find(kvp.first) != required_deps.end())
+					auto const& kvp = result.suggestions_sorted[j];
+					if(result.required_deps.find(kvp.first) != result.required_deps.end())
 						std::cout << "! ";
 
 					std::cout << kvp.second << " <= " << kvp.first << " " << d.dependencies[kvp.first] << std::endl;
@@ -181,7 +144,7 @@ public:
 				std::cout << "-- Missing" << std::endl;
 				{
 					bool empty = true;
-					for(size_t j : missing_deps)
+					for(size_t j : result.missing_deps)
 					{
 						empty = false;
 						std::cout << d.dependency_matrix[i][j] << "*" << j << " " << d.dependencies[j] << std::endl;
@@ -191,21 +154,8 @@ public:
 				}
 
 				std::cout << "-- Metrics" << std::endl;
-				float c_required = required_deps.size();
-				float c_suggested = suggested_deps.size();
-				float c_found = found_deps.size();
-
-				float oocover = c_found/c_required;
-				float ooprecision = c_found/c_suggested;
-
-				if(required_deps.empty())
-				{
-					oocover = 1.0f;
-					ooprecision = 1.0f;
-				}
-
-				std::cout << "100Cover: " << oocover << std::endl;
-				std::cout << "100Precision: " << ooprecision << std::endl;
+				std::cout << "100Cover: " << result.oocover << std::endl;
+				std::cout << "100Precision: " << result.ooprecision << std::endl;
 
 				std::cout << std::endl;
 			}

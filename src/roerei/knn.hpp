@@ -45,7 +45,7 @@ public:
 	{}
 
 	template<typename ROW>
-	std::list<distance_t> predict(ROW const& ys)
+	std::list<distance_t> predict(ROW const& ys) const
 	{
 		best_set_t set(k);
 
