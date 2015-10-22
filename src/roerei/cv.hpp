@@ -68,18 +68,36 @@ public:
 					train_m.add_key(j);
 			}
 
-			std::cout << "Size: " << train_m.size() << "+" << test_m.size() << std::endl;
-
 			knn<decltype(train_m)> c(5, train_m);
 
+			size_t const test_m_size = test_m.size();
+			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
 			for(auto const& test_row : test_m)
 			{
 				performance::result_t r(performance::measure(d, c, test_row));
 
-				std::cout << i << " - " << j << " [" << test_row.row_i << "]: " << r.oocover << std::endl;
+				avgoocover += r.oocover;
+				avgooprecision += r.ooprecision;
+
+
+				if(j % (test_m_size / 100) == 0)
+				{
+					size_t percentage = j / (test_m_size / 100);
+					std::cout << '\r' << i << ": " << percentage << '%';
+					std::cout.flush();
+				}
+
 				j++;
 			}
+			std::cout << '\r';
+			std::cout.flush();
+
+			avgoocover /= (float)test_m_size;
+			avgooprecision /= (float)test_m_size;
+
+			std::cout << i << ": " << avgoocover << " + " << avgooprecision << std::endl;
+
 			i++;
 		});
 	}

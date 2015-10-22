@@ -73,6 +73,9 @@ public:
 		float oocover = c_found/c_required;
 		float ooprecision = c_found/c_suggested;
 
+		if(found_deps.empty())
+			ooprecision = 0.0f;
+
 		if(required_deps.empty())
 		{
 			oocover = 1.0f;
