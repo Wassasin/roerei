@@ -19,11 +19,11 @@ private:
 	struct best_set_t
 	{
 		size_t k;
-		std::list<distance_t> items;
+		std::vector<distance_t> items;
 
 		static inline bool comp(distance_t const& x, distance_t const& y)
 		{
-			return x.second > y.second; // Reverse sorting; closer is better
+			return x.second < y.second;
 		}
 
 		best_set_t(size_t _k)
@@ -31,7 +31,7 @@ private:
 			, items()
 		{}
 
-		void try_add(distance_t const& s);
+		void try_add(distance_t&& s);
 	};
 
 private:
@@ -45,7 +45,7 @@ public:
 	{}
 
 	template<typename ROW>
-	std::list<distance_t> predict(ROW const& ys) const
+	std::vector<distance_t> predict(ROW const& ys) const
 	{
 		best_set_t set(k);
 
@@ -59,9 +59,12 @@ public:
 };
 
 template<typename MATRIX>
-void knn<MATRIX>::best_set_t::try_add(knn::distance_t const& s)
+void knn<MATRIX>::best_set_t::try_add(knn::distance_t&& s)
 {
-	auto it = std::lower_bound(items.begin(), items.end(), s, comp);
+	if(items.size() == k && s.second > (items.end()-1)->second)
+		return;
+
+	auto it = std::upper_bound(items.begin(), items.end(), s, comp);
 
 	if(items.size() < k)
 	{
@@ -69,11 +72,8 @@ void knn<MATRIX>::best_set_t::try_add(knn::distance_t const& s)
 		return;
 	}
 
-	if(it == items.begin())
-		return;
-
 	items.emplace(it, s);
-	items.pop_front();
+	items.pop_back();
 }
 
 }

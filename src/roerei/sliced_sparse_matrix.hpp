@@ -30,6 +30,11 @@ public:
 		keys.emplace_hint(keys.end(), i);
 	}
 
+	void try_remove_key(size_t const i)
+	{
+		keys.erase(i);
+	}
+
 	size_t size() const
 	{
 		return keys.size();

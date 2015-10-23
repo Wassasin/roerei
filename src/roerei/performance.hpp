@@ -19,7 +19,7 @@ public:
 	struct result_t
 	{
 		float oocover, ooprecision;
-		std::list<std::pair<size_t, float>> predictions;
+		std::vector<std::pair<size_t, float>> predictions;
 		std::vector<std::pair<size_t, float>> suggestions_sorted;
 		std::set<size_t> required_deps, suggested_deps, found_deps, missing_deps;
 	};

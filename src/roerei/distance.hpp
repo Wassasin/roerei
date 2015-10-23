@@ -56,9 +56,9 @@ private:
 	static inline float absdiff(T const x, T const y)
 	{
 		if(x > y)
-			return std::fdim(x, y);
+			return x - y;
 		else
-			return std::fdim(y, x);
+			return y - x;
 	}
 
 public:
@@ -78,7 +78,14 @@ public:
 	template<typename T, typename VEC1, typename VEC2>
 	static inline float euclidean(VEC1 const& xs, VEC1 const& ys)
 	{
-		return minkowski<2, T, VEC1, VEC2>(xs, ys);
+		assert(xs.size() == ys.size());
+
+		float sum = 0.0f;
+		yield_nonempty_pairs<T, VEC1, VEC2>(xs, ys, [&](size_t const, T const& x, T const& y) {
+			float v = (float)x - (float)y;
+			sum += v * v;
+		});
+		return std::sqrt(sum);
 	}
 };
 
