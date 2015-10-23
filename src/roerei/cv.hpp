@@ -73,13 +73,11 @@ public:
 			size_t const test_m_size = test_m.size();
 			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
-			for(auto const& test_row : test_m)
-			{
+			test_m.iterate([&](decltype(d.feature_matrix)::const_row_proxy_t const& test_row) {
 				performance::result_t r(performance::measure(d, c, test_row));
 
 				avgoocover += r.oocover;
 				avgooprecision += r.ooprecision;
-
 
 				if(j % (test_m_size / 100) == 0)
 				{
@@ -89,7 +87,8 @@ public:
 				}
 
 				j++;
-			}
+			});
+
 			std::cout << '\r';
 			std::cout.flush();
 
