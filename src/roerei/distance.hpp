@@ -18,8 +18,10 @@ private:
 	{
 		auto xs_it = xs.begin();
 		auto ys_it = ys.begin();
+		auto const xs_it_end = xs.end();
+		auto const ys_it_end = ys.end();
 
-		while(xs_it != xs.end() && ys_it != ys.end())
+		while(xs_it != xs_it_end && ys_it != ys_it_end)
 		{
 			if(xs_it->first == ys_it->first)
 			{
@@ -39,13 +41,13 @@ private:
 			}
 		}
 
-		while(xs_it != xs.end())
+		while(xs_it != xs_it_end)
 		{
 			f(xs_it->first, xs_it->second, 0);
 			xs_it++;
 		}
 
-		while(ys_it != ys.end())
+		while(ys_it != ys_it_end)
 		{
 			f(ys_it->first, 0, ys_it->second);
 			ys_it++;

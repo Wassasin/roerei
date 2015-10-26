@@ -95,7 +95,7 @@ public:
 				std::inserter(test_ps, test_ps.begin())
 			);
 
-			sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m(feature_matrix), test_m(feature_matrix);
+			sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m(feature_matrix, false), test_m(feature_matrix, false);
 			for(size_t j = 0; j < d.objects.size(); ++j)
 			{
 				size_t p = partition_subdivision[j];
@@ -120,7 +120,7 @@ public:
 				avgoocover += r.oocover;
 				avgooprecision += r.ooprecision;
 
-				if(j % (test_m_size / 500) == 0)
+				if(j % 10 == 0)
 				{
 					float percentage = (float)j / (float)test_m_size * 100.0f;
 					std::cout << '\r' << i << ": " << percentage << '%';
@@ -133,8 +133,8 @@ public:
 			std::cout << '\r';
 			std::cout.flush();
 
-			avgoocover /= (float)test_m_size;
-			avgooprecision /= (float)test_m_size;
+			avgoocover /= (float)j;
+			avgooprecision /= (float)j;
 
 			std::cout << i << ": " << avgoocover << " + " << avgooprecision << std::endl;
 

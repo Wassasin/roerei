@@ -63,7 +63,7 @@ public:
 		T& operator[](size_t j)
 		{
 			assert(j < parent.n);
-			auto& it(std::lower_bound(begin(), end(), [](std::pair<size_t, T> const& x, std::pair<size_t, T> y) {
+			auto& it(std::lower_bound(begin(), end(), std::make_pair(j, 0), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
 				return x.first < y.first;
 			}));
 
@@ -76,7 +76,7 @@ public:
 		T const& operator[](size_t j) const
 		{
 			assert(j < parent.n);
-			auto const& it(std::lower_bound(begin(), end(), [](std::pair<size_t, T> const& x, std::pair<size_t, T> y) {
+			auto const& it(std::lower_bound(begin(), end(), std::make_pair(j, 0), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
 				return x.first < y.first;
 			}));
 
@@ -123,10 +123,15 @@ public:
 		rows.reserve(mat.m);
 
 		size_t nonempty_elements = 0;
+		size_t i = 0;
 		mat.iterate([&](typename sparse_matrix_t<T>::const_row_proxy_t const& xs) {
+			for(; i < xs.row_i; ++i)
+				rows.emplace_back(nonempty_elements, 0);
+
 			size_t size = xs.nonempty_size();
 			rows.emplace_back(nonempty_elements, size);
 			nonempty_elements += size;
+			i++;
 		});
 
 		buf.reserve(nonempty_elements);
