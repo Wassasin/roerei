@@ -100,7 +100,7 @@ public:
 				std::cout << " ]";
 			});
 
-			for(size_t i = 0; i < d.feature_matrix.m; ++i)
+			for(size_t i = 0; i < d.feature_matrix.size_m(); ++i)
 			{
 				performance::result_t result(performance::measure(d, c, d.feature_matrix[i]));
 

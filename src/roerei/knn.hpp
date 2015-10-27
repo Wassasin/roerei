@@ -49,7 +49,7 @@ public:
 	{
 		best_set_t set(k);
 
-		trainingset.iterate([&](typename MATRIX::const_row_proxy_t const& xs) {
+		trainingset.citerate([&](typename MATRIX::const_row_proxy_t const& xs) {
 			float d = distance::euclidean<decltype(xs.begin()->second), decltype(xs), ROW>(xs, ys);
 			set.try_add(std::make_pair(xs.row_i, d));
 		});

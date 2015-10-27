@@ -75,19 +75,22 @@ private:
 	}
 
 public:
-	static inline void exec(dataset_t const& d, size_t const n, size_t const k = 1)
+	static inline void exec(dataset_t const& d, size_t const n, size_t const k = 1, boost::optional<uint_fast32_t> seed_opt = boost::none)
 	{
 		assert(n >= k);
 
 		compact_sparse_matrix_t<dataset_t::value_t> dependants(create_dependants(d));
 		compact_sparse_matrix_t<dataset_t::value_t> feature_matrix(d.feature_matrix);
 
-		std::vector<size_t> partition_subdivision(partition::generate_bare(d.objects.size(), n, 1337));
+		uint_fast32_t seed = seed_opt ? *seed_opt : 1337;
+		std::vector<size_t> partition_subdivision(partition::generate_bare(d.objects.size(), n, seed));
 		std::vector<size_t> partitions(n);
 		std::iota(partitions.begin(), partitions.end(), 0);
 
 		size_t i = 0;
-		combs(n, (n-k), [&](std::vector<size_t> const& train_ps) {
+		combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
+			if(i > 0)
+				return;
 			std::vector<size_t> test_ps;
 			std::set_difference(
 				partitions.begin(), partitions.end(),
@@ -95,26 +98,31 @@ public:
 				std::inserter(test_ps, test_ps.begin())
 			);
 
-			sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m(feature_matrix, false), test_m(feature_matrix, false);
+			sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m_tmp(feature_matrix, false), test_m_tmp(feature_matrix, false);
 			for(size_t j = 0; j < d.objects.size(); ++j)
 			{
 				size_t p = partition_subdivision[j];
 				if(std::binary_search(test_ps.begin(), test_ps.end(), p))
-					test_m.add_key(j);
+					test_m_tmp.add_key(j);
 				else
-					train_m.add_key(j);
+					train_m_tmp.add_key(j);
 			}
+			compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
 
-			size_t const test_m_size = test_m.size();
+			size_t const test_m_size = test_m.size_m();
 			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
-			test_m.iterate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
-				sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane(train_m);
+			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
+				if(j > 1000)
+					return;
+				sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane_tmp(train_m);
 				iterate_dependants(dependants, test_row.row_i, [&](size_t i) {
-					train_m_sane.try_remove_key(i);
+					train_m_sane_tmp.try_remove_key(i);
 				});
+				//compact_sparse_matrix_t<dataset_t::value_t> train_m_sane(train_m_sane_tmp);
+				sliced_sparse_matrix_t<decltype(feature_matrix) const>& train_m_sane = train_m_sane_tmp;
 
-				knn<decltype(train_m)> c(5, train_m_sane);
+				knn<std::remove_reference<decltype(train_m_sane)>::type> c(5, train_m_sane);
 				performance::result_t r(performance::measure(d, c, test_row));
 
 				avgoocover += r.oocover;

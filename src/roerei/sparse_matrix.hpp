@@ -81,10 +81,8 @@ public:
 	typedef row_proxy_base_t<sparse_matrix_t<T>, typename row_t::iterator> row_proxy_t;
 	typedef row_proxy_base_t<sparse_matrix_t<T> const, typename row_t::const_iterator> const_row_proxy_t;
 
-public:
-	const size_t m, n;
-
 private:
+	const size_t m, n;
 	std::vector<row_t> data;
 
 public:
@@ -109,6 +107,16 @@ public:
 		return const_row_proxy_t(*this, i);
 	}
 
+	size_t size_m() const
+	{
+		return m;
+	}
+
+	size_t size_n() const
+	{
+		return n;
+	}
+
 	template<typename F>
 	void iterate(F const& f)
 	{
@@ -117,10 +125,16 @@ public:
 	}
 
 	template<typename F>
-	void iterate(F const& f) const
+	void citerate(F const& f) const
 	{
 		for(size_t i = 0; i < m; ++i)
 			f(const_row_proxy_t(*this, i));
+	}
+
+	template<typename F>
+	void iterate(F const& f) const
+	{
+		citerate(f);
 	}
 };
 
@@ -136,11 +150,11 @@ struct serialize_value<sparse_matrix_t<T>, S>
 	static inline void exec(S& s, std::string const& name, sparse_matrix_t<T> const& m)
 	{
 		s.write_object(name, 3);
-		s.write("m", m.m);
-		s.write("n", m.n);
-		s.write_array("data", m.m);
+		s.write("m", m.size_m());
+		s.write("n", m.size_n());
+		s.write_array("data", m.size_m());
 
-		for(std::size_t i = 0; i < m.m; ++i)
+		for(std::size_t i = 0; i < m.size_m(); ++i)
 		{
 			auto const row = m[i];
 			s.write_array("row", row.nonempty_size());
