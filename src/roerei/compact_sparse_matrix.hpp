@@ -16,6 +16,8 @@ namespace roerei
 template <typename T>
 class compact_sparse_matrix_t
 {
+	static size_t constexpr invalid_value = std::numeric_limits<size_t>::max();
+
 public:
 	struct row_t
 	{
@@ -27,13 +29,13 @@ public:
 		{}
 
 		row_t()
-			: start(std::numeric_limits<size_t>::max())
-			, length(std::numeric_limits<size_t>::max())
+			: start(invalid_value)
+			, length(invalid_value)
 		{}
 
-		bool is_invalid() const
+		inline bool is_invalid() const
 		{
-			return start == std::numeric_limits<size_t>::max();
+			return start == invalid_value;
 		}
 	};
 
@@ -72,7 +74,7 @@ public:
 		T& operator[](size_t j)
 		{
 			assert(j < parent.n);
-			auto& it(std::lower_bound(begin(), end(), std::make_pair(j, std::numeric_limits<T>::max()), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
+			auto& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
 				return x.first < y.first;
 			}));
 
@@ -85,7 +87,7 @@ public:
 		T const& operator[](size_t j) const
 		{
 			assert(j < parent.n);
-			auto const& it(std::lower_bound(begin(), end(), std::make_pair(j, std::numeric_limits<T>::max()), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
+			auto const& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
 				return x.first < y.first;
 			}));
 
