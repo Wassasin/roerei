@@ -7,6 +7,8 @@
 #include <roerei/create_map.hpp>
 #include <roerei/sliced_sparse_matrix.hpp>
 #include <roerei/compact_sparse_matrix.hpp>
+#include <roerei/sparse_unit_matrix.hpp>
+#include <roerei/bl_sparse_matrix.hpp>
 
 namespace roerei
 {
@@ -41,16 +43,18 @@ private:
 		_combs_helper(n, k, yield, 0, buf);
 	}
 
-	static dataset_t::matrix_t create_dependants(dataset_t const& d)
+	static sparse_unit_matrix_t create_dependants(dataset_t const& d)
 	{
 		std::map<uri_t, size_t> objects_map(create_map<uri_t>(d.objects));
-		dataset_t::matrix_t result(d.objects.size(), d.objects.size());
+		sparse_unit_matrix_t result(d.objects.size(), d.objects.size());
 
 		d.dependency_matrix.iterate([&](dataset_t::matrix_t::const_row_proxy_t const& xs) {
 			for(auto const& kvp : xs)
 			{
 				size_t dep_i = objects_map[d.dependencies[kvp.first]];
-				result[dep_i][xs.row_i] = kvp.second;
+
+				if(kvp.second > 0)
+					result.set(std::make_pair(dep_i, xs.row_i));
 			}
 		});
 		return result;
@@ -63,8 +67,8 @@ private:
 			return;
 
 		yield(i);
-		for(auto const& kvp : dependants[i])
-			_iterate_dependants_helper(dependants, kvp.first, yield, visited);
+		for(size_t const j : dependants[i])
+			_iterate_dependants_helper(dependants, j, yield, visited);
 	}
 
 	template<typename MATRIX, typename F>
@@ -79,7 +83,9 @@ public:
 	{
 		assert(n >= k);
 
-		compact_sparse_matrix_t<dataset_t::value_t> dependants(create_dependants(d));
+		sparse_unit_matrix_t dependants(create_dependants(d));
+		dependants.transitive();
+
 		compact_sparse_matrix_t<dataset_t::value_t> feature_matrix(d.feature_matrix);
 
 		uint_fast32_t seed = seed_opt ? *seed_opt : 1337;
@@ -115,12 +121,8 @@ public:
 			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
 				if(j > 1000)
 					return;
-				sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane_tmp(train_m);
-				iterate_dependants(dependants, test_row.row_i, [&](size_t i) {
-					train_m_sane_tmp.try_remove_key(i);
-				});
-				//compact_sparse_matrix_t<dataset_t::value_t> train_m_sane(train_m_sane_tmp);
-				sliced_sparse_matrix_t<decltype(feature_matrix) const>& train_m_sane = train_m_sane_tmp;
+
+				bl_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane(train_m, dependants[test_row.row_i]);
 
 				knn<std::remove_reference<decltype(train_m_sane)>::type> c(5, train_m_sane);
 				performance::result_t r(performance::measure(d, c, test_row));
