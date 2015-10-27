@@ -20,10 +20,15 @@ public:
 	typedef typename MATRIX::row_proxy_t row_proxy_t;
 	typedef typename MATRIX::const_row_proxy_t const_row_proxy_t;
 
-	sliced_sparse_matrix_t(MATRIX& _data)
+	sliced_sparse_matrix_t(MATRIX& _data, bool fill = true)
 		: data(_data)
 		, keys()
-	{}
+	{
+		if(fill)
+			data.iterate([&](typename MATRIX::const_row_proxy_t const& row) {
+				add_key(row.row_i);
+			});
+	}
 
 	void add_key(size_t const i)
 	{
@@ -37,7 +42,7 @@ public:
 
 	size_t size() const
 	{
-		return keys.size();
+		return data.m;
 	}
 
 	template<typename F>
