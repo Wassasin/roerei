@@ -16,4 +16,6 @@ add_sane_warning_flags()
 
 list(APPEND Roerei_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/")
 
+enable_testing()
 add_subdirectory("src/roerei")
+add_subdirectory("tests/roerei")
