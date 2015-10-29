@@ -91,7 +91,7 @@ public:
 		if(opt.action == "test")
 		{
 			auto const d(storage::read_dataset());
-			knn<decltype(d.feature_matrix)> c(5, d.feature_matrix);
+			auto const dependants(dependencies::create_dependants(d));
 
 			auto print_f([&](dataset_t::matrix_t::const_row_proxy_t const& row) {
 				std::cout << "[";
@@ -102,6 +102,13 @@ public:
 
 			for(size_t i = 0; i < d.feature_matrix.size_m(); ++i)
 			{
+				sliced_sparse_matrix_t<decltype(d.feature_matrix) const> feature_matrix(d.feature_matrix, true);
+				dependencies::iterate_dependants(dependants, i, [&](size_t j)
+				{
+					feature_matrix.try_remove_key(j);
+				});
+
+				knn<decltype(feature_matrix)> c(5, feature_matrix);
 				performance::result_t result(performance::measure(d, c, d.feature_matrix[i]));
 
 				std::cout << i << " " << d.objects[i] << " ";
