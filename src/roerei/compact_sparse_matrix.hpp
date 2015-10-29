@@ -99,7 +99,7 @@ public:
 
 		iterator begin() const
 		{
-			return parent.buf.begin() + row.start;
+			return parent.buf.data() + row.start;
 		}
 
 		iterator end() const
@@ -118,8 +118,8 @@ public:
 		}
 	};
 
-	typedef row_proxy_base_t<compact_sparse_matrix_t<T>, decltype(buf.begin())> row_proxy_t;
-	typedef row_proxy_base_t<compact_sparse_matrix_t<T> const, decltype(buf.cbegin())> const_row_proxy_t;
+	typedef row_proxy_base_t<compact_sparse_matrix_t<T>, std::pair<size_t, T>*> row_proxy_t;
+	typedef row_proxy_base_t<compact_sparse_matrix_t<T> const, std::pair<size_t, T> const*> const_row_proxy_t;
 
 public:
 	compact_sparse_matrix_t(compact_sparse_matrix_t&&) = default;
@@ -155,7 +155,7 @@ public:
 		assert(rows.size() == m);
 
 		buf.reserve(nonempty_elements);
-		mat.iterate([&](typename MATRIX::const_row_proxy_t const& xs) {
+		mat.citerate([&](typename MATRIX::const_row_proxy_t const& xs) {
 			buf.insert(buf.end(), xs.begin(), xs.end());
 		});
 	}

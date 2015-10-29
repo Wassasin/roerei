@@ -86,6 +86,10 @@ public:
 		sparse_unit_matrix_t dependants(create_dependants(d));
 		dependants.transitive();
 
+		std::vector<std::vector<size_t>> dependants_real(dependants.size_m());
+		for(size_t i = 0; i < dependants.size_m(); i++)
+			dependants_real[i].insert(dependants_real[i].end(), dependants[i].begin(), dependants[i].end());
+
 		compact_sparse_matrix_t<dataset_t::value_t> feature_matrix(d.feature_matrix);
 
 		uint_fast32_t seed = seed_opt ? *seed_opt : 1337;
@@ -119,10 +123,7 @@ public:
 			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
 			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
-				if(j > 1000)
-					return;
-
-				bl_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane(train_m, dependants[test_row.row_i]);
+				bl_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane(train_m, dependants_real[test_row.row_i]);
 
 				knn<std::remove_reference<decltype(train_m_sane)>::type> c(5, train_m_sane);
 				performance::result_t r(performance::measure(d, c, test_row));

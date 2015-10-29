@@ -9,16 +9,25 @@ template<typename MATRIX>
 class bl_sparse_matrix_t
 {
 	MATRIX const& data;
-	std::vector<size_t> const bl;
+	std::vector<size_t> const& bl;
 
 public:
 	typedef typename MATRIX::const_row_proxy_t const_row_proxy_t;
 
-	template<typename CONTAINER>
-	bl_sparse_matrix_t(MATRIX const& _data, CONTAINER const& _bl)
+	bl_sparse_matrix_t(MATRIX const& _data, std::vector<size_t> const& _bl)
 		: data(_data)
-		, bl(_bl.begin(), _bl.end())
+		, bl(_bl)
 	{}
+
+	size_t size_m() const
+	{
+		return data.size_m();
+	}
+
+	size_t size_n() const
+	{
+		return data.size_n();
+	}
 
 	template<typename F>
 	void citerate(F const& f) const
