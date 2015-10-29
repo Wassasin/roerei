@@ -10,6 +10,8 @@
 #include <roerei/sparse_unit_matrix.hpp>
 #include <roerei/bl_sparse_matrix.hpp>
 
+#include <iostream>
+
 namespace roerei
 {
 

@@ -6,6 +6,7 @@
 #include <roerei/create_map.hpp>
 
 #include <set>
+#include <iostream>
 
 namespace roerei
 {
