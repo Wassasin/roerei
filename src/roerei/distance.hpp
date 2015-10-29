@@ -12,7 +12,7 @@ namespace roerei
 namespace detail
 {
 	template<typename T, typename VEC1, typename VEC2, typename F>
-	static inline void yield_nonempty_pairs(VEC1 const& xs, VEC2 const& ys, F const& f)
+	static inline void yield_nonempty_pairs(VEC1 const& xs, VEC2 const& ys, F&& f)
 	{
 		auto xs_it = xs.begin();
 		auto ys_it = ys.begin();
@@ -75,7 +75,7 @@ public:
 		assert(xs.size() == ys.size());
 
 		float sum = 0.0f;
-		detail::yield_nonempty_pairs<T, VEC1, VEC2>(xs, ys, [&](size_t const, T const& x, T const& y) {
+		detail::yield_nonempty_pairs<T, VEC1 const&, VEC2 const&>(xs, ys, [&](size_t const, T const x, T const y) {
 			sum += std::pow(absdiff(x, y), p);
 		});
 		return std::pow(sum, 1.0f / P);
@@ -87,7 +87,7 @@ public:
 		assert(xs.size() == ys.size());
 
 		float sum = 0.0f;
-		detail::yield_nonempty_pairs<T, VEC1 const&, VEC2 const&>(xs, ys, [&](size_t const, T const& x, T const& y) {
+		detail::yield_nonempty_pairs<T, VEC1 const&, VEC2 const&>(xs, ys, [&](size_t const, T const x, T const y) {
 			float v = (float)x - (float)y;
 			sum += v * v;
 		});
