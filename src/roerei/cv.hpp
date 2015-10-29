@@ -101,8 +101,6 @@ public:
 
 		size_t i = 0;
 		combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
-			if(i > 0)
-				return;
 			std::vector<size_t> test_ps;
 			std::set_difference(
 				partitions.begin(), partitions.end(),
@@ -121,7 +119,7 @@ public:
 			}
 			compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
 
-			size_t const test_m_size = test_m.size_m();
+			size_t const test_m_size = test_m_tmp.nonempty_size_m();
 			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
 			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
@@ -133,10 +131,10 @@ public:
 				avgoocover += r.oocover;
 				avgooprecision += r.ooprecision;
 
-				if(j % 10 == 0)
+				if(j % (test_m_size / 200) == 0)
 				{
-					float percentage = (float)j / (float)test_m_size * 100.0f;
-					std::cout << '\r' << i << ": " << percentage << '%';
+					float percentage = round((float)j / (float)test_m_size * 100.0f, 2);
+					std::cout << '\r' << i << ": " << fill(percentage, 5) << '%';
 					std::cout.flush();
 				}
 

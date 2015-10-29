@@ -42,7 +42,7 @@ public:
 
 	size_t nonempty_size_m() const
 	{
-		return data.m;
+		return keys.size();
 	}
 
 	size_t size_m() const

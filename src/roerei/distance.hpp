@@ -2,7 +2,7 @@
 
 #include <roerei/compact_sparse_matrix.hpp>
 #include <roerei/sparse_matrix.hpp>
-#include <roerei/common.hpp>
+#include <roerei/math.hpp>
 
 #include <cmath>
 
@@ -57,15 +57,6 @@ class distance
 {
 private:
 	distance() = delete;
-
-	template<typename T>
-	static inline float absdiff(T const x, T const y)
-	{
-		if(x > y)
-			return x - y;
-		else
-			return y - x;
-	}
 
 public:
 	template<size_t P, typename T, typename VEC1, typename VEC2>
