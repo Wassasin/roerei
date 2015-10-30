@@ -77,3 +77,16 @@ let fetch_body_uris yield x =
     | Acic.AVariable(_, _, _, _, _) -> () (* Placeholder *)
     | Acic.ACurrentProof(_, _, _, _, _) -> () (* Placeholder *)
     | Acic.AInductiveDefinition(_id, types, _params, _no_parms) -> ()
+
+let fetch_constructors yield x =
+    match x with
+    | Acic.AInductiveDefinition(_id, types, _params, _no_parms) -> (
+        List.iteri (fun i (_id, name, _inductive, _arity, constructors) ->
+            yield (string_of_int i) name;
+            List.iteri (fun j (cons_name, _cons_type) ->
+                (* j is 1-indexed... I know... *)
+                yield (String.concat "-" [string_of_int i; string_of_int (j+1)]) (String.concat "-" [name; cons_name])
+            ) constructors
+        ) types
+    )
+    | _ -> ()

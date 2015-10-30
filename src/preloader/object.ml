@@ -8,6 +8,9 @@ type freq_item =
 type summary = string * uri * freq_item list * freq_item list option
     with conv(msgpack)
 
+type mapping = string * uri * uri
+    with conv(msgpack)
+
 let count_occurances : Prelude.uri list -> freq_item list  = fun xs ->
     let map : Counter.t ref = ref Counter.empty in
     List.iter (fun x -> map := Counter.touch x !map) xs;
