@@ -11,6 +11,18 @@ type summary = string * uri * freq_item list * freq_item list option
 type mapping = string * uri * uri
     with conv(msgpack)
 
+let mutind_temp_name : uri -> int -> uri = fun defname typenum ->
+    String.concat "-" [defname; "internal"; string_of_int typenum]
+
+let mutind_constr_temp_name : uri -> int -> int -> uri = fun defname typenum constrnum ->
+    String.concat "-" [mutind_temp_name defname typenum; string_of_int constrnum]
+
+let mutind_name : uri -> string -> uri = fun defname typename ->
+    String.concat "::" [defname; typename]
+
+let mutind_constr_name : uri -> string -> string -> uri = fun defname typename constrname ->
+    String.concat "." [mutind_name defname typename; constrname]
+
 let count_occurances : Prelude.uri list -> freq_item list  = fun xs ->
     let map : Counter.t ref = ref Counter.empty in
     List.iter (fun x -> map := Counter.touch x !map) xs;

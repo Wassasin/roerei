@@ -31,11 +31,11 @@ let rec fetch_uris : (Prelude.uri -> unit) -> Acic.aconstr -> unit = fun yield x
             List.iter (fetch_uris yield) aconstr_list
     | Acic.AConst(_id, _ens, uri) -> yield uri
     | Acic.AInd(_id, _ens, uri, no_type) ->
-            yield (String.concat "-" [uri; string_of_int no_type])
+            yield (Object.mutind_temp_name uri no_type)
     | Acic.AConstruct(_id, _ens, uri, no_type, no_constr) ->
-            yield (String.concat "-" [uri; string_of_int no_type; string_of_int no_constr])
+            yield (Object.mutind_constr_temp_name uri no_type no_constr)
     | Acic.ACase(_id, uri, no_type, pt, it, pts) ->
-            yield (String.concat "-" [uri; string_of_int no_type]);
+            yield (Object.mutind_temp_name uri no_type);
             fetch_uris yield pt;
             fetch_uris yield it;
             List.iter (fetch_uris yield) pts
@@ -82,10 +82,14 @@ let fetch_constructors yield x =
     match x with
     | Acic.AInductiveDefinition(_id, types, _params, _no_parms) -> (
         List.iteri (fun i (_id, name, _inductive, _arity, constructors) ->
-            yield (string_of_int i) name;
+            yield
+                (fun b -> Object.mutind_temp_name b i)
+                (fun b -> Object.mutind_name b name);
             List.iteri (fun j (cons_name, _cons_type) ->
                 (* j is 1-indexed... I know... *)
-                yield (String.concat "-" [string_of_int i; string_of_int (j+1)]) (String.concat "-" [name; cons_name])
+                yield
+                    (fun b -> Object.mutind_constr_temp_name b i (j+1))
+                    (fun b -> Object.mutind_constr_name b name cons_name)
             ) constructors
         ) types
     )

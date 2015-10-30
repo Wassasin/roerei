@@ -71,8 +71,7 @@ let main () =
                     yield_obj (path, types_uri, type_uris, None)
                 );
                 if not path_loaded_in_mapping then (
-                    let prepend_f = fun str -> String.concat "-" [types_uri; str] in
-                    Interpreter.fetch_constructors (fun src dest -> yield_mapping (path, (prepend_f src), (prepend_f dest))) ind
+                    Interpreter.fetch_constructors (fun src_f dest_f -> yield_mapping (path, (src_f types_uri), (dest_f types_uri))) ind
                 )
             )
         ) else if List.exists (Filename.check_suffix path) [
