@@ -46,7 +46,10 @@ private:
 	}
 
 public:
-	static inline void exec(dataset_t const& d, size_t const n, size_t const k = 1, boost::optional<uint_fast32_t> seed_opt = boost::none)
+	typedef bl_sparse_matrix_t<compact_sparse_matrix_t<dataset_t::value_t> const> trainset_t;
+
+	template<typename F>
+	static inline void exec(F const& ml_init_f, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
 	{
 		assert(n >= k);
 
@@ -86,18 +89,18 @@ public:
 			compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
 
 			size_t const test_m_size = test_m_tmp.nonempty_size_m();
-			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
 
 			performance::metrics_t fold_metrics;
 			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
-				bl_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane(train_m, dependants_real[test_row.row_i]);
+				trainset_t train_m_sane(train_m, dependants_real[test_row.row_i]);
 
-				knn<std::remove_reference<decltype(train_m_sane)>::type> c(5, train_m_sane);
-				performance::result_t r(performance::measure(d, c, test_row));
+				auto ml = ml_init_f(train_m_sane);
+				performance::result_t r(performance::measure(d, ml, test_row));
 
 				fold_metrics += r.metrics;
-				if(j % (test_m_size / 200) == 0)
+
+				if(!silent && j % (test_m_size / 200) == 0)
 				{
 					float percentage = round((float)j / (float)test_m_size * 100.0f, 2);
 					std::cout << '\r' << i << ": " << fill(percentage, 5) << "% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8);
@@ -107,10 +110,10 @@ public:
 				j++;
 			});
 
-			std::cout << '\r';
-			std::cout.flush();
-
-			std::cout << i << ": 100.0% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8) << std::endl;
+			if(!silent)
+			{
+				std::cout << '\r' << i << ": 100.0% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8) << std::endl;
+			}
 
 			total_metrics += fold_metrics;
 			i++;

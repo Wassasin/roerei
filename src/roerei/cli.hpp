@@ -16,13 +16,15 @@ private:
 	struct cli_options
 	{
 		std::string action;
+		bool silent = false;
 	};
 
 	static int read_options(cli_options& opt, int argc, char** argv)
 	{
 		boost::program_options::options_description o_general("Options");
 		o_general.add_options()
-				("help,h", "display this message");
+				("help,h", "display this message")
+				("silent,s", "do not print progress");
 
 		boost::program_options::variables_map vm;
 		boost::program_options::positional_options_description pos;
@@ -67,6 +69,9 @@ private:
 
 			return EXIT_FAILURE;
 		}
+
+		if(vm.count("silent"))
+			opt.silent = true;
 
 		if(!vm.count("action"))
 		{
@@ -175,7 +180,13 @@ public:
 		{
 			auto const d(storage::read_dataset());
 
-			cv::exec(d, 10, 3);
+			for(size_t k = 2; k < 10; ++k)
+			{
+				std::cerr << "K = " << k << std::endl;
+				cv::exec([k](cv::trainset_t const& t) {
+					return knn<cv::trainset_t const>(k, t);
+				}, d, 10, 3, opt.silent);
+			}
 		}
 		else if(opt.action == "generate")
 		{
