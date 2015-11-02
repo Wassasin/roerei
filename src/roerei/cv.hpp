@@ -99,7 +99,7 @@ public:
 				if(j % (test_m_size / 200) == 0)
 				{
 					float percentage = round((float)j / (float)test_m_size * 100.0f, 2);
-					std::cout << '\r' << i << ": " << fill(percentage, 5) << '%';
+					std::cout << '\r' << i << ": " << fill(percentage, 5) << "% - " << fill(avgoocover / (float)j, 8) << " + " << fill(avgooprecision / (float)j, 8);
 					std::cout.flush();
 				}
 
@@ -112,7 +112,7 @@ public:
 			avgoocover /= (float)j;
 			avgooprecision /= (float)j;
 
-			std::cout << i << ": " << avgoocover << " + " << avgooprecision << std::endl;
+			std::cout << i << ": 100.0% - " << avgoocover << " + " << avgooprecision << std::endl;
 
 			i++;
 		});
