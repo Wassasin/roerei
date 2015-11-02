@@ -88,7 +88,7 @@ public:
 			std::promise<performance::metrics_t> p;
 			future_metrics.emplace_back(p.get_future());
 
-			tasks.emplace_back([&d, &ml_init_f, silent, i, train_ps, cv_static_ptr, p=std::move(p)]() mutable {
+			tasks.emplace_back([&d, ml_init_f, silent, i, train_ps, cv_static_ptr, p=std::move(p)]() mutable {
 				auto const& s = *cv_static_ptr;
 
 				sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
@@ -99,6 +99,7 @@ public:
 					else
 						test_m_tmp.add_key(j);
 				}
+
 				compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
 
 				performance::metrics_t fm;
