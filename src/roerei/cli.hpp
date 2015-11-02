@@ -3,6 +3,7 @@
 #include <roerei/cv.hpp>
 #include <roerei/generator.hpp>
 #include <roerei/performance.hpp>
+#include <roerei/multitask.hpp>
 
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -17,6 +18,7 @@ private:
 	{
 		std::string action;
 		bool silent = false;
+		size_t jobs = 1;
 	};
 
 	static int read_options(cli_options& opt, int argc, char** argv)
@@ -24,7 +26,7 @@ private:
 		boost::program_options::options_description o_general("Options");
 		o_general.add_options()
 				("help,h", "display this message")
-				("silent,s", "do not print progress");
+				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
 		boost::program_options::positional_options_description pos;
@@ -180,13 +182,28 @@ public:
 		{
 			auto const d(storage::read_dataset());
 
-			for(size_t k = 2; k < 10; ++k)
+			multitask m;
+
+			std::map<size_t, std::future<performance::metrics_t>> result;
+			for(size_t k = 2; k < 30; ++k)
 			{
-				std::cerr << "K = " << k << std::endl;
-				cv::exec([k](cv::trainset_t const& t) {
-					return knn<cv::trainset_t const>(k, t);
-				}, d, 10, 3, opt.silent);
+				result[k] =
+					cv::order_async(m ,[k](cv::trainset_t const& t) {
+						return knn<cv::trainset_t const>(k, t);
+					}, d, 10, 3, opt.silent, 1337);
 			}
+
+			std::cerr << "Init completed" << std::endl;
+
+			m.run(opt.jobs, false);
+
+			for(auto& kvp : result)
+			{
+				auto total_metrics(kvp.second.get());
+				std::cout << "K=" << kvp.first << " - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << std::endl;
+			}
+
+			std::cerr << "Finished" << std::endl;
 		}
 		else if(opt.action == "generate")
 		{

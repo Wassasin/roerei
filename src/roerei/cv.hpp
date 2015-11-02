@@ -5,6 +5,7 @@
 #include <roerei/partition.hpp>
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
+#include <roerei/multitask.hpp>
 
 #include <roerei/sliced_sparse_matrix.hpp>
 #include <roerei/compact_sparse_matrix.hpp>
@@ -45,11 +46,19 @@ private:
 		_combs_helper(n, k, yield, 0, buf);
 	}
 
+	struct static_t
+	{
+		std::vector<size_t> partitions;
+		std::vector<size_t> partition_subdivision;
+		std::vector<std::vector<size_t>> dependants_real;
+		compact_sparse_matrix_t<dataset_t::value_t> feature_matrix;
+	};
+
 public:
 	typedef bl_sparse_matrix_t<compact_sparse_matrix_t<dataset_t::value_t> const> trainset_t;
 
 	template<typename F>
-	static inline void exec(F const& ml_init_f, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
+	static inline std::future<performance::metrics_t> order_async(multitask& m, F const& ml_init_f, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
 	{
 		assert(n >= k);
 
@@ -60,66 +69,77 @@ public:
 		for(size_t i = 0; i < dependants.size_m(); i++)
 			dependants_real[i].insert(dependants_real[i].end(), dependants[i].begin(), dependants[i].end());
 
-		compact_sparse_matrix_t<dataset_t::value_t> feature_matrix(d.feature_matrix);
-
-		uint_fast32_t seed = seed_opt ? *seed_opt : 1337;
-		std::vector<size_t> partition_subdivision(partition::generate_bare(d.objects.size(), n, seed));
 		std::vector<size_t> partitions(n);
 		std::iota(partitions.begin(), partitions.end(), 0);
 
+		/* Prepackage static cross-validation data */
+		std::shared_ptr<static_t const> cv_static_ptr(std::make_shared<static_t>(static_t{
+			std::move(partitions),
+			partition::generate_bare(d.objects.size(), n, seed_opt),
+			std::move(dependants_real),
+			compact_sparse_matrix_t<dataset_t::value_t>(d.feature_matrix)
+		}));
+
+		std::vector<std::packaged_task<void()>> tasks;
+		std::vector<std::future<performance::metrics_t>> future_metrics;
+
 		size_t i = 0;
-		performance::metrics_t total_metrics;
 		combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
-			std::vector<size_t> test_ps;
-			std::set_difference(
-				partitions.begin(), partitions.end(),
-				train_ps.begin(), train_ps.end(),
-				std::inserter(test_ps, test_ps.begin())
-			);
+			std::promise<performance::metrics_t> p;
+			future_metrics.emplace_back(p.get_future());
 
-			sliced_sparse_matrix_t<decltype(feature_matrix) const> train_m_tmp(feature_matrix, false), test_m_tmp(feature_matrix, false);
-			for(size_t j = 0; j < d.objects.size(); ++j)
-			{
-				size_t p = partition_subdivision[j];
-				if(std::binary_search(test_ps.begin(), test_ps.end(), p))
-					test_m_tmp.add_key(j);
-				else
-					train_m_tmp.add_key(j);
-			}
-			compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
+			tasks.emplace_back([&d, &ml_init_f, silent, i, train_ps, cv_static_ptr, p=std::move(p)]() mutable {
+				auto const& s = *cv_static_ptr;
 
-			size_t const test_m_size = test_m_tmp.nonempty_size_m();
-			size_t j = 0;
-
-			performance::metrics_t fold_metrics;
-			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
-				trainset_t train_m_sane(train_m, dependants_real[test_row.row_i]);
-
-				auto ml = ml_init_f(train_m_sane);
-				performance::result_t r(performance::measure(d, ml, test_row));
-
-				fold_metrics += r.metrics;
-
-				if(!silent && j % (test_m_size / 200) == 0)
+				sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
+				for(size_t j = 0; j < d.objects.size(); ++j)
 				{
-					float percentage = round((float)j / (float)test_m_size * 100.0f, 2);
-					std::cout << '\r' << i << ": " << fill(percentage, 5) << "% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8);
-					std::cout.flush();
+					if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j]))
+						train_m_tmp.add_key(j);
+					else
+						test_m_tmp.add_key(j);
+				}
+				compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
+
+				performance::metrics_t fm;
+				test_m.citerate([&](decltype(test_m)::const_row_proxy_t const& test_row) {
+					trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
+
+					auto ml = ml_init_f(train_m_sane);
+					performance::result_t r(performance::measure(d, ml, test_row));
+
+					fm += r.metrics;
+				});
+
+				if(!silent)
+				{
+					std::cout << i << ": " << fill(fm.oocover, 8) << " + " << fill(fm.ooprecision, 8) << std::endl;
 				}
 
-				j++;
+				p.set_value(std::move(fm));
 			});
-
-			if(!silent)
-			{
-				std::cout << '\r' << i << ": 100.0% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8) << std::endl;
-			}
-
-			total_metrics += fold_metrics;
 			i++;
 		});
 
-		std::cout << "Total - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << std::endl;
+		std::promise<performance::metrics_t> result_promise;
+		auto result(result_promise.get_future());
+
+		std::packaged_task<void()> continuation([future_metrics=std::move(future_metrics), result_promise=std::move(result_promise)]() mutable
+		{
+			performance::metrics_t total_metrics;
+
+			for(auto& m : future_metrics)
+				total_metrics += m.get();
+
+			result_promise.set_value(total_metrics);
+		});
+
+		m.add({
+			std::move(tasks),
+			std::move(continuation)
+		});
+
+		return result;
 	}
 };
 
