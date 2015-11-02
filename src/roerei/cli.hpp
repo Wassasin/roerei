@@ -115,6 +115,10 @@ public:
 				print_f(d.feature_matrix[i]);
 				std::cout << std::endl;
 
+				std::cout << "-- Types" << std::endl;
+				for(auto const& kvp : d.feature_matrix[i])
+					std::cout << kvp.second << "*" << kvp.first << " " << d.features[kvp.first] << std::endl;
+
 				std::cout << "-- Required" << std::endl;
 				{
 					bool empty = true;

@@ -19,6 +19,28 @@ private:
 public:
 	static dataset_t construct_from_repo()
 	{
+		std::map<uri_t, uri_t> mapping;
+		storage::read_mapping([&](mapping_t&& m) {
+			std::cout << m.src << " -> " << m.dest << std::endl;
+			mapping.emplace(std::make_pair(std::move(m.src), std::move(m.dest)));
+		});
+		auto swap_f([&](std::string& str) {
+			auto const it = mapping.find(str);
+			if(it != mapping.end())
+				str.assign(it->second); // Copy
+		});
+
+		auto map_summary_f([&](summary_t& s) {
+			swap_f(s.uri);
+
+			for(auto& t : s.type_uris)
+				swap_f(t.uri);
+
+			if(s.body_uris)
+				for(auto& b : *s.body_uris)
+					swap_f(b.uri);
+		});
+
 		std::set<uri_t> objects, term_uris, type_uris;
 		storage::read_summaries([&](summary_t&& s) {
 			if(s.type_uris.empty())
@@ -26,6 +48,7 @@ public:
 				std::cerr << "Ignored " << s.uri << " (empty typeset)" << std::endl;
 				return;
 			}
+			map_summary_f(s);
 
 			objects.emplace(s.uri); // Copy
 
@@ -57,6 +80,8 @@ public:
 
 		size_t fi = 0, ftotal = 0, di = 0, dtotal = 0;
 		storage::read_summaries([&](summary_t&& s) {
+			map_summary_f(s);
+
 			size_t row;
 
 			try
