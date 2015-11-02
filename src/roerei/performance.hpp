@@ -7,6 +7,8 @@
 #include <map>
 #include <set>
 
+#include <iostream>
+
 namespace roerei
 {
 
@@ -16,9 +18,58 @@ private:
 	performance() = delete;
 
 public:
-	struct result_t
+	struct metrics_t
 	{
 		float oocover, ooprecision;
+		size_t n;
+
+		metrics_t()
+			: oocover(1.0f)
+			, ooprecision(1.0f)
+			, n(0)
+		{}
+
+		metrics_t(float _oocover, float _ooprecision)
+			: oocover(_oocover)
+			, ooprecision(_ooprecision)
+			, n(1)
+		{}
+
+		metrics_t(float _oocover, float _ooprecision, size_t _n)
+			: oocover(_oocover)
+			, ooprecision(_ooprecision)
+			, n(_n)
+		{}
+
+		metrics_t operator+(metrics_t const& rhs) const
+		{
+			if(n == 0)
+				return rhs;
+			else if(rhs.n == 0)
+				return *this;
+
+			float total = n + rhs.n;
+
+			float nr_f = (float)n / total;
+			float rhs_nr_f = (float)rhs.n / total;
+
+			return {
+				oocover * nr_f + rhs.oocover * rhs_nr_f,
+				ooprecision * nr_f + rhs.ooprecision * rhs_nr_f,
+				total
+			};
+		}
+
+		metrics_t& operator+=(metrics_t const& rhs)
+		{
+			*this = operator+(rhs);
+			return *this;
+		}
+	};
+
+	struct result_t
+	{
+		metrics_t metrics;
 		std::vector<std::pair<size_t, float>> predictions;
 		std::vector<std::pair<size_t, float>> suggestions_sorted;
 		std::set<size_t> required_deps, suggested_deps, found_deps, missing_deps;
@@ -83,8 +134,10 @@ public:
 		}
 
 		return {
-			oocover,
-			ooprecision,
+			{
+				oocover,
+				ooprecision
+			},
 			std::move(predictions),
 			std::move(suggestions_sorted),
 			std::move(required_deps),

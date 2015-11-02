@@ -165,8 +165,8 @@ public:
 				}
 
 				std::cout << "-- Metrics" << std::endl;
-				std::cout << "100Cover: " << result.oocover << std::endl;
-				std::cout << "100Precision: " << result.ooprecision << std::endl;
+				std::cout << "100Cover: " << result.metrics.oocover << std::endl;
+				std::cout << "100Precision: " << result.metrics.ooprecision << std::endl;
 
 				std::cout << std::endl;
 			}

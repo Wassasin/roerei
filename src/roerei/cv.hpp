@@ -65,6 +65,7 @@ public:
 		std::iota(partitions.begin(), partitions.end(), 0);
 
 		size_t i = 0;
+		performance::metrics_t total_metrics;
 		combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
 			std::vector<size_t> test_ps;
 			std::set_difference(
@@ -87,19 +88,19 @@ public:
 			size_t const test_m_size = test_m_tmp.nonempty_size_m();
 			float avgoocover = 0.0f, avgooprecision = 0.0f;
 			size_t j = 0;
+
+			performance::metrics_t fold_metrics;
 			test_m.citerate([&](decltype(feature_matrix)::const_row_proxy_t const& test_row) {
 				bl_sparse_matrix_t<decltype(feature_matrix) const> train_m_sane(train_m, dependants_real[test_row.row_i]);
 
 				knn<std::remove_reference<decltype(train_m_sane)>::type> c(5, train_m_sane);
 				performance::result_t r(performance::measure(d, c, test_row));
 
-				avgoocover += r.oocover;
-				avgooprecision += r.ooprecision;
-
+				fold_metrics += r.metrics;
 				if(j % (test_m_size / 200) == 0)
 				{
 					float percentage = round((float)j / (float)test_m_size * 100.0f, 2);
-					std::cout << '\r' << i << ": " << fill(percentage, 5) << "% - " << fill(avgoocover / (float)j, 8) << " + " << fill(avgooprecision / (float)j, 8);
+					std::cout << '\r' << i << ": " << fill(percentage, 5) << "% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8);
 					std::cout.flush();
 				}
 
@@ -109,13 +110,13 @@ public:
 			std::cout << '\r';
 			std::cout.flush();
 
-			avgoocover /= (float)j;
-			avgooprecision /= (float)j;
+			std::cout << i << ": 100.0% - " << fill(fold_metrics.oocover, 8) << " + " << fill(fold_metrics.ooprecision, 8) << std::endl;
 
-			std::cout << i << ": 100.0% - " << avgoocover << " + " << avgooprecision << std::endl;
-
+			total_metrics += fold_metrics;
 			i++;
 		});
+
+		std::cout << "Total - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << std::endl;
 	}
 };
 
