@@ -26,6 +26,7 @@ private:
 		boost::program_options::options_description o_general("Options");
 		o_general.add_options()
 				("help,h", "display this message")
+				("silent,s", "do not print progress")
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
