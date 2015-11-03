@@ -12,6 +12,7 @@
 #include <roerei/bl_sparse_matrix.hpp>
 
 #include <iostream>
+#include <functional>
 
 namespace roerei
 {
@@ -56,9 +57,11 @@ private:
 
 public:
 	typedef bl_sparse_matrix_t<compact_sparse_matrix_t<dataset_t::value_t> const> trainset_t;
+	typedef compact_sparse_matrix_t<dataset_t::value_t>::const_row_proxy_t testrow_t;
+	typedef std::function<performance::result_t(dataset_t const&, trainset_t const&, testrow_t const&)> ml_f_t;
 
-	template<typename F>
-	static inline std::future<performance::metrics_t> order_async(multitask& m, F const& ml_init_f, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
+	template<typename CONTAINER>
+	static inline std::vector<std::future<performance::metrics_t>> order_async_mult(multitask& m, CONTAINER const& ml_fs, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
 	{
 		assert(n >= k);
 
@@ -80,67 +83,74 @@ public:
 			compact_sparse_matrix_t<dataset_t::value_t>(d.feature_matrix)
 		}));
 
-		std::vector<std::packaged_task<void()>> tasks;
-		std::vector<std::future<performance::metrics_t>> future_metrics;
-
-		size_t i = 0;
-		combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
-			std::promise<performance::metrics_t> p;
-			future_metrics.emplace_back(p.get_future());
-
-			tasks.emplace_back([&d, ml_init_f, silent, i, train_ps, cv_static_ptr, p=std::move(p)]() mutable {
-				auto const& s = *cv_static_ptr;
-
-				sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
-				for(size_t j = 0; j < d.objects.size(); ++j)
-				{
-					if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j]))
-						train_m_tmp.add_key(j);
-					else
-						test_m_tmp.add_key(j);
-				}
-
-				compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
-
-				performance::metrics_t fm;
-				test_m.citerate([&](decltype(test_m)::const_row_proxy_t const& test_row) {
-					trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
-
-					auto ml = ml_init_f(train_m_sane);
-					performance::result_t r(performance::measure(d, ml, test_row));
-
-					fm += r.metrics;
-				});
-
-				if(!silent)
-				{
-					std::cout << i << ": " << fill(fm.oocover, 8) << " + " << fill(fm.ooprecision, 8) << " + " << fm.recall << std::endl;
-				}
-
-				p.set_value(std::move(fm));
-			});
-			i++;
-		});
-
-		std::promise<performance::metrics_t> result_promise;
-		auto result(result_promise.get_future());
-
-		std::packaged_task<void()> continuation([future_metrics=std::move(future_metrics), result_promise=std::move(result_promise)]() mutable
+		std::vector<std::future<performance::metrics_t>> result;
+		for(auto const& ml_f : ml_fs)
 		{
-			performance::metrics_t total_metrics;
+			std::vector<std::packaged_task<void()>> tasks;
+			std::vector<std::future<performance::metrics_t>> future_metrics;
 
-			for(auto& m : future_metrics)
-				total_metrics += m.get();
+			size_t i = 0;
+			combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
+				std::promise<performance::metrics_t> p;
+				future_metrics.emplace_back(p.get_future());
 
-			result_promise.set_value(total_metrics);
-		});
+				tasks.emplace_back([&d, ml_f, silent, i, train_ps, cv_static_ptr, p=std::move(p)]() mutable {
+					auto const& s = *cv_static_ptr;
 
-		m.add({
-			std::move(tasks),
-			std::move(continuation)
-		});
+					sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
+					for(size_t j = 0; j < d.objects.size(); ++j)
+					{
+						if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j]))
+							train_m_tmp.add_key(j);
+						else
+							test_m_tmp.add_key(j);
+					}
+
+					compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
+
+					performance::metrics_t fm;
+					test_m.citerate([&](testrow_t const& test_row) {
+						trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
+						fm += ml_f(d, train_m_sane, test_row).metrics;
+					});
+
+					if(!silent)
+					{
+						std::cout << i << ": " << fill(fm.oocover, 8) << " + " << fill(fm.ooprecision, 8) << " + " << fm.recall << std::endl;
+					}
+
+					p.set_value(std::move(fm));
+				});
+				i++;
+			});
+
+			std::promise<performance::metrics_t> result_promise;
+			result.emplace_back(result_promise.get_future());
+
+			std::packaged_task<void()> continuation([future_metrics=std::move(future_metrics), result_promise=std::move(result_promise)]() mutable
+			{
+				performance::metrics_t total_metrics;
+
+				for(auto& m : future_metrics)
+					total_metrics += m.get();
+
+				result_promise.set_value(total_metrics);
+			});
+
+			m.add({
+				std::move(tasks),
+				std::move(continuation)
+			});
+		}
 
 		return result;
+	}
+
+	template<typename F>
+	static inline std::future<performance::metrics_t> order_async(multitask& m, F const& ml_f, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
+	{
+		std::initializer_list<F> ml_fs({{ml_f}});
+		return std::move(order_async_mult(m, ml_fs, d, n, k, silent, seed_opt).front());
 	}
 };
 

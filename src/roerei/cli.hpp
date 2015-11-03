@@ -184,25 +184,25 @@ public:
 		{
 			auto const d(storage::read_dataset());
 
-			multitask m;
-
-			std::map<size_t, std::future<performance::metrics_t>> result;
-			for(size_t k = 110; k < 112; ++k)
+			std::vector<size_t> ks;
+			std::vector<cv::ml_f_t> ml_fs;
+			for(size_t k = 105; k < 125; ++k)
 			{
-				result[k] =
-					cv::order_async(m ,[k](cv::trainset_t const& t) {
-						return knn<cv::trainset_t const>(k, t);
-					}, d, 10, 3, opt.silent, 1337);
+				ks.emplace_back(k);
+				ml_fs.emplace_back([k](dataset_t const& d, cv::trainset_t const& t, cv::testrow_t const& test_row) {
+					knn<cv::trainset_t const> ml(k, t);
+					return performance::measure(d, ml, test_row);
+				});
 			}
 
-			std::cerr << "Init completed" << std::endl;
-
+			multitask m;
+			auto futures = cv::order_async_mult(m, ml_fs, d, 10, 3, opt.silent, 1337);
 			m.run(opt.jobs, false);
 
-			for(auto& kvp : result)
+			for(size_t i = 0; i < ks.size(); ++i)
 			{
-				auto total_metrics(kvp.second.get());
-				std::cout << "K=" << kvp.first << " - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << " + " << total_metrics.recall << std::endl;
+				auto total_metrics(futures.at(i).get());
+				std::cout << "K=" << ks[i] << " - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << " + " << total_metrics.recall << std::endl;
 			}
 
 			std::cerr << "Finished" << std::endl;
