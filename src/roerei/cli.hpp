@@ -175,6 +175,7 @@ public:
 				std::cout << "-- Metrics" << std::endl;
 				std::cout << "100Cover: " << result.metrics.oocover << std::endl;
 				std::cout << "100Precision: " << result.metrics.ooprecision << std::endl;
+				std::cout << "Recall: " << result.metrics.recall << std::endl;
 
 				std::cout << std::endl;
 			}
@@ -186,7 +187,7 @@ public:
 			multitask m;
 
 			std::map<size_t, std::future<performance::metrics_t>> result;
-			for(size_t k = 2; k < 30; ++k)
+			for(size_t k = 110; k < 112; ++k)
 			{
 				result[k] =
 					cv::order_async(m ,[k](cv::trainset_t const& t) {
@@ -201,7 +202,7 @@ public:
 			for(auto& kvp : result)
 			{
 				auto total_metrics(kvp.second.get());
-				std::cout << "K=" << kvp.first << " - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << std::endl;
+				std::cout << "K=" << kvp.first << " - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << " + " << total_metrics.recall << std::endl;
 			}
 
 			std::cerr << "Finished" << std::endl;

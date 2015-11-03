@@ -20,24 +20,27 @@ private:
 public:
 	struct metrics_t
 	{
-		float oocover, ooprecision;
+		float oocover, ooprecision, recall;
 		size_t n;
 
 		metrics_t()
 			: oocover(1.0f)
 			, ooprecision(1.0f)
+			, recall(std::numeric_limits<float>::max())
 			, n(0)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision)
+		metrics_t(float _oocover, float _ooprecision, float _recall)
 			: oocover(_oocover)
 			, ooprecision(_ooprecision)
+			, recall(_recall)
 			, n(1)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, size_t _n)
+		metrics_t(float _oocover, float _ooprecision, float _recall, size_t _n)
 			: oocover(_oocover)
 			, ooprecision(_ooprecision)
+			, recall(_recall)
 			, n(_n)
 		{}
 
@@ -56,6 +59,7 @@ public:
 			return {
 				oocover * nr_f + rhs.oocover * rhs_nr_f,
 				ooprecision * nr_f + rhs.ooprecision * rhs_nr_f,
+				recall * nr_f + rhs.recall * rhs_nr_f,
 				total
 			};
 		}
@@ -72,7 +76,7 @@ public:
 		metrics_t metrics;
 		std::vector<std::pair<size_t, float>> predictions;
 		std::vector<std::pair<size_t, float>> suggestions_sorted;
-		std::set<size_t> required_deps, suggested_deps, found_deps, missing_deps;
+		std::set<size_t> required_deps, oosuggested_deps, oofound_deps, missing_deps;
 	};
 
 	template<typename ML, typename ROW>
@@ -98,12 +102,21 @@ public:
 			return x.second > y.second;
 		});
 
-		std::set<size_t> required_deps, suggested_deps, found_deps, missing_deps;
+		std::set<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps;
 		for(auto const& kvp : d.dependency_matrix[test_row.row_i])
 			required_deps.insert(kvp.first);
 
 		for(size_t j = 0; j < suggestions_sorted.size() && j < 100; ++j)
+			oosuggested_deps.insert(suggestions_sorted[j].first);
+
+		for(size_t j = 0; j < suggestions_sorted.size(); ++j)
 			suggested_deps.insert(suggestions_sorted[j].first);
+
+		std::set_intersection(
+			required_deps.begin(), required_deps.end(),
+			oosuggested_deps.begin(), oosuggested_deps.end(),
+			std::inserter(oofound_deps, oofound_deps.begin())
+		);
 
 		std::set_intersection(
 			required_deps.begin(), required_deps.end(),
@@ -119,12 +132,14 @@ public:
 
 		float c_required = required_deps.size();
 		float c_suggested = suggested_deps.size();
-		float c_found = found_deps.size();
+		float c_oosuggested = oosuggested_deps.size();
+		float c_oofound = oofound_deps.size();
 
-		float oocover = c_found/c_required;
-		float ooprecision = c_found/c_suggested;
+		float oocover = c_oofound/c_required;
+		float ooprecision = c_oofound/c_oosuggested;
+		float recall = c_suggested + 1;
 
-		if(found_deps.empty())
+		if(oofound_deps.empty())
 			ooprecision = 0.0f;
 
 		if(required_deps.empty())
@@ -133,16 +148,27 @@ public:
 			ooprecision = 1.0f;
 		}
 
+		if(missing_deps.empty())
+		{
+			std::set<size_t> todo_deps(required_deps); // Copy
+			size_t j = 0;
+			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
+				todo_deps.erase(suggestions_sorted[j].first);
+
+			recall = j;
+		}
+
 		return {
 			{
 				oocover,
-				ooprecision
+				ooprecision,
+				recall
 			},
 			std::move(predictions),
 			std::move(suggestions_sorted),
 			std::move(required_deps),
-			std::move(suggested_deps),
-			std::move(found_deps),
+			std::move(oosuggested_deps),
+			std::move(oofound_deps),
 			std::move(missing_deps)
 		};
 	}

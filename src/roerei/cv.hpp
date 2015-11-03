@@ -114,7 +114,7 @@ public:
 
 				if(!silent)
 				{
-					std::cout << i << ": " << fill(fm.oocover, 8) << " + " << fill(fm.ooprecision, 8) << std::endl;
+					std::cout << i << ": " << fill(fm.oocover, 8) << " + " << fill(fm.ooprecision, 8) << " + " << fm.recall << std::endl;
 				}
 
 				p.set_value(std::move(fm));
