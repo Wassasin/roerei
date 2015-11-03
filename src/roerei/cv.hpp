@@ -115,9 +115,7 @@ public:
 					});
 
 					if(!silent)
-					{
-						std::cout << i << ": " << fill(fm.oocover, 8) << " + " << fill(fm.ooprecision, 8) << " + " << fm.recall << std::endl;
-					}
+						std::cout << i << ": " << fm << std::endl;
 
 					p.set_value(std::move(fm));
 				});

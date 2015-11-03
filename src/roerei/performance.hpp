@@ -1,6 +1,7 @@
 #pragma once
 
 #include <roerei/dataset.hpp>
+#include <roerei/math.hpp>
 
 #include <algorithm>
 #include <list>
@@ -20,27 +21,30 @@ private:
 public:
 	struct metrics_t
 	{
-		float oocover, ooprecision, recall;
+		float oocover, ooprecision, recall, rank;
 		size_t n;
 
 		metrics_t()
 			: oocover(1.0f)
 			, ooprecision(1.0f)
 			, recall(std::numeric_limits<float>::max())
+			, rank(std::numeric_limits<float>::max())
 			, n(0)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, float _recall)
+		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank)
 			: oocover(_oocover)
 			, ooprecision(_ooprecision)
 			, recall(_recall)
+			, rank(_rank)
 			, n(1)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, float _recall, size_t _n)
+		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank, size_t _n)
 			: oocover(_oocover)
 			, ooprecision(_ooprecision)
 			, recall(_recall)
+			, rank(_rank)
 			, n(_n)
 		{}
 
@@ -60,6 +64,7 @@ public:
 				oocover * nr_f + rhs.oocover * rhs_nr_f,
 				ooprecision * nr_f + rhs.ooprecision * rhs_nr_f,
 				recall * nr_f + rhs.recall * rhs_nr_f,
+				rank * nr_f + rhs.rank * rhs_nr_f,
 				total
 			};
 		}
@@ -131,6 +136,7 @@ public:
 		);
 
 		float c_required = required_deps.size();
+		float c_found = found_deps.size();
 		float c_suggested = suggested_deps.size();
 		float c_oosuggested = oosuggested_deps.size();
 		float c_oofound = oofound_deps.size();
@@ -138,6 +144,7 @@ public:
 		float oocover = c_oofound/c_required;
 		float ooprecision = c_oofound/c_oosuggested;
 		float recall = c_suggested + 1;
+		float rank = 0;
 
 		if(oofound_deps.empty())
 			ooprecision = 0.0f;
@@ -153,16 +160,22 @@ public:
 			std::set<size_t> todo_deps(required_deps); // Copy
 			size_t j = 0;
 			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
-				todo_deps.erase(suggestions_sorted[j].first);
+				if(todo_deps.erase(suggestions_sorted[j].first) > 0)
+					rank += j;
 
 			recall = j;
+			rank /= c_found;
 		}
+
+		if(c_found == 0)
+			rank = c_suggested + 1;
 
 		return {
 			{
 				oocover,
 				ooprecision,
-				recall
+				recall,
+				rank
 			},
 			std::move(predictions),
 			std::move(suggestions_sorted),
@@ -173,5 +186,20 @@ public:
 		};
 	}
 };
+
+}
+
+namespace std
+{
+
+std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t const& rhs)
+{
+	os
+		<< "100Cover " << roerei::fill(roerei::round(rhs.oocover, 3), 5) << " + "
+		<< "100Precision " << roerei::fill(roerei::round(rhs.ooprecision, 3), 5) << " + "
+		<< "FullRecall " << roerei::fill(roerei::round(rhs.recall, 1), 4) << " + "
+		<< "Rank " << roerei::fill(roerei::round(rhs.rank, 1), 4);
+	return os;
+}
 
 }

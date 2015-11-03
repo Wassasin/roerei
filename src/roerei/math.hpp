@@ -27,6 +27,9 @@ std::string fill(T x, size_t len, char const p = '0')
 	std::stringstream sstr;
 	sstr << x;
 
+	if(round(x, 0) == x)
+		sstr << ".0";
+
 	size_t curr_length = sstr.tellp();
 
 	if(curr_length < len)

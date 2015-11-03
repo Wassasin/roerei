@@ -176,6 +176,7 @@ public:
 				std::cout << "100Cover: " << result.metrics.oocover << std::endl;
 				std::cout << "100Precision: " << result.metrics.ooprecision << std::endl;
 				std::cout << "Recall: " << result.metrics.recall << std::endl;
+				std::cout << "Rank: " << result.metrics.rank << std::endl;
 
 				std::cout << std::endl;
 			}
@@ -202,7 +203,7 @@ public:
 			for(size_t i = 0; i < ks.size(); ++i)
 			{
 				auto total_metrics(futures.at(i).get());
-				std::cout << "K=" << ks[i] << " - " << fill(total_metrics.oocover, 8) << " + " << fill(total_metrics.ooprecision, 8) << " + " << total_metrics.recall << std::endl;
+				std::cout << "K=" << ks[i] << " - " << total_metrics << std::endl;
 			}
 
 			std::cerr << "Finished" << std::endl;
