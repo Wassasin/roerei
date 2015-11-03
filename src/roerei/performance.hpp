@@ -21,7 +21,7 @@ private:
 public:
 	struct metrics_t
 	{
-		float oocover, ooprecision, recall, rank;
+		float oocover, ooprecision, recall, rank, auc;
 		size_t n;
 
 		metrics_t()
@@ -29,22 +29,25 @@ public:
 			, ooprecision(1.0f)
 			, recall(std::numeric_limits<float>::max())
 			, rank(std::numeric_limits<float>::max())
+			, auc(0.0f)
 			, n(0)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank)
+		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank, float _auc)
 			: oocover(_oocover)
 			, ooprecision(_ooprecision)
 			, recall(_recall)
 			, rank(_rank)
+			, auc(_auc)
 			, n(1)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank, size_t _n)
+		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank, float _auc, size_t _n)
 			: oocover(_oocover)
 			, ooprecision(_ooprecision)
 			, recall(_recall)
 			, rank(_rank)
+			, auc(_auc)
 			, n(_n)
 		{}
 
@@ -65,6 +68,7 @@ public:
 				ooprecision * nr_f + rhs.ooprecision * rhs_nr_f,
 				recall * nr_f + rhs.recall * rhs_nr_f,
 				rank * nr_f + rhs.rank * rhs_nr_f,
+				auc * nr_f + rhs.auc * rhs_nr_f,
 				total
 			};
 		}
@@ -107,7 +111,11 @@ public:
 			return x.second > y.second;
 		});
 
-		std::set<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps;
+		std::map<size_t, size_t> suggestions_ranks;
+		for(size_t j = 0; j < suggestions_sorted.size() && j < 100; ++j)
+			suggestions_ranks[suggestions_sorted[j].first] = j;
+
+		std::set<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
 		for(auto const& kvp : d.dependency_matrix[test_row.row_i])
 			required_deps.insert(kvp.first);
 
@@ -135,21 +143,29 @@ public:
 			std::inserter(missing_deps, missing_deps.begin())
 		);
 
+		std::set_difference(
+			suggested_deps.begin(), suggested_deps.end(),
+			found_deps.begin(), found_deps.end(),
+			std::inserter(irrelevant_deps, irrelevant_deps.begin())
+		);
+
 		float c_required = required_deps.size();
 		float c_found = found_deps.size();
 		float c_suggested = suggested_deps.size();
+		float c_irrelevant = irrelevant_deps.size();
 		float c_oosuggested = oosuggested_deps.size();
 		float c_oofound = oofound_deps.size();
 
 		float oocover = c_oofound/c_required;
 		float ooprecision = c_oofound/c_oosuggested;
-		float recall = c_suggested + 1;
-		float rank = 0;
+		float recall = c_suggested + 1.0f;
+		float rank = 0.0f;
+		float auc = 0.0f;
 
-		if(oofound_deps.empty())
+		if(c_oofound == 0.0f)
 			ooprecision = 0.0f;
 
-		if(required_deps.empty())
+		if(c_required == 0.0f)
 		{
 			oocover = 1.0f;
 			ooprecision = 1.0f;
@@ -168,14 +184,27 @@ public:
 		}
 
 		if(c_found == 0)
-			rank = c_suggested + 1;
+			rank = c_suggested + 1.0f;
+
+		for(size_t found_dep : found_deps)
+			for(size_t irrelevant_dep : irrelevant_deps)
+				if(suggestions_ranks[found_dep] > suggestions_ranks[irrelevant_dep])
+					auc += 1.0f;
+
+		if(c_found * c_irrelevant != 0)
+			auc /= c_found * c_irrelevant;
+		else if(c_irrelevant == 0)
+			auc = 1.0f;
+		else
+			auc = 0.0f;
 
 		return {
 			{
 				oocover,
 				ooprecision,
 				recall,
-				rank
+				rank,
+				auc
 			},
 			std::move(predictions),
 			std::move(suggestions_sorted),
@@ -198,7 +227,8 @@ std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t const&
 		<< "100Cover " << roerei::fill(roerei::round(rhs.oocover, 3), 5) << " + "
 		<< "100Precision " << roerei::fill(roerei::round(rhs.ooprecision, 3), 5) << " + "
 		<< "FullRecall " << roerei::fill(roerei::round(rhs.recall, 1), 4) << " + "
-		<< "Rank " << roerei::fill(roerei::round(rhs.rank, 1), 4);
+		<< "Rank " << roerei::fill(roerei::round(rhs.rank, 1), 4) << " + "
+		<< "AUC " << roerei::fill(roerei::round(rhs.auc, 3), 5);
 	return os;
 }
 
