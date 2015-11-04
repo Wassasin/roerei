@@ -154,7 +154,7 @@ public:
 				for(size_t j = 0; j < result.suggestions_sorted.size(); j++)
 				{
 					auto const& kvp = result.suggestions_sorted[j];
-					if(result.required_deps.find(kvp.first) != result.required_deps.end())
+					if(std::binary_search(result.required_deps.begin(), result.required_deps.end(), kvp.first))
 						std::cout << "! ";
 
 					std::cout << kvp.second << " <= " << kvp.first << " " << d.dependencies[kvp.first] << std::endl;
@@ -187,7 +187,7 @@ public:
 
 			std::vector<size_t> ks;
 			std::vector<cv::ml_f_t> ml_fs;
-			for(size_t k = 105; k < 125; ++k)
+			for(size_t k = 105; k < 106; ++k)
 			{
 				ks.emplace_back(k);
 				ml_fs.emplace_back([k](dataset_t const& d, cv::trainset_t const& t, cv::testrow_t const& test_row) {

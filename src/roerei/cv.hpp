@@ -11,6 +11,8 @@
 #include <roerei/compact_sparse_matrix.hpp>
 #include <roerei/bl_sparse_matrix.hpp>
 
+#include <roerei/util/performance.hpp>
+
 #include <iostream>
 #include <functional>
 
@@ -91,11 +93,15 @@ public:
 
 			size_t i = 0;
 			combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
+				if(i > 0)
+					return;
 				std::promise<performance::metrics_t> p;
 				future_metrics.emplace_back(p.get_future());
 
 				tasks.emplace_back([&d, ml_f, silent, i, train_ps, cv_static_ptr, p=std::move(p)]() mutable {
 					auto const& s = *cv_static_ptr;
+
+					test::performance::init();
 
 					sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
 					for(size_t j = 0; j < d.objects.size(); ++j)
@@ -109,13 +115,22 @@ public:
 					compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
 
 					performance::metrics_t fm;
-					test_m.citerate([&](testrow_t const& test_row) {
-						trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
-						fm += ml_f(d, train_m_sane, test_row).metrics;
-					});
+
+					{
+						performance_scope("citerate")
+						test_m.citerate([&](testrow_t const& test_row) {
+							trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
+							fm += ml_f(d, train_m_sane, test_row).metrics;
+						});
+					}
 
 					if(!silent)
+					{
 						std::cout << i << ": " << fm << std::endl;
+						test::performance::init().report();
+					}
+
+					test::performance::clear();
 
 					p.set_value(std::move(fm));
 				});

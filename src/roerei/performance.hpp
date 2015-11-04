@@ -3,6 +3,8 @@
 #include <roerei/dataset.hpp>
 #include <roerei/math.hpp>
 
+#include <roerei/util/performance.hpp>
+
 #include <algorithm>
 #include <list>
 #include <map>
@@ -85,17 +87,18 @@ public:
 		metrics_t metrics;
 		std::vector<std::pair<size_t, float>> predictions;
 		std::vector<std::pair<size_t, float>> suggestions_sorted;
-		std::set<size_t> required_deps, oosuggested_deps, oofound_deps, missing_deps;
+		std::vector<size_t> required_deps, oosuggested_deps, oofound_deps, missing_deps;
 	};
 
-	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::set<size_t> const& required_deps, std::vector<std::pair<size_t, float>> const& suggestions_sorted)
+	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::vector<size_t> const& required_deps, std::vector<std::pair<size_t, float>> const& suggestions_sorted)
 	{
+		performance_scope("recall rank")
 		float recall = suggestions_sorted.size() + 1.0f;
 		float rank = 0.0f;
 
 		if(required_deps.size() == c_found)
 		{
-			std::set<size_t> todo_deps(required_deps); // Copy
+			std::set<size_t> todo_deps(required_deps.begin(), required_deps.end()); // Copy
 			size_t j = 0;
 			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
 				if(todo_deps.erase(suggestions_sorted.at(j).first) > 0)
@@ -111,8 +114,9 @@ public:
 		return std::make_pair(recall, rank);
 	}
 
-	static float compute_auc(std::set<size_t> const& found_deps, std::set<size_t> const& irrelevant_deps, std::map<size_t, size_t> const& suggestions_ranks)
+	static float compute_auc(std::vector<size_t> const& found_deps, std::vector<size_t> const& irrelevant_deps, std::map<size_t, size_t> const& suggestions_ranks)
 	{
+		performance_scope("auc")
 		auto sr_f([&](size_t i) { return suggestions_ranks.find(i)->second; }); // Cannot be std::map::end
 
 		if(irrelevant_deps.empty())
@@ -140,11 +144,18 @@ public:
 	}
 
 	template<typename ML, typename ROW>
-	static result_t measure(dataset_t const& d, ML const& ml, ROW const& test_row)
+	static result_t measure(dataset_t const& d, ML const& ml, ROW const& test_row) noexcept
 	{
 		std::map<size_t, float> suggestions; // <id, weighted freq>
 
-		auto predictions(ml.predict(test_row));
+		std::vector<std::pair<size_t, float>> predictions;
+		{
+			performance_scope("measure_predict")
+			predictions = std::move(ml.predict(test_row));
+		}
+
+		performance_scope("measure_analyze")
+
 		std::reverse(predictions.begin(), predictions.end());
 		for(auto const& kvp : predictions)
 		{
@@ -154,27 +165,34 @@ public:
 				suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
 		}
 
-		std::vector<std::pair<size_t, float>> suggestions_sorted;
-		for(auto const& kvp : suggestions)
-			suggestions_sorted.emplace_back(kvp);
-
+		std::vector<std::pair<size_t, float>> suggestions_sorted(suggestions.begin(), suggestions.end());
 		std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<size_t, float> const& x, std::pair<size_t, float> const& y) {
 			return x.second > y.second;
 		});
 
 		std::map<size_t, size_t> suggestions_ranks;
-		for(size_t j = 0; j < suggestions_sorted.size() && j < 100; ++j)
+		for(size_t j = 0; j < suggestions_sorted.size(); ++j)
 			suggestions_ranks[suggestions_sorted[j].first] = j;
 
-		std::set<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
+		std::vector<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
 		for(auto const& kvp : d.dependency_matrix[test_row.row_i])
-			required_deps.insert(kvp.first);
-
-		for(size_t j = 0; j < suggestions_sorted.size() && j < 100; ++j)
-			oosuggested_deps.insert(suggestions_sorted[j].first);
+			required_deps.emplace_back(kvp.first);
+		std::sort(required_deps.begin(), required_deps.end());
 
 		for(size_t j = 0; j < suggestions_sorted.size(); ++j)
-			suggested_deps.insert(suggestions_sorted[j].first);
+			suggested_deps.emplace_back(suggestions_sorted[j].first);
+
+		if(suggested_deps.size() > 100)
+		{
+			oosuggested_deps.insert(oosuggested_deps.end(), suggested_deps.begin(), suggested_deps.begin()+100);
+			std::sort(suggested_deps.begin(), suggested_deps.end()); // After copy
+			std::sort(oosuggested_deps.begin(), oosuggested_deps.end());
+		}
+		else
+		{
+			std::sort(suggested_deps.begin(), suggested_deps.end()); // Before copy
+			oosuggested_deps = suggested_deps;
+		}
 
 		std::set_intersection(
 			required_deps.begin(), required_deps.end(),
