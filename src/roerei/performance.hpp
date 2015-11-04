@@ -88,6 +88,57 @@ public:
 		std::set<size_t> required_deps, oosuggested_deps, oofound_deps, missing_deps;
 	};
 
+	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::set<size_t> const& required_deps, std::vector<std::pair<size_t, float>> const& suggestions_sorted)
+	{
+		float recall = suggestions_sorted.size() + 1.0f;
+		float rank = 0.0f;
+
+		if(required_deps.size() == c_found)
+		{
+			std::set<size_t> todo_deps(required_deps); // Copy
+			size_t j = 0;
+			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
+				if(todo_deps.erase(suggestions_sorted.at(j).first) > 0)
+					rank += j;
+
+			recall = j;
+			rank /= c_found;
+		}
+
+		if(c_found == 0)
+			rank = c_suggested + 1.0f;
+
+		return std::make_pair(recall, rank);
+	}
+
+	static float compute_auc(std::set<size_t> const& found_deps, std::set<size_t> const& irrelevant_deps, std::map<size_t, size_t> const& suggestions_ranks)
+	{
+		auto sr_f([&](size_t i) { return suggestions_ranks.find(i)->second; }); // Cannot be std::map::end
+
+		if(irrelevant_deps.empty())
+			return 1.0f;
+
+		if(found_deps.empty())
+			return 0.0f;
+
+		std::vector<size_t> found_ranks, irrelevant_ranks;
+		found_ranks.reserve(found_deps.size());
+		for(size_t i : found_deps)
+			found_ranks.emplace_back(sr_f(i));
+
+		irrelevant_ranks.reserve(irrelevant_deps.size());
+		for(size_t j : irrelevant_deps)
+			irrelevant_ranks.emplace_back(sr_f(j));
+
+		float auc_sum = 0.0f;
+		for(size_t x : found_ranks)
+			for(size_t y : irrelevant_ranks)
+				if(x < y) // Lower rank is 'better'
+					auc_sum += 1.0f;
+
+		return auc_sum / (float)(found_deps.size() * irrelevant_deps.size());
+	}
+
 	template<typename ML, typename ROW>
 	static result_t measure(dataset_t const& d, ML const& ml, ROW const& test_row)
 	{
@@ -152,15 +203,11 @@ public:
 		float c_required = required_deps.size();
 		float c_found = found_deps.size();
 		float c_suggested = suggested_deps.size();
-		float c_irrelevant = irrelevant_deps.size();
 		float c_oosuggested = oosuggested_deps.size();
 		float c_oofound = oofound_deps.size();
 
 		float oocover = c_oofound/c_required;
 		float ooprecision = c_oofound/c_oosuggested;
-		float recall = c_suggested + 1.0f;
-		float rank = 0.0f;
-		float auc = 0.0f;
 
 		if(c_oofound == 0.0f)
 			ooprecision = 0.0f;
@@ -171,40 +218,15 @@ public:
 			ooprecision = 1.0f;
 		}
 
-		if(missing_deps.empty())
-		{
-			std::set<size_t> todo_deps(required_deps); // Copy
-			size_t j = 0;
-			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
-				if(todo_deps.erase(suggestions_sorted[j].first) > 0)
-					rank += j;
-
-			recall = j;
-			rank /= c_found;
-		}
-
-		if(c_found == 0)
-			rank = c_suggested + 1.0f;
-
-		for(size_t found_dep : found_deps)
-			for(size_t irrelevant_dep : irrelevant_deps)
-				if(suggestions_ranks[found_dep] > suggestions_ranks[irrelevant_dep])
-					auc += 1.0f;
-
-		if(c_found * c_irrelevant != 0)
-			auc /= c_found * c_irrelevant;
-		else if(c_irrelevant == 0)
-			auc = 1.0f;
-		else
-			auc = 0.0f;
+		auto recall_rank_kvp(compute_recall_rank(c_found, c_suggested, required_deps, suggestions_sorted));
 
 		return {
 			{
 				oocover,
 				ooprecision,
-				recall,
-				rank,
-				auc
+				recall_rank_kvp.first,
+				recall_rank_kvp.second,
+				compute_auc(found_deps, irrelevant_deps, suggestions_ranks)
 			},
 			std::move(predictions),
 			std::move(suggestions_sorted),
