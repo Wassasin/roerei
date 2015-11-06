@@ -93,31 +93,43 @@ public:
 	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::vector<size_t> const& required_deps, std::vector<std::pair<size_t, float>> const& suggestions_sorted)
 	{
 		performance_scope("recall rank")
+
+		if(required_deps.empty())
+			return std::make_pair(0.0f, 0.0f);
+
 		float recall = suggestions_sorted.size() + 1.0f;
 		float rank = 0.0f;
 
-		if(required_deps.size() == c_found)
+		bool find_recall = c_found == required_deps.size();
+		bool find_rank = c_found > 0;
+
+		size_t j = 0;
+		if(find_recall || find_rank)
 		{
 			std::set<size_t> todo_deps(required_deps.begin(), required_deps.end()); // Copy
-			size_t j = 0;
 			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
 				if(todo_deps.erase(suggestions_sorted.at(j).first) > 0)
 					rank += j;
-
-			recall = j;
-			rank /= c_found;
 		}
 
-		if(c_found == 0)
+		if(find_recall)
+			recall = j;
+
+		if(find_rank)
+			rank /= c_found;
+		else
 			rank = c_suggested + 1.0f;
 
 		return std::make_pair(recall, rank);
 	}
 
-	static float compute_auc(std::vector<size_t> const& found_deps, std::vector<size_t> const& irrelevant_deps, std::map<size_t, size_t> const& suggestions_ranks)
+	static float compute_auc(float c_required, std::vector<size_t> const& found_deps, std::vector<size_t> const& irrelevant_deps, std::map<size_t, size_t> const& suggestions_ranks)
 	{
 		performance_scope("auc")
 		auto sr_f([&](size_t i) { return suggestions_ranks.find(i)->second; }); // Cannot be std::map::end
+
+		if(c_required == 0)
+			return 1.0f;
 
 		if(irrelevant_deps.empty())
 			return 1.0f;
@@ -244,7 +256,7 @@ public:
 				ooprecision,
 				recall_rank_kvp.first,
 				recall_rank_kvp.second,
-				compute_auc(found_deps, irrelevant_deps, suggestions_ranks)
+				compute_auc(c_required, found_deps, irrelevant_deps, suggestions_ranks)
 			},
 			std::move(predictions),
 			std::move(suggestions_sorted),
