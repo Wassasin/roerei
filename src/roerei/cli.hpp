@@ -177,6 +177,7 @@ public:
 				std::cout << "100Precision: " << result.metrics.ooprecision << std::endl;
 				std::cout << "Recall: " << result.metrics.recall << std::endl;
 				std::cout << "Rank: " << result.metrics.rank << std::endl;
+				std::cout << "AUC: " << result.metrics.auc << std::endl;
 
 				std::cout << std::endl;
 			}
