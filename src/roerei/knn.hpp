@@ -29,7 +29,9 @@ private:
 		best_set_t(size_t _k)
 			: k(_k)
 			, items()
-		{}
+		{
+			items.reserve(k+1);
+		}
 
 		void try_add(distance_t&& s);
 	};
@@ -61,14 +63,14 @@ public:
 template<typename MATRIX>
 void knn<MATRIX>::best_set_t::try_add(knn::distance_t&& s)
 {
-	if(items.size() == k && s.second > (items.end()-1)->second)
+	if(items.size() == k && s.second > items.back().second)
 		return;
 
 	auto it = std::upper_bound(items.begin(), items.end(), s, comp);
 
 	if(items.size() < k)
 	{
-		items.emplace(it, s);
+		items.emplace(it, std::move(s));
 		return;
 	}
 
