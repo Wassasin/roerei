@@ -57,8 +57,6 @@ public:
 			}
 			map_summary_f(s);
 
-			objects.emplace(s.uri); // Copy
-
 			for(auto&& t : s.type_uris)
 			{
 				if(blacklisted(t.uri))
@@ -68,17 +66,49 @@ public:
 			}
 
 			if(s.body_uris)
+			{
+				bool added_something = false;
 				for(auto&& b : *s.body_uris)
 				{
 					if(blacklisted(b.uri))
 						continue;
 
 					term_uris.emplace(std::move(b.uri));
+					added_something = true;
 				}
+
+				if(added_something)
+					objects.emplace(std::move(s.uri));
+			}
 		});
 
 		std::set<uri_t> dependencies;
 		std::set_difference(term_uris.begin(), term_uris.end(), type_uris.begin(), type_uris.end(), std::inserter(dependencies, dependencies.begin()));
+
+		storage::read_summaries([&](summary_t&& s) {
+			map_summary_f(s);
+
+			auto it = objects.find(s.uri);
+			if(it == objects.end())
+				return; // Ignore
+
+			bool remove_object = true;
+			if(s.body_uris)
+				for(auto&& b : *s.body_uris)
+				{
+					if(blacklisted(b.uri))
+						continue;
+
+					if(dependencies.find(b.uri) == dependencies.end())
+						continue;
+
+					remove_object = false;
+				}
+
+			// Remove objects without any dependency
+			if(remove_object)
+				objects.erase(s.uri);
+		});
 
 		std::cout << "Defined constants: " << objects.size() << std::endl;
 		std::cout << "Term constants: " << term_uris.size() << std::endl;
@@ -95,15 +125,10 @@ public:
 		storage::read_summaries([&](summary_t&& s) {
 			map_summary_f(s);
 
-			size_t row;
-
-			try
-			{
-				row = objects_map.at(s.uri);
-			} catch (std::out_of_range)
-			{
+			auto it = objects_map.find(s.uri);
+			if(it == objects_map.end())
 				return; // Ignore
-			}
+			size_t row = it->second;
 
 			auto fv(d.feature_matrix[row]);
 			auto dv(d.dependency_matrix[row]);
@@ -126,15 +151,10 @@ public:
 					if(blacklisted(b.uri))
 						continue;
 
-					size_t col;
-
-					try
-					{
-						col = dependency_map.at(b.uri);
-					} catch (std::out_of_range)
-					{
-						continue; // Ignore
-					}
+					auto it_col = dependency_map.find(b.uri);
+					if(it_col == dependency_map.end())
+						continue;
+					size_t col = it_col->second;
 
 					assert(b.freq > 0);
 					dv[col] = b.freq;
