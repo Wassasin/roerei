@@ -5,6 +5,8 @@
 
 #include <roerei/create_map.hpp>
 
+#include <boost/algorithm/string/predicate.hpp>
+
 #include <set>
 #include <iostream>
 
@@ -15,6 +17,11 @@ class generator
 {
 private:
 	generator() = delete;
+
+	static bool blacklisted(uri_t const& u)
+	{
+		return boost::algorithm::ends_with(u, ".var");
+	}
 
 public:
 	static dataset_t construct_from_repo()
@@ -54,12 +61,18 @@ public:
 
 			for(auto&& t : s.type_uris)
 			{
+				if(blacklisted(t.uri))
+					continue;
+
 				type_uris.emplace(std::move(t.uri));
 			}
 
 			if(s.body_uris)
 				for(auto&& b : *s.body_uris)
 				{
+					if(blacklisted(b.uri))
+						continue;
+
 					term_uris.emplace(std::move(b.uri));
 				}
 		});
@@ -97,6 +110,9 @@ public:
 
 			for(auto const& t : s.type_uris)
 			{
+				if(blacklisted(t.uri))
+					continue;
+
 				size_t col = type_uris_map.at(t.uri);
 				assert(t.freq > 0);
 				fv[col] = t.freq;
@@ -107,6 +123,9 @@ public:
 			if(s.body_uris)
 				for(auto&& b : *s.body_uris)
 				{
+					if(blacklisted(b.uri))
+						continue;
+
 					size_t col;
 
 					try
