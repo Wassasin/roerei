@@ -34,7 +34,7 @@ public:
 			});
 
 			knn<decltype(feature_matrix)> c(5, feature_matrix, d);
-			performance::result_t result(performance::measure(d, c, d.feature_matrix[i]));
+			performance::result_t result(performance::measure(d, i, c.predict(d.feature_matrix[i])));
 
 			std::cout << i << " " << d.objects[i] << " ";
 			print_f(d.feature_matrix[i]);
@@ -68,8 +68,15 @@ public:
 
 			std::cout << "-- Missing" << std::endl;
 			{
+				std::set<size_t> oomissing_deps;
+				std::set_difference(
+					result.required_deps.begin(), result.required_deps.end(),
+					result.oofound_deps.begin(), result.oofound_deps.end(),
+					std::inserter(oomissing_deps, oomissing_deps.begin())
+				);
+
 				bool empty = true;
-				for(size_t j : result.missing_deps)
+				for(size_t j : oomissing_deps)
 				{
 					empty = false;
 					std::cout << d.dependency_matrix[i][j] << "*" << j << " " << d.dependencies[j] << std::endl;

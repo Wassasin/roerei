@@ -86,7 +86,7 @@ public:
 	{
 		metrics_t metrics;
 		std::vector<std::pair<size_t, float>> suggestions_sorted;
-		std::vector<size_t> required_deps, oosuggested_deps, oofound_deps, missing_deps;
+		std::vector<size_t> required_deps, oosuggested_deps, oofound_deps;
 	};
 
 	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::vector<size_t> const& required_deps, std::vector<std::pair<size_t, float>> const& suggestions_sorted)
@@ -154,16 +154,8 @@ public:
 		return auc_sum / (float)(found_deps.size() * irrelevant_deps.size());
 	}
 
-	template<typename ML, typename ROW>
-	static result_t measure(dataset_t const& d, ML const& ml, ROW const& test_row) noexcept
+	static result_t measure(dataset_t const& d, size_t test_row_i, std::map<size_t, float> suggestions) noexcept
 	{
-		std::map<size_t, float> suggestions; // <id, weighted freq>
-
-		{
-			performance_scope("measure_predict")
-			suggestions = std::move(ml.predict(test_row));
-		}
-
 		performance_scope("measure_analyze")
 
 		std::vector<std::pair<size_t, float>> suggestions_sorted(suggestions.begin(), suggestions.end());
@@ -176,7 +168,7 @@ public:
 			suggestions_ranks[suggestions_sorted[j].first] = j;
 
 		std::vector<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
-		for(auto const& kvp : d.dependency_matrix[test_row.row_i])
+		for(auto const& kvp : d.dependency_matrix[test_row_i])
 			required_deps.emplace_back(kvp.first);
 		std::sort(required_deps.begin(), required_deps.end());
 
@@ -205,12 +197,6 @@ public:
 			required_deps.begin(), required_deps.end(),
 			suggested_deps.begin(), suggested_deps.end(),
 			std::inserter(found_deps, found_deps.begin())
-		);
-
-		std::set_difference(
-			required_deps.begin(), required_deps.end(),
-			found_deps.begin(), found_deps.end(),
-			std::inserter(missing_deps, missing_deps.begin())
 		);
 
 		std::set_difference(
@@ -250,8 +236,7 @@ public:
 			std::move(suggestions_sorted),
 			std::move(required_deps),
 			std::move(oosuggested_deps),
-			std::move(oofound_deps),
-			std::move(missing_deps)
+			std::move(oofound_deps)
 		};
 	}
 };
