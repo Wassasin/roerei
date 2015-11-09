@@ -12,10 +12,9 @@ namespace roerei
 template<typename MATRIX>
 class knn
 {
-public:
+private:
 	typedef std::pair<size_t, float> distance_t;
 
-private:
 	struct best_set_t
 	{
 		size_t k;
@@ -39,15 +38,17 @@ private:
 private:
 	size_t k;
 	MATRIX const& trainingset;
+	dataset_t const& d;
 
 public:
-	knn(size_t const _k, MATRIX const& _trainingset)
+	knn(size_t const _k, MATRIX const& _trainingset, dataset_t const& _d)
 		: k(_k)
 		, trainingset(_trainingset)
+		, d(_d)
 	{}
 
 	template<typename ROW>
-	std::vector<distance_t> predict(ROW const& ys) const
+	std::map<size_t, float> predict(ROW const& ys) const
 	{
 		best_set_t set(k);
 
@@ -56,7 +57,17 @@ public:
 			set.try_add(std::make_pair(xs.row_i, d));
 		});
 
-		return set.items;
+		std::map<size_t, float> suggestions;
+		std::reverse(set.items.begin(), set.items.end());
+		for(auto const& kvp : set.items)
+		{
+			float weight = 1.0f / (kvp.second + 1.0f); // "Similarity", higher is more similar
+
+			for(auto dep_kvp : d.dependency_matrix[kvp.first])
+				suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
+		}
+
+		return suggestions;
 	}
 };
 

@@ -85,7 +85,6 @@ public:
 	struct result_t
 	{
 		metrics_t metrics;
-		std::vector<std::pair<size_t, float>> predictions;
 		std::vector<std::pair<size_t, float>> suggestions_sorted;
 		std::vector<size_t> required_deps, oosuggested_deps, oofound_deps, missing_deps;
 	};
@@ -160,22 +159,12 @@ public:
 	{
 		std::map<size_t, float> suggestions; // <id, weighted freq>
 
-		std::vector<std::pair<size_t, float>> predictions;
 		{
 			performance_scope("measure_predict")
-			predictions = std::move(ml.predict(test_row));
+			suggestions = std::move(ml.predict(test_row));
 		}
 
 		performance_scope("measure_analyze")
-
-		std::reverse(predictions.begin(), predictions.end());
-		for(auto const& kvp : predictions)
-		{
-			float weight = 1.0f / (kvp.second + 1.0f); // "Similarity", higher is more similar
-
-			for(auto dep_kvp : d.dependency_matrix[kvp.first])
-				suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
-		}
 
 		std::vector<std::pair<size_t, float>> suggestions_sorted(suggestions.begin(), suggestions.end());
 		std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<size_t, float> const& x, std::pair<size_t, float> const& y) {
@@ -258,7 +247,6 @@ public:
 				recall_rank_kvp.second,
 				compute_auc(c_required, found_deps, irrelevant_deps, suggestions_ranks)
 			},
-			std::move(predictions),
 			std::move(suggestions_sorted),
 			std::move(required_deps),
 			std::move(oosuggested_deps),
