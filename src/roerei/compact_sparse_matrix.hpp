@@ -2,6 +2,7 @@
 
 #include <roerei/sliced_sparse_matrix.hpp>
 #include <roerei/sparse_matrix.hpp>
+#include <roerei/encapsulated_vector.hpp>
 
 #include <roerei/common.hpp>
 
@@ -13,12 +14,15 @@
 namespace roerei
 {
 
-template <typename T>
+template <typename M, typename N, typename T>
 class compact_sparse_matrix_t
 {
 	static size_t constexpr invalid_value = std::numeric_limits<size_t>::max();
 
 public:
+	typedef M row_key_t;
+	typedef N column_key_t;
+
 	struct row_t
 	{
 		size_t const start, length;
@@ -41,8 +45,8 @@ public:
 
 private:
 	const size_t m, n;
-	std::vector<std::pair<size_t, T>> buf;
-	std::vector<row_t> rows;
+	std::vector<std::pair<N, T>> buf;
+	encapsulated_vector<M, row_t> rows;
 
 public:
 	template<typename MATRIX, typename ITERATOR>
@@ -59,10 +63,10 @@ public:
 		row_t const& row;
 
 	public:
-		size_t const row_i;
+		M const row_i;
 
 	private:
-		row_proxy_base_t(MATRIX& _parent, row_t const& _row, size_t const _row_i)
+		row_proxy_base_t(MATRIX& _parent, row_t const& _row, M const _row_i)
 			: parent(_parent)
 			, row(_row)
 			, row_i(_row_i)
@@ -71,10 +75,10 @@ public:
 		}
 
 	public:
-		T& operator[](size_t j)
+		T& operator[](N j)
 		{
 			assert(j < parent.n);
-			auto& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
+			auto& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<N, T> const& x, std::pair<N, T> const& y) {
 				return x.first < y.first;
 			}));
 
@@ -84,10 +88,10 @@ public:
 			return it->second;
 		}
 
-		T const& operator[](size_t j) const
+		T const& operator[](N j) const
 		{
 			assert(j < parent.n);
-			auto const& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<size_t, T> const& x, std::pair<size_t, T> const& y) {
+			auto const& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<N, T> const& x, std::pair<N, T> const& y) {
 				return x.first < y.first;
 			}));
 
@@ -118,8 +122,8 @@ public:
 		}
 	};
 
-	typedef row_proxy_base_t<compact_sparse_matrix_t<T>, std::pair<size_t, T>*> row_proxy_t;
-	typedef row_proxy_base_t<compact_sparse_matrix_t<T> const, std::pair<size_t, T> const*> const_row_proxy_t;
+	typedef row_proxy_base_t<compact_sparse_matrix_t<M, N, T>, std::pair<N, T>*> row_proxy_t;
+	typedef row_proxy_base_t<compact_sparse_matrix_t<M, N, T> const, std::pair<N, T> const*> const_row_proxy_t;
 
 public:
 	compact_sparse_matrix_t(compact_sparse_matrix_t&&) = default;
@@ -137,7 +141,7 @@ public:
 		size_t nonempty_elements = 0;
 		size_t i = 0;
 		mat.citerate([&](typename MATRIX::const_row_proxy_t const& xs) {
-			for(; i < xs.row_i; ++i)
+			for(; i < xs.row_i.unseal(); ++i)
 				rows.emplace_back();
 
 			assert(i == xs.row_i);
@@ -160,7 +164,7 @@ public:
 		});
 	}
 
-	row_proxy_t operator[](size_t i)
+	row_proxy_t operator[](M i)
 	{
 		assert(i < m);
 
@@ -170,7 +174,7 @@ public:
 		return row_proxy_t(*this, rows[i], i);
 	}
 
-	const_row_proxy_t const operator[](size_t i) const
+	const_row_proxy_t const operator[](M i) const
 	{
 		assert(i < m);
 
@@ -194,16 +198,22 @@ public:
 	void iterate(F const& f)
 	{
 		for(size_t i = 0; i < m; ++i)
+		{
+			M im(i);
 			if(!rows[i].is_invalid())
-				f(row_proxy_t(*this, rows[i], i));
+				f(row_proxy_t(*this, rows[i], M(i)));
+		}
 	}
 
 	template<typename F>
 	void citerate(F const& f) const
 	{
 		for(size_t i = 0; i < m; ++i)
-			if(!rows[i].is_invalid())
-				f(const_row_proxy_t(*this, rows[i], i));
+		{
+			M im(i);
+			if(!rows[im].is_invalid())
+				f(const_row_proxy_t(*this, rows[im], im));
+		}
 	}
 
 	template<typename F>

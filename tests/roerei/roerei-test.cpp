@@ -5,11 +5,13 @@
 #include <roerei/sliced_sparse_matrix.hpp>
 #include <roerei/compact_sparse_matrix.hpp>
 
+#include <roerei/id_t.hpp>
+
 #include <check.h>
 
-std::map<std::pair<size_t, size_t>, uint16_t> create_mat(size_t m, size_t n, size_t c)
+std::map<std::pair<roerei::object_id_t, roerei::object_id_t>, uint16_t> create_mat(size_t m, size_t n, size_t c)
 {
-	std::map<std::pair<size_t, size_t>, uint16_t> result;
+	std::map<std::pair<roerei::object_id_t, roerei::object_id_t>, uint16_t> result;
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -19,7 +21,7 @@ std::map<std::pair<size_t, size_t>, uint16_t> create_mat(size_t m, size_t n, siz
 
 	for(size_t i = 0; i < c; ++i)
 	{
-		std::pair<size_t, size_t> coord(i_dis(gen), j_dis(gen));
+		std::pair<roerei::object_id_t, roerei::object_id_t> coord(roerei::object_id_t(i_dis(gen)), roerei::object_id_t(j_dis(gen)));
 		if(!result.emplace(coord, v_dis(gen)).second)
 			--i;
 	}
@@ -33,7 +35,7 @@ START_TEST(test_matrix_arr_eq) // Preserve values after init with array access
 
 	auto values = create_mat(m, n, 10000);
 
-	roerei::sparse_matrix_t<uint16_t> mat(m, n);
+	roerei::sparse_matrix_t<roerei::object_id_t, roerei::object_id_t, uint16_t> mat(m, n);
 
 	for(auto coord : values)
 		mat[coord.first.first][coord.first.second] = coord.second;
@@ -49,7 +51,7 @@ START_TEST(test_matrix_iter_eq) // Preserve values after init with iter access
 
 	auto values = create_mat(m, n, c);
 
-	roerei::sparse_matrix_t<uint16_t> mat(m, n);
+	roerei::sparse_matrix_t<roerei::object_id_t, roerei::object_id_t, uint16_t> mat(m, n);
 
 	for(auto coord : values)
 		mat[coord.first.first][coord.first.second] = coord.second;
@@ -73,7 +75,7 @@ START_TEST(test_sliced_matrix_iter_eq) // Preserve values after init with iter a
 
 	auto values = create_mat(m, n, c);
 
-	roerei::sparse_matrix_t<uint16_t> mat(m, n);
+	roerei::sparse_matrix_t<roerei::object_id_t, roerei::object_id_t, uint16_t> mat(m, n);
 
 	for(auto coord : values)
 		mat[coord.first.first][coord.first.second] = coord.second;
@@ -104,12 +106,12 @@ START_TEST(test_compact_matrix_iter_eq) // Preserve values after init with iter 
 
 	auto values = create_mat(m, n, c);
 
-	roerei::sparse_matrix_t<uint16_t> mat(m, n);
+	roerei::sparse_matrix_t<roerei::object_id_t, roerei::object_id_t, uint16_t> mat(m, n);
 
 	for(auto coord : values)
 		mat[coord.first.first][coord.first.second] = coord.second;
 
-	roerei::compact_sparse_matrix_t<uint16_t> mat_copy(mat);
+	roerei::compact_sparse_matrix_t<roerei::object_id_t, roerei::object_id_t, uint16_t> mat_copy(mat);
 
 	mat_copy.citerate([&](decltype(mat_copy)::const_row_proxy_t const& row) {
 		for(auto value_kvp : row)

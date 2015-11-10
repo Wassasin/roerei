@@ -118,7 +118,10 @@ public:
 		dataset_t d(std::move(objects), std::move(type_uris), std::move(dependencies));
 		std::cout << "Initialized dataset" << std::endl;
 
-		std::map<uri_t, size_t> objects_map(create_map<uri_t>(d.objects)), type_uris_map(create_map<uri_t>(d.features)), dependency_map(create_map<uri_t>(d.dependencies));
+		auto objects_map(create_map(d.objects));
+		auto type_uris_map(create_map(d.features));
+		auto dependency_map(create_map(d.dependencies));
+
 		std::cout << "Loaded maps" << std::endl;
 
 		size_t fi = 0, ftotal = 0, di = 0, dtotal = 0;
@@ -128,7 +131,7 @@ public:
 			auto it = objects_map.find(s.uri);
 			if(it == objects_map.end())
 				return; // Ignore
-			size_t row = it->second;
+			object_id_t row = it->second;
 
 			auto fv(d.feature_matrix[row]);
 			auto dv(d.dependency_matrix[row]);
@@ -138,7 +141,7 @@ public:
 				if(blacklisted(t.uri))
 					continue;
 
-				size_t col = type_uris_map.at(t.uri);
+				feature_id_t col = type_uris_map.at(t.uri);
 				assert(t.freq > 0);
 				fv[col] = t.freq;
 				fi++;
@@ -154,7 +157,7 @@ public:
 					auto it_col = dependency_map.find(b.uri);
 					if(it_col == dependency_map.end())
 						continue;
-					size_t col = it_col->second;
+					dependency_id_t col = it_col->second;
 
 					assert(b.freq > 0);
 					dv[col] = b.freq;

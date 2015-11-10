@@ -114,7 +114,7 @@ public:
 				ks.emplace_back(k);
 				ml_fs.emplace_back([k](dataset_t const& d, cv::trainset_t const& t, cv::testrow_t const& test_row) {
 					knn<cv::trainset_t const> ml(k, t, d);
-					std::map<size_t, float> suggestions(ml.predict(test_row));
+					std::map<dependency_id_t, float> suggestions(ml.predict(test_row));
 					return performance::measure(d, test_row.row_i, suggestions);
 				});
 			}

@@ -12,9 +12,13 @@ namespace roerei
 template<typename MATRIX>
 class sliced_sparse_matrix_t
 {
+public:
+	typedef typename MATRIX::row_key_t row_key_t;
+	typedef typename MATRIX::column_key_t column_key_t;
+
 private:
 	MATRIX& data;
-	std::set<size_t> keys;
+	std::set<row_key_t> keys;
 
 public:
 	typedef typename MATRIX::row_proxy_t row_proxy_t;
@@ -30,12 +34,12 @@ public:
 			});
 	}
 
-	void add_key(size_t const i)
+	void add_key(row_key_t const i)
 	{
 		keys.emplace_hint(keys.end(), i);
 	}
 
-	void try_remove_key(size_t const i)
+	void try_remove_key(row_key_t const i)
 	{
 		keys.erase(i);
 	}
@@ -58,14 +62,14 @@ public:
 	template<typename F>
 	void iterate(F const& f)
 	{
-		for(size_t i : keys)
+		for(row_key_t i : keys)
 			f(data[i]);
 	}
 
 	template<typename F>
 	void citerate(F const& f) const
 	{
-		for(size_t i : keys)
+		for(row_key_t i : keys)
 		{
 			auto const& d = data;
 			f(d[i]);

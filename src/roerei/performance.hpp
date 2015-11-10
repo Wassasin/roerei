@@ -85,11 +85,11 @@ public:
 	struct result_t
 	{
 		metrics_t metrics;
-		std::vector<std::pair<size_t, float>> suggestions_sorted;
-		std::vector<size_t> required_deps, oosuggested_deps, oofound_deps;
+		std::vector<std::pair<dependency_id_t, float>> suggestions_sorted;
+		std::vector<dependency_id_t> required_deps, oosuggested_deps, oofound_deps;
 	};
 
-	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::vector<size_t> const& required_deps, std::vector<std::pair<size_t, float>> const& suggestions_sorted)
+	static std::pair<float, float> compute_recall_rank(float const c_found, float const c_suggested, std::vector<dependency_id_t> const& required_deps, std::vector<std::pair<dependency_id_t, float>> const& suggestions_sorted)
 	{
 		performance_scope("recall rank")
 
@@ -105,7 +105,7 @@ public:
 		size_t j = 0;
 		if(find_recall || find_rank)
 		{
-			std::set<size_t> todo_deps(required_deps.begin(), required_deps.end()); // Copy
+			std::set<dependency_id_t> todo_deps(required_deps.begin(), required_deps.end()); // Copy
 			for(; j < suggestions_sorted.size() && !todo_deps.empty(); ++j)
 				if(todo_deps.erase(suggestions_sorted.at(j).first) > 0)
 					rank += j;
@@ -122,10 +122,12 @@ public:
 		return std::make_pair(recall, rank);
 	}
 
-	static float compute_auc(float c_required, std::vector<size_t> const& found_deps, std::vector<size_t> const& irrelevant_deps, std::map<size_t, size_t> const& suggestions_ranks)
+	static float compute_auc(float c_required, std::vector<dependency_id_t> const& found_deps, std::vector<dependency_id_t> const& irrelevant_deps, std::map<dependency_id_t, size_t> const& suggestions_ranks)
 	{
+		// TODO this can be computed much faster with moving iterators
+
 		performance_scope("auc")
-		auto sr_f([&](size_t i) { return suggestions_ranks.find(i)->second; }); // Cannot be std::map::end
+		auto sr_f([&](dependency_id_t i) -> size_t { return suggestions_ranks.find(i)->second; }); // Cannot be std::map::end
 
 		if(c_required == 0)
 			return 1.0f;
@@ -138,11 +140,11 @@ public:
 
 		std::vector<size_t> found_ranks, irrelevant_ranks;
 		found_ranks.reserve(found_deps.size());
-		for(size_t i : found_deps)
+		for(dependency_id_t i : found_deps)
 			found_ranks.emplace_back(sr_f(i));
 
 		irrelevant_ranks.reserve(irrelevant_deps.size());
-		for(size_t j : irrelevant_deps)
+		for(dependency_id_t j : irrelevant_deps)
 			irrelevant_ranks.emplace_back(sr_f(j));
 
 		float auc_sum = 0.0f;
@@ -154,20 +156,20 @@ public:
 		return auc_sum / (float)(found_deps.size() * irrelevant_deps.size());
 	}
 
-	static result_t measure(dataset_t const& d, size_t test_row_i, std::map<size_t, float> suggestions) noexcept
+	static result_t measure(dataset_t const& d, object_id_t test_row_i, std::map<dependency_id_t, float> suggestions) noexcept
 	{
 		performance_scope("measure_analyze")
 
-		std::vector<std::pair<size_t, float>> suggestions_sorted(suggestions.begin(), suggestions.end());
-		std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<size_t, float> const& x, std::pair<size_t, float> const& y) {
+		std::vector<std::pair<dependency_id_t, float>> suggestions_sorted(suggestions.begin(), suggestions.end());
+		std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<dependency_id_t, float> const& x, std::pair<dependency_id_t, float> const& y) {
 			return x.second > y.second;
 		});
 
-		std::map<size_t, size_t> suggestions_ranks;
+		std::map<dependency_id_t, size_t> suggestions_ranks;
 		for(size_t j = 0; j < suggestions_sorted.size(); ++j)
 			suggestions_ranks[suggestions_sorted[j].first] = j;
 
-		std::vector<size_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
+		std::vector<dependency_id_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
 		for(auto const& kvp : d.dependency_matrix[test_row_i])
 			required_deps.emplace_back(kvp.first);
 		std::sort(required_deps.begin(), required_deps.end());

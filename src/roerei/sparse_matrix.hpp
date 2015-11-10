@@ -1,6 +1,7 @@
 #pragma once
 
 #include <roerei/common.hpp>
+#include <roerei/encapsulated_vector.hpp>
 
 #include <boost/optional.hpp>
 
@@ -10,11 +11,14 @@
 namespace roerei
 {
 
-template <typename T>
+template<typename M, typename N, typename T>
 class sparse_matrix_t
 {
 public:
-	typedef std::map<size_t, T> row_t;
+	typedef M row_key_t;
+	typedef N column_key_t;
+
+	typedef std::map<N, T> row_t;
 
 	template<typename MATRIX, typename ITERATOR>
 	class row_proxy_base_t
@@ -29,22 +33,22 @@ public:
 		MATRIX& parent;
 
 	public:
-		size_t const row_i;
+		M const row_i;
 
 	private:
-		row_proxy_base_t(MATRIX& _parent, size_t const _row_i)
+		row_proxy_base_t(MATRIX& _parent, M const _row_i)
 			: parent(_parent)
 			, row_i(_row_i)
 		{}
 
 	public:
-		T& operator[](size_t j)
+		T& operator[](N j)
 		{
 			assert(j < parent.n);
 			return parent.data[row_i][j];
 		}
 
-		T const& operator[](size_t j) const
+		T const& operator[](N j) const
 		{
 			assert(j < parent.n);
 			try
@@ -78,12 +82,12 @@ public:
 		}
 	};
 
-	typedef row_proxy_base_t<sparse_matrix_t<T>, typename row_t::iterator> row_proxy_t;
-	typedef row_proxy_base_t<sparse_matrix_t<T> const, typename row_t::const_iterator> const_row_proxy_t;
+	typedef row_proxy_base_t<sparse_matrix_t<M, N, T>, typename row_t::iterator> row_proxy_t;
+	typedef row_proxy_base_t<sparse_matrix_t<M, N, T> const, typename row_t::const_iterator> const_row_proxy_t;
 
 private:
 	const size_t m, n;
-	std::vector<row_t> data;
+	encapsulated_vector<M, row_t> data;
 
 public:
 	sparse_matrix_t(sparse_matrix_t&&) = default;
@@ -95,13 +99,13 @@ public:
 		, data(m)
 	{}
 
-	row_proxy_t operator[](size_t i)
+	row_proxy_t operator[](M i)
 	{
 		assert(i < m);
 		return row_proxy_t(*this, i);
 	}
 
-	const_row_proxy_t const operator[](size_t i) const
+	const_row_proxy_t const operator[](M i) const
 	{
 		assert(i < m);
 		return const_row_proxy_t(*this, i);
@@ -121,14 +125,14 @@ public:
 	void iterate(F const& f)
 	{
 		for(size_t i = 0; i < m; ++i)
-			f(row_proxy_t(*this, i));
+			f(row_proxy_t(*this, M(i)));
 	}
 
 	template<typename F>
 	void citerate(F const& f) const
 	{
 		for(size_t i = 0; i < m; ++i)
-			f(const_row_proxy_t(*this, i));
+			f(const_row_proxy_t(*this, M(i)));
 	}
 
 	template<typename F>
@@ -144,38 +148,36 @@ namespace detail
 template<typename T, typename S>
 struct serialize_value;
 
-template<typename T, typename S>
-struct serialize_value<sparse_matrix_t<T>, S>
+template<typename M, typename N, typename T, typename S>
+struct serialize_value<sparse_matrix_t<M, N, T>, S>
 {
-	static inline void exec(S& s, std::string const& name, sparse_matrix_t<T> const& m)
+	static inline void exec(S& s, std::string const& name, sparse_matrix_t<M, N, T> const& m)
 	{
 		s.write_object(name, 3);
 		s.write("m", m.size_m());
 		s.write("n", m.size_n());
 		s.write_array("data", m.size_m());
 
-		for(std::size_t i = 0; i < m.size_m(); ++i)
-		{
-			auto const row = m[i];
+		m.citerate([&](typename sparse_matrix_t<M, N, T>::const_row_proxy_t const& row) {
 			s.write_array("row", row.nonempty_size());
 
 			for(auto const kvp : row)
 			{
 				s.write_array("kvp", 2);
-				s.write("j", kvp.first);
+				s.write("j", kvp.first.unseal());
 				s.write("v", kvp.second);
 			}
-		}
+		});
 	}
 };
 
 template<typename T, typename D>
 struct deserialize_value;
 
-template<typename T, typename D>
-struct deserialize_value<sparse_matrix_t<T>, D>
+template<typename M, typename N, typename T, typename D>
+struct deserialize_value<sparse_matrix_t<M, N, T>, D>
 {
-	static inline sparse_matrix_t<T> exec(D& s, const std::string& name)
+	static inline sparse_matrix_t<M, N, T> exec(D& s, const std::string& name)
 	{
 		if(3 != s.read_object(name))
 			throw std::runtime_error("Inconsistency");
@@ -188,7 +190,7 @@ struct deserialize_value<sparse_matrix_t<T>, D>
 		if(m != m_real)
 			throw std::runtime_error("Inconsistency");
 
-		sparse_matrix_t<T> result(m, n);
+		sparse_matrix_t<M, N, T> result(m, n);
 		for(std::size_t i = 0; i < m; ++i)
 		{
 			auto row = result[i];

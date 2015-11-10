@@ -13,7 +13,7 @@ template<typename MATRIX>
 class knn
 {
 private:
-	typedef std::pair<size_t, float> distance_t;
+	typedef std::pair<object_id_t, float> distance_t;
 
 	struct best_set_t
 	{
@@ -48,7 +48,7 @@ public:
 	{}
 
 	template<typename ROW>
-	std::map<size_t, float> predict(ROW const& ys) const
+	std::map<dependency_id_t, float> predict(ROW const& ys) const
 	{
 		best_set_t set(k);
 
@@ -57,7 +57,7 @@ public:
 			set.try_add(std::make_pair(xs.row_i, d));
 		});
 
-		std::map<size_t, float> suggestions;
+		std::map<dependency_id_t, float> suggestions;
 		std::reverse(set.items.begin(), set.items.end());
 		for(auto const& kvp : set.items)
 		{

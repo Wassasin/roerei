@@ -53,13 +53,13 @@ private:
 	{
 		std::vector<size_t> partitions;
 		std::vector<size_t> partition_subdivision;
-		std::vector<std::vector<size_t>> dependants_real;
-		compact_sparse_matrix_t<dataset_t::value_t> feature_matrix;
+		encapsulated_vector<object_id_t, std::vector<object_id_t>> dependants_real;
+		compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t> feature_matrix;
 	};
 
 public:
-	typedef bl_sparse_matrix_t<compact_sparse_matrix_t<dataset_t::value_t> const> trainset_t;
-	typedef compact_sparse_matrix_t<dataset_t::value_t>::const_row_proxy_t testrow_t;
+	typedef bl_sparse_matrix_t<compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t> const> trainset_t;
+	typedef compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t>::const_row_proxy_t testrow_t;
 	typedef std::function<performance::result_t(dataset_t const&, trainset_t const&, testrow_t const&)> ml_f_t;
 
 	template<typename CONTAINER>
@@ -67,12 +67,15 @@ public:
 	{
 		assert(n >= k);
 
-		sparse_unit_matrix_t dependants(dependencies::create_dependants(d));
+		std::map<dependency_id_t, object_id_t> dependency_map(d.create_dependency_map());
+		dependencies::dependant_obj_matrix_t dependants(dependencies::create_obj_dependants(d, dependency_map));
 		dependants.transitive();
 
-		std::vector<std::vector<size_t>> dependants_real(dependants.size_m());
-		for(size_t i = 0; i < dependants.size_m(); i++)
-			dependants_real[i].insert(dependants_real[i].end(), dependants[i].begin(), dependants[i].end());
+		decltype(static_t::dependants_real) dependants_real(dependants.size_m());
+		d.objects.keys([&](object_id_t i) {
+			std::set<object_id_t> const& objs = dependants[i];
+			dependants_real[i].insert(dependants_real[i].end(), objs.begin(), objs.end());
+		});
 
 		std::vector<size_t> partitions(n);
 		std::iota(partitions.begin(), partitions.end(), 0);
@@ -82,7 +85,7 @@ public:
 			std::move(partitions),
 			partition::generate_bare(d.objects.size(), n, seed_opt),
 			std::move(dependants_real),
-			compact_sparse_matrix_t<dataset_t::value_t>(d.feature_matrix)
+			d.feature_matrix
 		}));
 
 		std::vector<std::future<performance::metrics_t>> result;
@@ -102,15 +105,14 @@ public:
 					test::performance::init();
 
 					sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
-					for(size_t j = 0; j < d.objects.size(); ++j)
-					{
-						if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j]))
+					d.objects.keys([&](object_id_t j) {
+						if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j.unseal()]))
 							train_m_tmp.add_key(j);
 						else
 							test_m_tmp.add_key(j);
-					}
+					});
 
-					compact_sparse_matrix_t<dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
+					compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
 
 					performance::metrics_t fm;
 

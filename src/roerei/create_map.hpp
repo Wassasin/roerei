@@ -1,19 +1,19 @@
 #pragma once
 
+#include <roerei/encapsulated_vector.hpp>
+
 #include <map>
 
 namespace roerei
 {
 
-template<typename A, typename CONTAINER>
-std::map<A, size_t> create_map(CONTAINER const& xs)
+template<typename ID, typename T>
+std::map<T, ID> create_map(encapsulated_vector<ID, T> const& xs)
 {
-	std::map<A, size_t> result;
-
-	size_t i = 0;
-	for(auto const& x : xs)
-		result.emplace(std::make_pair(x, i++));
-
+	std::map<T, ID> result;
+	xs.iterate([&](ID id, T const& x) {
+		result.emplace(std::make_pair(x, id));
+	});
 	return result;
 }
 
