@@ -33,6 +33,14 @@ public:
 		return data.size_n();
 	}
 
+	const_row_proxy_t operator[](row_key_t const i) const
+	{
+		if(std::binary_search(bl.begin(), bl.end(), i))
+			throw std::out_of_range("Element blacklisted");
+
+		return data[i];
+	}
+
 	template<typename F>
 	void citerate(F const& f) const
 	{

@@ -58,7 +58,6 @@ public:
 		});
 
 		std::map<dependency_id_t, float> suggestions;
-		std::reverse(set.items.begin(), set.items.end());
 		for(auto const& kvp : set.items)
 		{
 			float weight = 1.0f / (kvp.second + 1.0f); // "Similarity", higher is more similar

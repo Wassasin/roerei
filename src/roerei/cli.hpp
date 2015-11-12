@@ -1,5 +1,8 @@
 #pragma once
 
+#include <roerei/knn.hpp>
+#include <roerei/naive_bayes.hpp>
+
 #include <roerei/cv.hpp>
 #include <roerei/generator.hpp>
 #include <roerei/performance.hpp>
@@ -103,7 +106,7 @@ public:
 			auto const d(storage::read_dataset());
 			inspector::iterate_all(d);
 		}
-		else if(opt.action == "cv")
+		else if(opt.action == "cv-knn")
 		{
 			auto const d(storage::read_dataset());
 
@@ -112,8 +115,8 @@ public:
 			for(size_t k = 60; k < 61; ++k)
 			{
 				ks.emplace_back(k);
-				ml_fs.emplace_back([k](dataset_t const& d, cv::trainset_t const& t, cv::testrow_t const& test_row) {
-					knn<cv::trainset_t const> ml(k, t, d);
+				ml_fs.emplace_back([k, &d](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+					knn<cv::trainset_t const> ml(k, trainset, d);
 					std::map<dependency_id_t, float> suggestions(ml.predict(test_row));
 					return performance::measure(d, test_row.row_i, suggestions);
 				});
@@ -130,6 +133,54 @@ public:
 			}
 
 			std::cerr << "Finished" << std::endl;
+		}
+		else if(opt.action == "cv-nb")
+		{
+			auto const d(storage::read_dataset());
+
+			std::map<object_id_t, dependency_id_t> dependency_revmap(d.create_dependency_revmap());
+			dependencies::dependant_matrix_t dependants(dependencies::create_dependants(d));
+			dependencies::dependant_obj_matrix_t dependants_trans(dependencies::create_obj_dependants(d));
+			dependants_trans.transitive();
+
+			encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
+			d.objects.keys([&](object_id_t i) {
+				std::vector<dependency_id_t> wl, bl;
+				for(object_id_t forbidden : dependants_trans[i])
+				{
+					auto it = dependency_revmap.find(forbidden);
+					if(it == dependency_revmap.end())
+						continue;
+					bl.emplace_back(it->second);
+				}
+
+				std::sort(bl.begin(), bl.end());
+
+				auto it = bl.begin();
+				d.dependencies.keys([&](dependency_id_t j) {
+					it = std::lower_bound(it, bl.end(), j);
+					if(it != bl.end() && *it == j)
+						return;
+
+					wl.emplace_back(j);
+				});
+
+				allowed_dependencies.emplace_back(std::move(wl));
+			});
+
+			multitask m;
+			size_t i = 0;
+			auto future = cv::order_async(m, [&i, &d, &dependants, &allowed_dependencies](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+					naive_bayes<decltype(trainset)> ml(d, dependants, allowed_dependencies[test_row.row_i], trainset);
+					std::map<dependency_id_t, float> suggestions(ml.predict(test_row));
+					return performance::measure(d, test_row.row_i, suggestions);
+			}, d, 10, 3, opt.silent, 1337);
+
+			std::cerr << "Initialized" << std::endl;
+
+			m.run(opt.jobs, false);
+
+			std::cout << future.get() << std::endl;
 		}
 		else if(opt.action == "generate")
 		{

@@ -39,8 +39,8 @@ public:
 	template<typename CONTAINER>
 	dataset_t(CONTAINER&& _objects, CONTAINER&& _features, CONTAINER&& _dependencies);
 
-	std::map<feature_id_t, object_id_t> create_feature_map() const;
 	std::map<dependency_id_t, object_id_t> create_dependency_map() const;
+	std::map<object_id_t, dependency_id_t> create_dependency_revmap() const;
 };
 
 namespace detail
@@ -55,18 +55,6 @@ namespace detail
 
 		return xs;
 	}
-}
-
-std::map<feature_id_t, object_id_t> dataset_t::create_feature_map() const
-{
-	std::map<uri_t, object_id_t> object_map;
-	objects.iterate([&](object_id_t id, uri_t const& u) {
-		object_map.emplace(std::make_pair(u, id));
-	});
-
-	std::map<feature_id_t, object_id_t> feature_map;
-	features.iterate([&](feature_id_t id, uri_t const& u) { feature_map.emplace(std::make_pair(id, object_map.at(u))); });
-	return feature_map;
 }
 
 std::map<dependency_id_t, object_id_t> dataset_t::create_dependency_map() const
@@ -85,6 +73,24 @@ std::map<dependency_id_t, object_id_t> dataset_t::create_dependency_map() const
 		dependency_map.emplace(std::make_pair(id, it->second));
 	});
 	return dependency_map;
+}
+
+std::map<object_id_t, dependency_id_t> dataset_t::create_dependency_revmap() const
+{
+	std::map<uri_t, dependency_id_t> dependency_urimap;
+	dependencies.iterate([&](dependency_id_t id, uri_t const& u) {
+		dependency_urimap.emplace(std::make_pair(u, id));
+	});
+
+	std::map<object_id_t, dependency_id_t> dependency_revmap;
+	objects.iterate([&](object_id_t id, uri_t const& u) {
+		auto it = dependency_urimap.find(u);
+		if(it == dependency_urimap.end())
+			return;
+
+		dependency_revmap.emplace(std::make_pair(id, it->second));
+	});
+	return dependency_revmap;
 }
 
 template<typename CONTAINER>

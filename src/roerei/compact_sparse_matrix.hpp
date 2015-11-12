@@ -75,27 +75,14 @@ public:
 		}
 
 	public:
-		T& operator[](N j)
-		{
-			assert(j < parent.n);
-			auto& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<N, T> const& x, std::pair<N, T> const& y) {
-				return x.first < y.first;
-			}));
-
-			if(it == end() || it->first > j)
-				throw std::out_of_range("Element is not present; cannot add as compact_sparse_matrix_t<T>");
-
-			return it->second;
-		}
-
-		T const& operator[](N j) const
+		T const& operator[](N const j) const
 		{
 			assert(j < parent.n);
 			auto const& it(std::lower_bound(begin(), end(), std::make_pair(j, invalid_value), [](std::pair<N, T> const& x, std::pair<N, T> const& y) {
 				return x.first < y.first;
 			}));
 
-			if(it == end() || it->first > j)
+			if(it == end() || j < it->first)
 				throw std::out_of_range("Element is not present");
 
 			return it->second;

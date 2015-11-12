@@ -1,7 +1,6 @@
 #pragma once
 
 #include <roerei/performance.hpp>
-#include <roerei/knn.hpp>
 #include <roerei/partition.hpp>
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
@@ -60,7 +59,7 @@ private:
 public:
 	typedef bl_sparse_matrix_t<compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t> const> trainset_t;
 	typedef compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t>::const_row_proxy_t testrow_t;
-	typedef std::function<performance::result_t(dataset_t const&, trainset_t const&, testrow_t const&)> ml_f_t;
+	typedef std::function<performance::result_t(trainset_t const&, testrow_t const&)> ml_f_t;
 
 	template<typename CONTAINER>
 	static inline std::vector<std::future<performance::metrics_t>> order_async_mult(multitask& m, CONTAINER const& ml_fs, dataset_t const& d, size_t const n, size_t const k = 1, bool silent = false, boost::optional<uint_fast32_t> seed_opt = boost::none)
@@ -68,12 +67,12 @@ public:
 		assert(n >= k);
 
 		std::map<dependency_id_t, object_id_t> dependency_map(d.create_dependency_map());
-		dependencies::dependant_obj_matrix_t dependants(dependencies::create_obj_dependants(d, dependency_map));
-		dependants.transitive();
+		dependencies::dependant_obj_matrix_t dependants_trans(dependencies::create_obj_dependants(d, dependency_map));
+		dependants_trans.transitive();
 
-		decltype(static_t::dependants_real) dependants_real(dependants.size_m());
+		decltype(static_t::dependants_real) dependants_real(dependants_trans.size_m());
 		d.objects.keys([&](object_id_t i) {
-			std::set<object_id_t> const& objs = dependants[i];
+			std::set<object_id_t> const& objs = dependants_trans[i];
 			dependants_real[i].insert(dependants_real[i].end(), objs.begin(), objs.end());
 		});
 
@@ -120,7 +119,7 @@ public:
 						performance_scope("citerate")
 						test_m.citerate([&](testrow_t const& test_row) {
 							trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
-							fm += ml_f(d, train_m_sane, test_row).metrics;
+							fm += ml_f(train_m_sane, test_row).metrics;
 						});
 					}
 
