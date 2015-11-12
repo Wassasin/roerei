@@ -44,7 +44,10 @@ namespace roerei
 					i = tasks_i++;
 				}
 
-				tasks[i](); // Execute packaged task
+				auto& t = tasks[i];
+				auto future = t.get_future();
+				t(); // Execute packaged task
+				future.get(); // Yield exception
 
 				{
 					std::unique_lock<std::mutex> _l(*mutex);
