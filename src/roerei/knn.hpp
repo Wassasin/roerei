@@ -48,7 +48,7 @@ public:
 	{}
 
 	template<typename ROW>
-	std::map<dependency_id_t, float> predict(ROW const& ys) const
+	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& ys) const
 	{
 		best_set_t set(k);
 
@@ -66,7 +66,7 @@ public:
 				suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
 		}
 
-		return suggestions;
+		return std::vector<std::pair<dependency_id_t, float>>(suggestions.begin(), suggestions.end());
 	}
 };
 

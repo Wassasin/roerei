@@ -3,6 +3,8 @@
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
 #include <roerei/sparse_unit_matrix.hpp>
+#include <roerei/wl_sparse_matrix.hpp>
+#include <roerei/util/performance.hpp>
 
 #include <vector>
 #include <algorithm>
@@ -17,65 +19,44 @@ class naive_bayes
 	static const float pi = 10, sigma = -15, tau = 20;
 
 	dataset_t const& d;
+	encapsulated_vector<feature_id_t, std::vector<object_id_t>> const& feature_occurance;
 	std::vector<dependency_id_t> const& allowed_dependencies;
 	dependencies::dependant_matrix_t const& dependants;
 	MATRIX const& trainingset;
 
 private:
 	template<typename ROW>
-	float rank(dependency_id_t phi_id, ROW const& test_row) const
+	float rank(dependency_id_t phi_id, ROW const& test_row, std::vector<object_id_t> const& whitelist) const
 	{
-		std::set<object_id_t> const& proofs_with_phi_all = dependants[phi_id];
-		std::set<object_id_t> proofs_with_phi;
-
-		{
-			auto it = proofs_with_phi_all.begin();
-			trainingset.citerate([&](typename std::remove_reference<MATRIX>::type::const_row_proxy_t const& row) {
-				it = std::lower_bound(it, proofs_with_phi_all.end(), row.row_i);
-				if(it != proofs_with_phi_all.end() && *it == row.row_i)
-					proofs_with_phi.emplace(row.row_i);
-			});
-		}
-
-		size_t P = proofs_with_phi.size();
-		float log_p = std::log((float)P);
-
-		float result = log_p;
+		// Feature -> set of objects with feature
+		// Intersect with proofs which use phi
+		// Fast value for p_j
 
 		// For each j in test_row (f_j)
 		// p_j = number of proofs which use phi, which also use facts described with type f_j (amongst others).
 
-		//std::map<feature_id_t, size_t> ps_j;
-		//trainingset.
+		// TODO encapsulate feature weight (might yield better performance)
 
+		std::set<object_id_t> const& dependant_objs = dependants[phi_id];
+		std::vector<object_id_t> candidates;
+		candidates.reserve(std::min(whitelist.size(), dependant_objs.size())); // Upper bound reserve
 
-		std::map<feature_id_t, size_t> ps_j;
-		for(object_id_t proof_with_phi : proofs_with_phi)
-		{
-			auto const& phi_row = trainingset[proof_with_phi];
-			auto x_it = phi_row.begin();
-			auto y_it = test_row.begin();
-			auto x_it_end = phi_row.end();
-			auto y_it_end = test_row.end();
+		set_binary_intersect(whitelist, dependant_objs, [&](object_id_t i) {
+			candidates.emplace_back(i);
+		});
 
-			while(x_it != x_it_end && y_it != y_it_end)
-			{
-				if(x_it->first < y_it->first)
-					x_it++;
-				else if(y_it->first < x_it->first)
-					y_it++;
-				else // Assert x_it->second > 0
-				{
-					ps_j[y_it->first]++;
-					x_it++;
-					y_it++;
-				}
-			}
-		}
+		if(candidates.empty())
+			return -INFINITY;
+
+		size_t P = candidates.size();
+		float log_p = std::log((float)P);
+		float result = log_p;
 
 		for(auto const& kvp_j : test_row)
 		{
-			float p_j = ps_j[kvp_j.first];
+			size_t p_j = 0;
+			set_smart_intersect(feature_occurance[kvp_j.first], candidates, [&](object_id_t) { p_j++; });
+
 			if(p_j == 0)
 				result += kvp_j.second * sigma;
 			else
@@ -86,19 +67,57 @@ private:
 	}
 
 public:
-	naive_bayes(dataset_t const& _d, dependencies::dependant_matrix_t const& _dependants, std::vector<dependency_id_t> const& _allowed_dependencies, MATRIX const& _trainingset)
+	naive_bayes(dataset_t const& _d, decltype(feature_occurance) const& _feature_occurance, dependencies::dependant_matrix_t const& _dependants, std::vector<dependency_id_t> const& _allowed_dependencies, MATRIX const& _trainingset)
 		: d(_d)
+		, feature_occurance(_feature_occurance)
 		, allowed_dependencies(_allowed_dependencies)
 		, dependants(_dependants)
 		, trainingset(_trainingset)
 	{}
 
 	template<typename ROW>
-	std::map<dependency_id_t, float> predict(ROW const& test_row) const
+	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row) const
 	{
-		std::map<dependency_id_t, float> ranks;
+		std::vector<std::pair<dependency_id_t, float>> ranks;
+
+		std::vector<object_id_t> feature_objs;
+		feature_objs.reserve(trainingset.size_m());
+		for(auto const& kvp_j : test_row)
+		{
+			auto const& xs = feature_occurance[kvp_j.first];
+			feature_objs.insert(feature_objs.end(), xs.begin(), xs.end());
+		}
+		std::sort(feature_objs.begin(), feature_objs.end());
+		std::unique(feature_objs.begin(), feature_objs.end());
+
+		if(feature_objs.empty())
+			return ranks;
+
+		std::vector<object_id_t> trainingset_objs;
+		trainingset_objs.reserve(trainingset.size_m());
+		trainingset.citerate([&](typename std::remove_reference<MATRIX>::type::const_row_proxy_t const& row) {
+			trainingset_objs.emplace_back(row.row_i);
+		});
+
+		std::vector<object_id_t> whitelist;
+		whitelist.reserve(std::min(trainingset_objs.size(), feature_objs.size()));
+		set_smart_intersect(trainingset_objs, feature_objs, [&](object_id_t i) {
+			whitelist.emplace_back(i);
+		});
+
+		if(whitelist.empty())
+			return ranks;
+
+		ranks.reserve(allowed_dependencies.size());
 		for(dependency_id_t phi_id : allowed_dependencies)
-			ranks.emplace(std::make_pair(phi_id, rank(phi_id, test_row)));
+		{
+			float r = rank(phi_id, test_row, whitelist);
+
+			if(r == -INFINITY)
+				continue;
+
+			ranks.emplace_back(std::make_pair(phi_id, r));
+		}
 
 		return ranks;
 	}

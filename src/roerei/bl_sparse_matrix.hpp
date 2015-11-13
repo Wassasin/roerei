@@ -45,9 +45,10 @@ public:
 	void citerate(F const& f) const
 	{
 		auto it = bl.begin();
+		auto const it_end = bl.end();
 		data.citerate([&](typename MATRIX::const_row_proxy_t const& row) {
-			it = std::lower_bound(it, bl.end(), row.row_i);
-			if(it != bl.end() && *it == row.row_i)
+			it = std::lower_bound(it, it_end, row.row_i);
+			if(it != it_end && *it == row.row_i)
 				return;
 
 			f(row);

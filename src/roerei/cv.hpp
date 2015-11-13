@@ -119,14 +119,9 @@ public:
 
 					{
 						performance_scope("citerate")
-						size_t j = 0;
 						test_m.citerate([&](testrow_t const& test_row) {
-							if(j > 0)
-								return;
-
 							trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
 							fm += ml_f(train_m_sane, test_row).metrics;
-							j++;
 						});
 					}
 
