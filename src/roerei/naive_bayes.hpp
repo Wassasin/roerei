@@ -28,12 +28,14 @@ private:
 		std::set<object_id_t> const& proofs_with_phi_all = dependants[phi_id];
 		std::set<object_id_t> proofs_with_phi;
 
-		auto it = proofs_with_phi_all.begin();
-		trainingset.citerate([&](typename std::remove_reference<MATRIX>::type::const_row_proxy_t const& row) {
-			it = std::lower_bound(it, proofs_with_phi_all.end(), row.row_i);
-			if(it != proofs_with_phi_all.end() && *it == row.row_i)
-				proofs_with_phi.emplace(row.row_i);
-		});
+		{
+			auto it = proofs_with_phi_all.begin();
+			trainingset.citerate([&](typename std::remove_reference<MATRIX>::type::const_row_proxy_t const& row) {
+				it = std::lower_bound(it, proofs_with_phi_all.end(), row.row_i);
+				if(it != proofs_with_phi_all.end() && *it == row.row_i)
+					proofs_with_phi.emplace(row.row_i);
+			});
+		}
 
 		size_t P = proofs_with_phi.size();
 		float log_p = std::log((float)P);
@@ -46,18 +48,34 @@ private:
 		//std::map<feature_id_t, size_t> ps_j;
 		//trainingset.
 
+
+		std::map<feature_id_t, size_t> ps_j;
+		for(object_id_t proof_with_phi : proofs_with_phi)
+		{
+			auto const& phi_row = trainingset[proof_with_phi];
+			auto x_it = phi_row.begin();
+			auto y_it = test_row.begin();
+			auto x_it_end = phi_row.end();
+			auto y_it_end = test_row.end();
+
+			while(x_it != x_it_end && y_it != y_it_end)
+			{
+				if(x_it->first < y_it->first)
+					x_it++;
+				else if(y_it->first < x_it->first)
+					y_it++;
+				else // Assert x_it->second > 0
+				{
+					ps_j[y_it->first]++;
+					x_it++;
+					y_it++;
+				}
+			}
+		}
+
 		for(auto const& kvp_j : test_row)
 		{
-			size_t p_j = 0;
-			for(object_id_t proof_with_phi : proofs_with_phi)
-			{
-				try
-				{
-					if(trainingset[proof_with_phi][kvp_j.first] > 0) // TODO optimize, expensive operation
-						p_j++;
-				} catch(std::out_of_range) {}
-			}
-
+			float p_j = ps_j[kvp_j.first];
 			if(p_j == 0)
 				result += kvp_j.second * sigma;
 			else

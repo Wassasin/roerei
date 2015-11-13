@@ -95,6 +95,8 @@ public:
 
 			size_t i = 0;
 			combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
+				if(i > 0)
+					return;
 				std::promise<performance::metrics_t> p;
 				future_metrics.emplace_back(p.get_future());
 
@@ -117,9 +119,14 @@ public:
 
 					{
 						performance_scope("citerate")
+						size_t j = 0;
 						test_m.citerate([&](testrow_t const& test_row) {
+							if(j > 0)
+								return;
+
 							trainset_t train_m_sane(train_m, s.dependants_real[test_row.row_i]);
 							fm += ml_f(train_m_sane, test_row).metrics;
+							j++;
 						});
 					}
 
