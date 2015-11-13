@@ -117,8 +117,7 @@ public:
 				ks.emplace_back(k);
 				ml_fs.emplace_back([k, &d](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
 					knn<cv::trainset_t const> ml(k, trainset, d);
-					std::map<dependency_id_t, float> suggestions(ml.predict(test_row));
-					return performance::measure(d, test_row.row_i, suggestions);
+					return performance::measure(d, test_row.row_i, ml.predict(test_row));
 				});
 			}
 
@@ -168,17 +167,26 @@ public:
 				allowed_dependencies.emplace_back(std::move(wl));
 			});
 
+			encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance(d.features.size());
+			d.feature_matrix.citerate([&](dataset_t::feature_matrix_t::const_row_proxy_t const& row) {
+				for(auto const& kvp : row)
+				{
+					assert(kvp.second > 0);
+					feature_occurance[kvp.first].emplace_back(row.row_i);
+				}
+			});
+
 			multitask m;
 			size_t i = 0;
-			auto future = cv::order_async(m, [&i, &d, &dependants, &allowed_dependencies](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
-					naive_bayes<decltype(trainset)> ml(d, dependants, allowed_dependencies[test_row.row_i], trainset);
-					std::map<dependency_id_t, float> suggestions(ml.predict(test_row));
-					return performance::measure(d, test_row.row_i, suggestions);
+			auto future = cv::order_async(m, [&i, &d, &feature_occurance, &dependants, &allowed_dependencies](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+					naive_bayes<decltype(trainset)> ml(d, feature_occurance, dependants, allowed_dependencies[test_row.row_i], trainset);
+					return performance::measure(d, test_row.row_i, ml.predict(test_row));
 			}, d, 10, 3, opt.silent, 1337);
 
 			std::cerr << "Initialized" << std::endl;
 
-			m.run(opt.jobs, false);
+			//m.run(opt.jobs, false);
+			m.run_synced();
 
 			std::cout << future.get() << std::endl;
 		}

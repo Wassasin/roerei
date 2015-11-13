@@ -95,5 +95,10 @@ namespace roerei
 				for(auto& t : threads)
 					t.detach();
 		}
+
+		void run_synced()
+		{
+			handlet();
+		}
 	};
 }

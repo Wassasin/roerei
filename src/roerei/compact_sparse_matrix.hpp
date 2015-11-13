@@ -131,8 +131,6 @@ public:
 			for(; i < xs.row_i.unseal(); ++i)
 				rows.emplace_back();
 
-			assert(i == xs.row_i);
-
 			size_t size = xs.nonempty_size();
 			rows.emplace_back(nonempty_elements, size);
 			nonempty_elements += size;

@@ -95,6 +95,8 @@ public:
 
 			size_t i = 0;
 			combs(n, n-k, [&](std::vector<size_t> const& train_ps) {
+				if(i > 0)
+					return;
 				std::promise<performance::metrics_t> p;
 				future_metrics.emplace_back(p.get_future());
 

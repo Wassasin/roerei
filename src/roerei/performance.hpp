@@ -156,26 +156,24 @@ public:
 		return auc_sum / (float)(found_deps.size() * irrelevant_deps.size());
 	}
 
-	static result_t measure(dataset_t const& d, object_id_t test_row_i, std::map<dependency_id_t, float> suggestions) noexcept
+	static result_t measure(dataset_t const& d, object_id_t test_row_i, std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept
 	{
 		performance_scope("measure_analyze")
 
-		std::vector<std::pair<dependency_id_t, float>> suggestions_sorted(suggestions.begin(), suggestions.end());
-		std::sort(suggestions_sorted.begin(), suggestions_sorted.end(), [&](std::pair<dependency_id_t, float> const& x, std::pair<dependency_id_t, float> const& y) {
+		std::sort(suggestions.begin(), suggestions.end(), [&](std::pair<dependency_id_t, float> const& x, std::pair<dependency_id_t, float> const& y) {
 			return x.second > y.second;
 		});
 
 		std::map<dependency_id_t, size_t> suggestions_ranks;
-		for(size_t j = 0; j < suggestions_sorted.size(); ++j)
-			suggestions_ranks[suggestions_sorted[j].first] = j;
+		for(size_t j = 0; j < suggestions.size(); ++j)
+			suggestions_ranks[suggestions[j].first] = j;
 
 		std::vector<dependency_id_t> required_deps, suggested_deps, oosuggested_deps, found_deps, oofound_deps, missing_deps, irrelevant_deps;
 		for(auto const& kvp : d.dependency_matrix[test_row_i])
 			required_deps.emplace_back(kvp.first);
-		std::sort(required_deps.begin(), required_deps.end());
 
-		for(size_t j = 0; j < suggestions_sorted.size(); ++j)
-			suggested_deps.emplace_back(suggestions_sorted[j].first);
+		for(size_t j = 0; j < suggestions.size(); ++j)
+			suggested_deps.emplace_back(suggestions[j].first);
 
 		if(suggested_deps.size() > 100)
 		{
@@ -225,7 +223,7 @@ public:
 			ooprecision = 1.0f;
 		}
 
-		auto recall_rank_kvp(compute_recall_rank(c_found, c_suggested, required_deps, suggestions_sorted));
+		auto recall_rank_kvp(compute_recall_rank(c_found, c_suggested, required_deps, suggestions));
 
 		return {
 			{
@@ -235,7 +233,7 @@ public:
 				recall_rank_kvp.second,
 				compute_auc(c_required, found_deps, irrelevant_deps, suggestions_ranks)
 			},
-			std::move(suggestions_sorted),
+			std::move(suggestions),
 			std::move(required_deps),
 			std::move(oosuggested_deps),
 			std::move(oofound_deps)
