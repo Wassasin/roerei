@@ -185,8 +185,7 @@ public:
 
 			std::cerr << "Initialized" << std::endl;
 
-			//m.run(opt.jobs, false);
-			m.run_synced();
+			m.run(opt.jobs, false);
 
 			std::cout << future.get() << std::endl;
 		}
