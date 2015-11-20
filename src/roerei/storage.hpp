@@ -69,6 +69,11 @@ static inline void read_msgpack_lined_file(std::string const& filename, F const&
 
 }
 
+std::string part_after(std::string const& src, std::string const& needle)
+{
+	return src.substr(src.find_last_of(needle)+1);
+}
+
 template<typename F, typename>
 void storage::read_summaries(F const& f)
 {
@@ -81,12 +86,14 @@ void storage::read_summaries(F const& f)
 	detail::read_msgpack_lined_file(repo_path, [&](msgpack_deserializer& d) {
 		summary_t s;
 
-		if(4 != d.read_array(__bogus))
+		if(5 != d.read_array(__bogus))
 			throw std::logic_error("Array does not have appropriate size");
 
 		d.read(__bogus, s.corpus);
 		d.read(__bogus, s.file);
 		d.read(__bogus, s.uri);
+
+		s.corpus = part_after(s.corpus, "/");
 
 		size_t type_uris_size = d.read_array(__bogus);
 		s.type_uris.reserve(type_uris_size);
@@ -170,7 +177,7 @@ void storage::write_dataset(std::string const& corpus, const dataset_t &d)
 
 dataset_t storage::read_dataset(std::string const& corpus)
 {
-	std::string const dataset_path = std::string("./data/")+corpus+"dataset.msgpack";
+	std::string const dataset_path = std::string("./data/")+corpus+".msgpack";
 
 	if(!boost::filesystem::exists(dataset_path))
 		throw std::runtime_error(std::string("Dataset ")+corpus+" does not exist");

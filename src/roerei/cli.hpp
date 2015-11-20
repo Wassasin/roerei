@@ -33,7 +33,7 @@ private:
 		o_general.add_options()
 				("help,h", "display this message")
 				("silent,s", "do not print progress")
-				("corpus,c", boost::program_options::value(&opt.corpus), "select which corpus to sample or generate (default: Coq)");
+				("corpus,c", boost::program_options::value(&opt.corpus), "select which corpus to sample or generate (default: Coq)")
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
@@ -201,7 +201,10 @@ public:
 		{
 			std::map<std::string, dataset_t> map(generator::construct_from_repo());
 			for(auto const& kvp : map)
+			{
 				storage::write_dataset(kvp.first, kvp.second);
+				std::cerr << "Written " << kvp.first << std::endl;
+			}
 		}
 		else
 		{

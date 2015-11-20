@@ -186,7 +186,7 @@ public:
 
 		std::map<std::string, phase1> p1;
 		storage::read_summaries([&](summary_t&& s) {
-			p1.find(s.corpus)->second.add(std::move(s), mapping);
+			p1[s.corpus].add(std::move(s), mapping);
 		});
 
 		std::map<std::string, phase2> p2;
