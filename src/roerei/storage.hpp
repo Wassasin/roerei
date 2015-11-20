@@ -30,8 +30,8 @@ public:
 	template<typename F, typename = std::enable_if_t<is_function<F, void(mapping_t&&)>::value>>
 	static void read_mapping(F const& f);
 
-	static void write_dataset(dataset_t const& d);
-	static dataset_t read_dataset();
+	static void write_dataset(std::string const& corpus, dataset_t const& d);
+	static dataset_t read_dataset(std::string const& corpus);
 };
 
 namespace detail
@@ -84,6 +84,7 @@ void storage::read_summaries(F const& f)
 		if(4 != d.read_array(__bogus))
 			throw std::logic_error("Array does not have appropriate size");
 
+		d.read(__bogus, s.corpus);
 		d.read(__bogus, s.file);
 		d.read(__bogus, s.uri);
 
@@ -153,9 +154,9 @@ void storage::read_mapping(F const& f)
 	});
 }
 
-void storage::write_dataset(const dataset_t &d)
+void storage::write_dataset(std::string const& corpus, const dataset_t &d)
 {
-	static std::string const dataset_path = "./data/dataset.msgpack";
+	std::string const dataset_path = std::string("./data/")+corpus+".msgpack";
 
 	msgpack_serializer s;
 	serialize(s, "dataset", d);
@@ -167,12 +168,12 @@ void storage::write_dataset(const dataset_t &d)
 	});
 }
 
-dataset_t storage::read_dataset()
+dataset_t storage::read_dataset(std::string const& corpus)
 {
-	static std::string const dataset_path = "./data/dataset.msgpack";
+	std::string const dataset_path = std::string("./data/")+corpus+"dataset.msgpack";
 
 	if(!boost::filesystem::exists(dataset_path))
-		throw std::runtime_error("Dataset does not exist");
+		throw std::runtime_error(std::string("Dataset ")+corpus+" does not exist");
 
 	std::ifstream is(dataset_path, std::ios::binary);
 	std::string buf;

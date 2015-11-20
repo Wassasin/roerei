@@ -19,6 +19,7 @@ struct summary_t
 		size_t freq;
 	};
 
+	std::string corpus;
 	std::string file;
 	uri_t uri;
 	std::vector<frequency_t> type_uris;
@@ -35,6 +36,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
 		roerei::summary_t,
+		(std::string, corpus)
 		(std::string, file)
 		(roerei::uri_t, uri)
 		(std::vector<roerei::summary_t::frequency_t>, type_uris)

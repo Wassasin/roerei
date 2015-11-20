@@ -24,7 +24,7 @@ private:
 	}
 
 public:
-	static dataset_t construct_from_repo()
+	static dataset_t construct_from_repo(std::string const& corpus)
 	{
 		std::map<uri_t, uri_t> mapping;
 		storage::read_mapping([&](mapping_t&& m) {
@@ -50,6 +50,9 @@ public:
 
 		std::set<uri_t> objects, term_uris, type_uris;
 		storage::read_summaries([&](summary_t&& s) {
+			if(s.corpus != corpus)
+				return;
+
 			if(s.type_uris.empty())
 			{
 				std::cerr << "Ignored " << s.uri << " (empty typeset)" << std::endl;
@@ -86,6 +89,9 @@ public:
 		std::set_difference(term_uris.begin(), term_uris.end(), type_uris.begin(), type_uris.end(), std::inserter(dependencies, dependencies.begin()));
 
 		storage::read_summaries([&](summary_t&& s) {
+			if(s.corpus != corpus)
+				return;
+
 			map_summary_f(s);
 
 			auto it = objects.find(s.uri);

@@ -22,6 +22,7 @@ private:
 	struct cli_options
 	{
 		std::string action;
+		std::string corpus;
 		bool silent = false;
 		size_t jobs = 1;
 	};
@@ -32,6 +33,7 @@ private:
 		o_general.add_options()
 				("help,h", "display this message")
 				("silent,s", "do not print progress")
+				("corpus,c", boost::program_options::value(&opt.corpus), "select which corpus to sample or generate (default: Coq)");
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
@@ -87,6 +89,11 @@ private:
 			return EXIT_FAILURE;
 		}
 
+		if(!vm.count("corpus"))
+		{
+			opt.corpus = "Coq";
+		}
+
 		return EXIT_SUCCESS;
 	}
 
@@ -103,12 +110,12 @@ public:
 
 		if(opt.action == "test")
 		{
-			auto const d(storage::read_dataset());
+			auto const d(storage::read_dataset(opt.corpus));
 			inspector::iterate_all(d);
 		}
 		else if(opt.action == "cv-knn")
 		{
-			auto const d(storage::read_dataset());
+			auto const d(storage::read_dataset(opt.corpus));
 
 			std::vector<size_t> ks;
 			std::vector<cv::ml_f_t> ml_fs;
@@ -135,7 +142,7 @@ public:
 		}
 		else if(opt.action == "cv-nb")
 		{
-			auto const d(storage::read_dataset());
+			auto const d(storage::read_dataset(opt.corpus));
 
 			std::map<object_id_t, dependency_id_t> dependency_revmap(d.create_dependency_revmap());
 			dependencies::dependant_matrix_t dependants(dependencies::create_dependants(d));
@@ -192,8 +199,8 @@ public:
 		}
 		else if(opt.action == "generate")
 		{
-			auto const d(generator::construct_from_repo());
-			storage::write_dataset(d);
+			auto const d(generator::construct_from_repo(opt.corpus));
+			storage::write_dataset(opt.corpus, d);
 		}
 		else
 		{
