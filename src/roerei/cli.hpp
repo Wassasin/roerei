@@ -199,8 +199,9 @@ public:
 		}
 		else if(opt.action == "generate")
 		{
-			auto const d(generator::construct_from_repo(opt.corpus));
-			storage::write_dataset(opt.corpus, d);
+			std::map<std::string, dataset_t> map(generator::construct_from_repo());
+			for(auto const& kvp : map)
+				storage::write_dataset(kvp.first, kvp.second);
 		}
 		else
 		{

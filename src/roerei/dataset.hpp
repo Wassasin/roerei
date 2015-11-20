@@ -27,7 +27,7 @@ struct dataset_t
 
 public:
 	dataset_t(dataset_t&&) = default;
-	dataset_t(dataset_t&) = delete;
+	dataset_t(dataset_t const&) = delete;
 	dataset_t(
 			std::remove_const<decltype(objects)>::type&& _objects,
 			std::remove_const<decltype(features)>::type&& _features,
