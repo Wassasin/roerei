@@ -1,12 +1,13 @@
 #pragma once
 
-#include <roerei/knn.hpp>
-#include <roerei/naive_bayes.hpp>
+#include <roerei/ml/knn.hpp>
+#include <roerei/ml/naive_bayes.hpp>
+#include <roerei/ml/cv.hpp>
 
-#include <roerei/cv.hpp>
+#include <roerei/generic/multitask.hpp>
+
 #include <roerei/generator.hpp>
 #include <roerei/performance.hpp>
-#include <roerei/multitask.hpp>
 
 #include <roerei/inspector.hpp>
 

@@ -2,8 +2,10 @@
 
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
-#include <roerei/sparse_unit_matrix.hpp>
-#include <roerei/wl_sparse_matrix.hpp>
+
+#include <roerei/generic/sparse_unit_matrix.hpp>
+#include <roerei/generic/wl_sparse_matrix.hpp>
+
 #include <roerei/util/performance.hpp>
 
 #include <vector>

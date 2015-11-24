@@ -1,6 +1,6 @@
 #pragma once
 
-#include <roerei/deserialize_common.hpp>
+#include <roerei/serialization/deserialize_common.hpp>
 
 #include <boost/fusion/include/at.hpp>
 #include <boost/fusion/include/for_each.hpp>

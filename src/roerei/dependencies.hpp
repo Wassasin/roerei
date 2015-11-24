@@ -1,9 +1,9 @@
 #pragma once
 
-#include <roerei/sparse_unit_matrix.hpp>
-#include <roerei/dataset.hpp>
+#include <roerei/generic/sparse_unit_matrix.hpp>
+#include <roerei/generic/create_map.hpp>
 
-#include <roerei/create_map.hpp>
+#include <roerei/dataset.hpp>
 
 namespace roerei
 {

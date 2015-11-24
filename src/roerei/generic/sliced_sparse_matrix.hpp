@@ -1,6 +1,6 @@
 #pragma once
 
-#include <roerei/sparse_matrix.hpp>
+#include <roerei/generic/sparse_matrix.hpp>
 
 #include <boost/optional.hpp>
 

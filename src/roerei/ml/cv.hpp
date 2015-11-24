@@ -4,11 +4,12 @@
 #include <roerei/partition.hpp>
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
-#include <roerei/multitask.hpp>
 
-#include <roerei/sliced_sparse_matrix.hpp>
-#include <roerei/compact_sparse_matrix.hpp>
-#include <roerei/bl_sparse_matrix.hpp>
+#include <roerei/generic/multitask.hpp>
+
+#include <roerei/generic/sliced_sparse_matrix.hpp>
+#include <roerei/generic/compact_sparse_matrix.hpp>
+#include <roerei/generic/bl_sparse_matrix.hpp>
 
 #include <roerei/util/performance.hpp>
 

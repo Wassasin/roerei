@@ -1,6 +1,6 @@
 #pragma once
 
-#include <roerei/encapsulated_vector.hpp>
+#include <roerei/generic/encapsulated_vector.hpp>
 
 #include <vector>
 #include <set>

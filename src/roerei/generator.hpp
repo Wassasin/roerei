@@ -3,7 +3,7 @@
 #include <roerei/storage.hpp>
 #include <roerei/dataset.hpp>
 
-#include <roerei/create_map.hpp>
+#include <roerei/generic/create_map.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 

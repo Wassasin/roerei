@@ -1,11 +1,11 @@
+#include <roerei/generic/sparse_matrix.hpp>
+#include <roerei/generic/sliced_sparse_matrix.hpp>
+#include <roerei/generic/compact_sparse_matrix.hpp>
+
+#include <roerei/generic/id_t.hpp>
+
 #include <cstdlib>
 #include <memory>
-
-#include <roerei/sparse_matrix.hpp>
-#include <roerei/sliced_sparse_matrix.hpp>
-#include <roerei/compact_sparse_matrix.hpp>
-
-#include <roerei/id_t.hpp>
 
 #include <check.h>
 

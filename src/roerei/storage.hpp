@@ -1,15 +1,16 @@
 #pragma once
 
-#include <roerei/serialize_fusion.hpp>
-#include <roerei/deserialize_fusion.hpp>
+#include <roerei/serialization/serialize_fusion.hpp>
+#include <roerei/serialization/deserialize_fusion.hpp>
 
-#include <roerei/msgpack_serializer.hpp>
-#include <roerei/msgpack_deserializer.hpp>
+#include <roerei/serialization/msgpack_serializer.hpp>
+#include <roerei/serialization/msgpack_deserializer.hpp>
+
+#include <roerei/generic/common.hpp>
 
 #include <roerei/summary.hpp>
 #include <roerei/mapping.hpp>
 #include <roerei/dataset.hpp>
-#include <roerei/common.hpp>
 
 #include <boost/filesystem.hpp>
 

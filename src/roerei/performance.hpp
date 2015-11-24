@@ -1,7 +1,8 @@
 #pragma once
 
 #include <roerei/dataset.hpp>
-#include <roerei/math.hpp>
+
+#include <roerei/generic/math.hpp>
 
 #include <roerei/util/performance.hpp>
 
