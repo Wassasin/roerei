@@ -69,11 +69,6 @@ static inline void read_msgpack_lined_file(std::string const& filename, F const&
 
 }
 
-std::string part_after(std::string const& src, std::string const& needle)
-{
-	return src.substr(src.find_last_of(needle)+1);
-}
-
 template<typename F, typename>
 void storage::read_summaries(F const& f)
 {
@@ -92,8 +87,6 @@ void storage::read_summaries(F const& f)
 		d.read(__bogus, s.corpus);
 		d.read(__bogus, s.file);
 		d.read(__bogus, s.uri);
-
-		s.corpus = part_after(s.corpus, "/");
 
 		size_t type_uris_size = d.read_array(__bogus);
 		s.type_uris.reserve(type_uris_size);
