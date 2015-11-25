@@ -74,7 +74,8 @@ private:
 					<< "Actions:" << std::endl
 					<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
 					<< "  cv             test performance using cross-validation" << std::endl
-					<< "  test           placeholder action" << std::endl
+					<< "  inspect        inspect all objects" << std::endl
+					<< "  measure        run all scheduled tests and store the results" << std::endl
 					<< std::endl
 					<< o_general;
 
@@ -109,7 +110,7 @@ public:
 		if(result != EXIT_SUCCESS)
 			return result;
 
-		if(opt.action == "test")
+		if(opt.action == "inspect")
 		{
 			auto const d(storage::read_dataset(opt.corpus));
 			inspector::iterate_all(d);
@@ -117,33 +118,30 @@ public:
 		else if(opt.action == "cv-knn")
 		{
 			auto const d(storage::read_dataset(opt.corpus));
-
-			std::vector<size_t> ks;
-			std::vector<cv::ml_f_t> ml_fs;
-			for(size_t k = 60; k < 61; ++k)
-			{
-				ks.emplace_back(k);
-				ml_fs.emplace_back([k, &d](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-					knn<cv::trainset_t const> ml(k, trainset, d);
-					return performance::measure(d, test_row.row_i, ml.predict(test_row));
-				});
-			}
+			cv const c(d, 10, 3, 1337);
 
 			multitask m;
-			auto futures = cv::order_async_mult(m, ml_fs, d, 10, 3, opt.silent, 1337);
-			m.run(opt.jobs, false);
-
-			for(size_t i = 0; i < ks.size(); ++i)
+			for(size_t k = 60; k < 61; ++k)
 			{
-				auto total_metrics(futures.at(i).get());
-				std::cout << "K=" << ks[i] << " - " << total_metrics << std::endl;
+				c.order_async(m,
+					[k, &d](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						knn<cv::trainset_t const> ml(k, trainset, d);
+						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+					},
+					[k](performance::metrics_t const& total_metrics) noexcept {
+						std::cout << "K=" << k << " - " << total_metrics << std::endl;
+					},
+					d, opt.silent
+				);
 			}
 
+			m.run(opt.jobs, true); // Blocking
 			std::cerr << "Finished" << std::endl;
 		}
 		else if(opt.action == "cv-nb")
 		{
 			auto const d(storage::read_dataset(opt.corpus));
+			cv const c(d, 10, 3, 1337);
 
 			std::map<object_id_t, dependency_id_t> dependency_revmap(d.create_dependency_revmap());
 			dependencies::dependant_matrix_t dependants(dependencies::create_dependants(d));
@@ -186,17 +184,21 @@ public:
 
 			multitask m;
 			size_t i = 0;
-			auto future = cv::order_async(m, [&i, &d, &feature_occurance, &dependants, &allowed_dependencies](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+			c.order_async(m,
+				[&i, &d, &feature_occurance, &dependants, &allowed_dependencies](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
 					naive_bayes<decltype(trainset)> ml(d, feature_occurance, dependants, allowed_dependencies[test_row.row_i], trainset);
 					return performance::measure(d, test_row.row_i, ml.predict(test_row));
-			}, d, 10, 3, opt.silent, 1337);
+				},
+				[](performance::metrics_t const& total_metrics) noexcept {
+					std::cout << total_metrics << std::endl;
+				},
+				d, opt.silent
+			);
 
 			std::cerr << "Initialized" << std::endl;
 
-			//m.run(opt.jobs, false);
-			m.run_synced();
-
-			std::cout << future.get() << std::endl;
+			m.run(opt.jobs, true); // Blocking
+			std::cerr << "Finished" << std::endl;
 		}
 		else if(opt.action == "generate")
 		{

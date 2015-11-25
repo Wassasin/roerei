@@ -11,6 +11,7 @@
 #include <roerei/summary.hpp>
 #include <roerei/mapping.hpp>
 #include <roerei/dataset.hpp>
+#include <roerei/cv_result.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -33,6 +34,9 @@ public:
 
 	static void write_dataset(std::string const& corpus, dataset_t const& d);
 	static dataset_t read_dataset(std::string const& corpus);
+
+	template<typename F, typename = std::enable_if_t<is_function<F, void(cv_result_t&&)>::value>>
+	static void read_result(F const& f);
 };
 
 namespace detail
@@ -66,6 +70,23 @@ static inline void read_msgpack_lined_file(std::string const& filename, F const&
 			line += '\n';
 		}
 	}
+}
+
+std::string read_to_string(std::string const& filename)
+{
+	std::ifstream is(filename, std::ios::binary);
+	std::string buf;
+
+	is.seekg(0, std::ios::end);
+	buf.reserve(is.tellg());
+	is.seekg(0, std::ios::beg);
+
+	buf.assign(
+		(std::istreambuf_iterator<char>(is)), // Most Vexing Parse Parenthesis; necessary.
+		std::istreambuf_iterator<char>()
+	);
+
+	return buf;
 }
 
 }
@@ -176,22 +197,24 @@ dataset_t storage::read_dataset(std::string const& corpus)
 	if(!boost::filesystem::exists(dataset_path))
 		throw std::runtime_error(std::string("Dataset ")+corpus+" does not exist");
 
-	std::ifstream is(dataset_path, std::ios::binary);
-	std::string buf;
-
-	is.seekg(0, std::ios::end);
-	buf.reserve(is.tellg());
-	is.seekg(0, std::ios::beg);
-
-	buf.assign(
-		(std::istreambuf_iterator<char>(is)), // Most Vexing Parse Parenthesis; necessary.
-		std::istreambuf_iterator<char>()
-	);
-
 	msgpack_deserializer d;
-	d.feed(buf);
+	d.feed(detail::read_to_string(dataset_path));
 
 	return deserialize<dataset_t>(d, "dataset");
+}
+
+template<typename F, typename>
+void storage::read_result(F const& f)
+{
+	std::string const results_path = "./data/results.msgpack";
+
+	if(!boost::filesystem::exists(results_path))
+		return; // Do nothing
+
+	msgpack_deserializer d;
+	detail::read_msgpack_lined_file(results_path, [&](msgpack_deserializer& d) {
+		f(deserialize<cv_result_t>(d, "cv_result"));
+	});
 }
 
 }
