@@ -1,10 +1,11 @@
 #pragma once
 
 #include <roerei/uri.hpp>
-#include <roerei/sparse_matrix.hpp>
-#include <roerei/create_map.hpp>
-#include <roerei/encapsulated_vector.hpp>
-#include <roerei/id_t.hpp>
+
+#include <roerei/generic/sparse_matrix.hpp>
+#include <roerei/generic/create_map.hpp>
+#include <roerei/generic/encapsulated_vector.hpp>
+#include <roerei/generic/id_t.hpp>
 
 #include <boost/fusion/include/adapt_struct.hpp>
 
@@ -27,7 +28,7 @@ struct dataset_t
 
 public:
 	dataset_t(dataset_t&&) = default;
-	dataset_t(dataset_t&) = delete;
+	dataset_t(dataset_t const&) = delete;
 	dataset_t(
 			std::remove_const<decltype(objects)>::type&& _objects,
 			std::remove_const<decltype(features)>::type&& _features,

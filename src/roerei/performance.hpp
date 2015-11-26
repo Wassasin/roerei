@@ -1,7 +1,8 @@
 #pragma once
 
 #include <roerei/dataset.hpp>
-#include <roerei/math.hpp>
+
+#include <roerei/generic/math.hpp>
 
 #include <roerei/util/performance.hpp>
 
@@ -258,3 +259,13 @@ std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t const&
 }
 
 }
+
+BOOST_FUSION_ADAPT_STRUCT(
+		roerei::performance::metrics_t,
+		(float, oocover)
+		(float, ooprecision)
+		(float, recall)
+		(float, rank)
+		(float, auc)
+		(size_t, n)
+)

@@ -18,8 +18,10 @@ public:
 	void write_object(const std::string& name, const size_t n);
 	void write_null(const std::string& name);
 
+	void write(const std::string& key, const uint16_t x);
 	void write(const std::string& key, const uint64_t x);
 	void write(const std::string& key, const std::string& x);
+	void write(const std::string& key, const float x);
 
 	virtual void dump(std::function<void(const char*, size_t)> f);
 	virtual void clear();
@@ -112,6 +114,12 @@ void msgpack_serializer::write_null(const std::string& name)
 	pk.pack_nil();
 }
 
+void msgpack_serializer::write(const std::string& key, const uint16_t x)
+{
+	add_node(type_t::non_container, key, 0);
+	pk.pack_uint16(x);
+}
+
 void msgpack_serializer::write(const std::string& key, const uint64_t x)
 {
 	add_node(type_t::non_container, key, 0);
@@ -122,6 +130,12 @@ void msgpack_serializer::write(const std::string& key, const std::string& x)
 {
 	add_node(type_t::non_container, key, 0);
 	write(x);
+}
+
+void msgpack_serializer::write(const std::string& key, const float x)
+{
+	add_node(type_t::non_container, key, 0);
+	pk.pack_float(x);
 }
 
 void msgpack_serializer::dump(std::function<void(const char*, size_t)> f)

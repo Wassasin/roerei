@@ -1,6 +1,6 @@
 #pragma once
 
-#include <roerei/deserialize_common.hpp>
+#include <roerei/serialization/deserialize_common.hpp>
 
 #include <boost/fusion/include/at.hpp>
 #include <boost/fusion/include/for_each.hpp>
@@ -59,6 +59,7 @@ using size_t = typename boost::fusion::result_of::size<T>::type;
 
 deserialize_value_primitive(uint64_t)
 deserialize_value_primitive(std::string)
+deserialize_value_primitive(float)
 deserialize_value_primitive(bool)
 
 /* Generic case */

@@ -37,7 +37,7 @@ namespace roerei
 			{
 				size_t i;
 				{
-					std::unique_lock<std::mutex> _l(*mutex);
+					std::lock_guard<std::mutex> _l(*mutex);
 					if(all_started())
 						return false;
 
@@ -50,7 +50,7 @@ namespace roerei
 				future.get(); // Yield exception
 
 				{
-					std::unique_lock<std::mutex> _l(*mutex);
+					std::lock_guard<std::mutex> _l(*mutex);
 					if(++tasks_done < tasks.size())
 						return !all_started();
 				}

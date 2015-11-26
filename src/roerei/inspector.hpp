@@ -1,7 +1,9 @@
 #pragma once
 
 #include <roerei/dataset.hpp>
-#include <roerei/knn.hpp>
+#include <roerei/dependencies.hpp>
+
+#include <roerei/ml/knn.hpp>
 
 #include <iostream>
 

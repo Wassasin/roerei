@@ -30,6 +30,7 @@ struct serialize_value;
 
 serialize_value_primitive(uint64_t)
 serialize_value_primitive(std::string)
+serialize_value_primitive(float)
 serialize_value_primitive(bool)
 
 /* Generic case */

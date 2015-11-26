@@ -1,10 +1,10 @@
 #pragma once
 
-#include <roerei/sliced_sparse_matrix.hpp>
-#include <roerei/sparse_matrix.hpp>
-#include <roerei/encapsulated_vector.hpp>
+#include <roerei/generic/sliced_sparse_matrix.hpp>
+#include <roerei/generic/sparse_matrix.hpp>
+#include <roerei/generic/encapsulated_vector.hpp>
 
-#include <roerei/common.hpp>
+#include <roerei/generic/common.hpp>
 
 #include <boost/optional.hpp>
 

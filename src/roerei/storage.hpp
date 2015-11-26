@@ -1,15 +1,19 @@
 #pragma once
 
-#include <roerei/serialize_fusion.hpp>
-#include <roerei/deserialize_fusion.hpp>
+#include <roerei/generic/encapsulated_vector.hpp>
 
-#include <roerei/msgpack_serializer.hpp>
-#include <roerei/msgpack_deserializer.hpp>
+#include <roerei/serialization/serialize_fusion.hpp>
+#include <roerei/serialization/deserialize_fusion.hpp>
+
+#include <roerei/serialization/msgpack_serializer.hpp>
+#include <roerei/serialization/msgpack_deserializer.hpp>
+
+#include <roerei/generic/common.hpp>
 
 #include <roerei/summary.hpp>
 #include <roerei/mapping.hpp>
 #include <roerei/dataset.hpp>
-#include <roerei/common.hpp>
+#include <roerei/cv_result.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -30,8 +34,11 @@ public:
 	template<typename F, typename = std::enable_if_t<is_function<F, void(mapping_t&&)>::value>>
 	static void read_mapping(F const& f);
 
-	static void write_dataset(dataset_t const& d);
-	static dataset_t read_dataset();
+	static void write_dataset(std::string const& corpus, dataset_t const& d);
+	static dataset_t read_dataset(std::string const& corpus);
+
+	template<typename F, typename = std::enable_if_t<is_function<F, void(cv_result_t&&)>::value>>
+	static void read_result(F const& f);
 };
 
 namespace detail
@@ -52,8 +59,9 @@ static inline void read_msgpack_lined_file(std::string const& filename, F const&
 
 	while(std::getline(is, tmp))
 	{
-		msgpack_deserializer d;
 		line += tmp;
+
+		msgpack_deserializer d;
 		d.feed(line);
 
 		try
@@ -65,6 +73,23 @@ static inline void read_msgpack_lined_file(std::string const& filename, F const&
 			line += '\n';
 		}
 	}
+}
+
+std::string read_to_string(std::string const& filename)
+{
+	std::ifstream is(filename, std::ios::binary);
+	std::string buf;
+
+	is.seekg(0, std::ios::end);
+	buf.reserve(is.tellg());
+	is.seekg(0, std::ios::beg);
+
+	buf.assign(
+		(std::istreambuf_iterator<char>(is)), // Most Vexing Parse Parenthesis; necessary.
+		std::istreambuf_iterator<char>()
+	);
+
+	return buf;
 }
 
 }
@@ -81,9 +106,10 @@ void storage::read_summaries(F const& f)
 	detail::read_msgpack_lined_file(repo_path, [&](msgpack_deserializer& d) {
 		summary_t s;
 
-		if(4 != d.read_array(__bogus))
+		if(5 != d.read_array(__bogus))
 			throw std::logic_error("Array does not have appropriate size");
 
+		d.read(__bogus, s.corpus);
 		d.read(__bogus, s.file);
 		d.read(__bogus, s.uri);
 
@@ -153,9 +179,9 @@ void storage::read_mapping(F const& f)
 	});
 }
 
-void storage::write_dataset(const dataset_t &d)
+void storage::write_dataset(std::string const& corpus, const dataset_t &d)
 {
-	static std::string const dataset_path = "./data/dataset.msgpack";
+	std::string const dataset_path = std::string("./data/")+corpus+".msgpack";
 
 	msgpack_serializer s;
 	serialize(s, "dataset", d);
@@ -167,29 +193,40 @@ void storage::write_dataset(const dataset_t &d)
 	});
 }
 
-dataset_t storage::read_dataset()
+dataset_t storage::read_dataset(std::string const& corpus)
 {
-	static std::string const dataset_path = "./data/dataset.msgpack";
+	std::string const dataset_path = std::string("./data/")+corpus+".msgpack";
 
 	if(!boost::filesystem::exists(dataset_path))
-		throw std::runtime_error("Dataset does not exist");
-
-	std::ifstream is(dataset_path, std::ios::binary);
-	std::string buf;
-
-	is.seekg(0, std::ios::end);
-	buf.reserve(is.tellg());
-	is.seekg(0, std::ios::beg);
-
-	buf.assign(
-		(std::istreambuf_iterator<char>(is)), // Most Vexing Parse Parenthesis; necessary.
-		std::istreambuf_iterator<char>()
-	);
+		throw std::runtime_error(std::string("Dataset ")+corpus+" does not exist");
 
 	msgpack_deserializer d;
-	d.feed(buf);
+	d.feed(detail::read_to_string(dataset_path));
 
 	return deserialize<dataset_t>(d, "dataset");
+}
+
+template<typename F, typename>
+void storage::read_result(F const& f)
+{
+	std::string const results_path = "./data/results.msgpack";
+
+	if(!boost::filesystem::exists(results_path))
+		return; // Do nothing
+
+	msgpack_deserializer d;
+	d.feed(detail::read_to_string(results_path));
+
+	try
+	{
+		while(true)
+		{
+			f(deserialize<cv_result_t>(d, "cv_result"));
+		}
+	} catch(eob_error)
+	{
+		// Done!
+	}
 }
 
 }

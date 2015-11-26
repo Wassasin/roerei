@@ -1,7 +1,7 @@
 #pragma once
 
-#include <roerei/common.hpp>
-#include <roerei/encapsulated_vector.hpp>
+#include <roerei/generic/common.hpp>
+#include <roerei/generic/encapsulated_vector.hpp>
 
 #include <boost/optional.hpp>
 

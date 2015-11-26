@@ -3,7 +3,7 @@
 #include <roerei/storage.hpp>
 #include <roerei/dataset.hpp>
 
-#include <roerei/create_map.hpp>
+#include <roerei/generic/create_map.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -23,39 +23,35 @@ private:
 		return boost::algorithm::ends_with(u, ".var");
 	}
 
-public:
-	static dataset_t construct_from_repo()
+	static void map_summary_f(summary_t& s, std::map<uri_t, uri_t> const& mapping) {
+		swap_f(s.uri, mapping);
+
+		for(auto& t : s.type_uris)
+			swap_f(t.uri, mapping);
+
+		if(s.body_uris)
+			for(auto& b : *s.body_uris)
+				swap_f(b.uri, mapping);
+	}
+
+	static void swap_f(std::string& str, std::map<uri_t, uri_t> const& mapping) {
+		auto const it = mapping.find(str);
+		if(it != mapping.end())
+			str.assign(it->second); // Copy
+	}
+
+	struct phase1
 	{
-		std::map<uri_t, uri_t> mapping;
-		storage::read_mapping([&](mapping_t&& m) {
-			std::cout << m.src << " -> " << m.dest << std::endl;
-			mapping.emplace(std::make_pair(std::move(m.src), std::move(m.dest)));
-		});
-		auto swap_f([&](std::string& str) {
-			auto const it = mapping.find(str);
-			if(it != mapping.end())
-				str.assign(it->second); // Copy
-		});
-
-		auto map_summary_f([&](summary_t& s) {
-			swap_f(s.uri);
-
-			for(auto& t : s.type_uris)
-				swap_f(t.uri);
-
-			if(s.body_uris)
-				for(auto& b : *s.body_uris)
-					swap_f(b.uri);
-		});
-
 		std::set<uri_t> objects, term_uris, type_uris;
-		storage::read_summaries([&](summary_t&& s) {
+
+		void add(summary_t&& s, std::map<uri_t, uri_t> const& mapping)
+		{
 			if(s.type_uris.empty())
 			{
 				std::cerr << "Ignored " << s.uri << " (empty typeset)" << std::endl;
 				return;
 			}
-			map_summary_f(s);
+			map_summary_f(s, mapping);
 
 			for(auto&& t : s.type_uris)
 			{
@@ -80,13 +76,25 @@ public:
 				if(added_something)
 					objects.emplace(std::move(s.uri));
 			}
-		});
+		}
+	};
 
-		std::set<uri_t> dependencies;
-		std::set_difference(term_uris.begin(), term_uris.end(), type_uris.begin(), type_uris.end(), std::inserter(dependencies, dependencies.begin()));
+	struct phase2
+	{
+		std::set<uri_t> objects, term_uris, type_uris, dependencies;
 
-		storage::read_summaries([&](summary_t&& s) {
-			map_summary_f(s);
+		phase2(phase1&& rhs)
+			: objects(std::move(rhs.objects))
+			, term_uris(std::move(rhs.term_uris))
+			, type_uris(std::move(rhs.type_uris))
+			, dependencies()
+		{
+			std::set_difference(term_uris.begin(), term_uris.end(), type_uris.begin(), type_uris.end(), std::inserter(dependencies, dependencies.begin()));
+		}
+
+		void add(summary_t&& s, std::map<uri_t, uri_t> const& mapping)
+		{
+			map_summary_f(s, mapping);
 
 			auto it = objects.find(s.uri);
 			if(it == objects.end())
@@ -108,25 +116,28 @@ public:
 			// Remove objects without any dependency
 			if(remove_object)
 				objects.erase(s.uri);
-		});
+		}
+	};
 
-		std::cout << "Defined constants: " << objects.size() << std::endl;
-		std::cout << "Term constants: " << term_uris.size() << std::endl;
-		std::cout << "Type constants: " << type_uris.size() << std::endl;
-		std::cout << "Dependencies: " << dependencies.size() << std::endl;
+	struct phase3
+	{
+		dataset_t d;
+		std::map<std::string, object_id_t> objects_map;
+		std::map<std::string, feature_id_t> type_uris_map;
+		std::map<std::string, dependency_id_t> dependency_map;
 
-		dataset_t d(std::move(objects), std::move(type_uris), std::move(dependencies));
-		std::cout << "Initialized dataset" << std::endl;
+		phase3(phase2&& rhs)
+			: d(std::move(rhs.objects), std::move(rhs.type_uris), std::move(rhs.dependencies))
+			, objects_map(create_map(d.objects))
+			, type_uris_map(create_map(d.features))
+			, dependency_map(create_map(d.dependencies))
+		{
+			std::cout << "Loaded maps" << std::endl;
+		}
 
-		auto objects_map(create_map(d.objects));
-		auto type_uris_map(create_map(d.features));
-		auto dependency_map(create_map(d.dependencies));
-
-		std::cout << "Loaded maps" << std::endl;
-
-		size_t fi = 0, ftotal = 0, di = 0, dtotal = 0;
-		storage::read_summaries([&](summary_t&& s) {
-			map_summary_f(s);
+		void add(summary_t&& s, std::map<uri_t, uri_t> const& mapping)
+		{
+			map_summary_f(s, mapping);
 
 			auto it = objects_map.find(s.uri);
 			if(it == objects_map.end())
@@ -144,8 +155,6 @@ public:
 				feature_id_t col = type_uris_map.at(t.uri);
 				assert(t.freq > 0);
 				fv[col] = t.freq;
-				fi++;
-				ftotal += t.freq;
 			}
 
 			if(s.body_uris)
@@ -161,14 +170,56 @@ public:
 
 					assert(b.freq > 0);
 					dv[col] = b.freq;
-					di++;
-					dtotal += b.freq;
 				}
+		}
+
+	};
+
+public:
+	static std::map<std::string, dataset_t> construct_from_repo()
+	{
+		std::map<uri_t, uri_t> mapping;
+		storage::read_mapping([&](mapping_t&& m) {
+			std::cout << m.src << " -> " << m.dest << std::endl;
+			mapping.emplace(std::make_pair(std::move(m.src), std::move(m.dest)));
 		});
-		std::cout << "Loaded dataset" << std::endl;
-		std::cout << "Total features: " << ftotal << " (" << fi << ")" << std::endl;
-		std::cout << "Total dependencies: " << dtotal << " (" << di << ")" << std::endl;
-		return std::move(d);
+
+		std::map<std::string, phase1> p1;
+		storage::read_summaries([&](summary_t&& s) {
+			p1[s.corpus].add(std::move(s), mapping);
+		});
+
+		std::map<std::string, phase2> p2;
+		for(auto&& kvp : p1)
+			p2.emplace(std::move(kvp)); // Non-trivial move-constructor
+
+		storage::read_summaries([&](summary_t&& s) {
+			p2.find(s.corpus)->second.add(std::move(s), mapping);
+		});
+
+		std::map<std::string, phase3> p3;
+		for(auto&& kvp : p2)
+		{
+			std::cout << kvp.first << std::endl;
+			std::cout << "Defined constants: " << kvp.second.objects.size() << std::endl;
+			std::cout << "Term constants: " << kvp.second.term_uris.size() << std::endl;
+			std::cout << "Type constants: " << kvp.second.type_uris.size() << std::endl;
+			std::cout << "Dependencies: " << kvp.second.dependencies.size() << std::endl;
+
+			p3.emplace(std::move(kvp));
+		}
+
+		storage::read_summaries([&](summary_t&& s) {
+			p3.find(s.corpus)->second.add(std::move(s), mapping);
+		});
+
+		std::cout << "Loaded datasets" << std::endl;
+
+		std::map<std::string, dataset_t> result;
+		for(auto&& kvp : p3)
+			result.emplace(kvp.first, std::move(kvp.second.d));
+
+		return result;
 	}
 };
 

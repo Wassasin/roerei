@@ -1,8 +1,8 @@
 #pragma once
 
-#include <roerei/compact_sparse_matrix.hpp>
-#include <roerei/sparse_matrix.hpp>
-#include <roerei/math.hpp>
+#include <roerei/generic/compact_sparse_matrix.hpp>
+#include <roerei/generic/sparse_matrix.hpp>
+#include <roerei/generic/math.hpp>
 
 #include <cmath>
 
