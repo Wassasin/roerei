@@ -59,8 +59,9 @@ static inline void read_msgpack_lined_file(std::string const& filename, F const&
 
 	while(std::getline(is, tmp))
 	{
-		msgpack_deserializer d;
 		line += tmp;
+
+		msgpack_deserializer d;
 		d.feed(line);
 
 		try
@@ -214,9 +215,18 @@ void storage::read_result(F const& f)
 		return; // Do nothing
 
 	msgpack_deserializer d;
-	detail::read_msgpack_lined_file(results_path, [&](msgpack_deserializer& d) {
-		f(deserialize<cv_result_t>(d, "cv_result"));
-	});
+	d.feed(detail::read_to_string(results_path));
+
+	try
+	{
+		while(true)
+		{
+			f(deserialize<cv_result_t>(d, "cv_result"));
+		}
+	} catch(eob_error)
+	{
+		// Done!
+	}
 }
 
 }

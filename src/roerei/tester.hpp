@@ -89,17 +89,39 @@ public:
 
 		nbs.emplace(nb_params_t({10, -15, 20}));
 
-		storage::read_result([&](cv_result_t&& result) {
+		storage::read_result([&](cv_result_t const& result) {
+			if(result.corpus != corpus)
+				return;
+
 			if(result.ml == knn_str)
 				ks.erase(*result.knn_params);
 			else if(result.ml == nb_str)
 				nbs.erase(*result.nb_params);
+			else
+				throw std::runtime_error(std::string("Unknown ml method ") + result.ml);
+
+			std::cerr << "Skipping " << result << std::endl;
 		});
 
 		std::cerr << "Read results" << std::endl;
 
 		auto const d(storage::read_dataset(corpus));
 		cv const c(d, n, k, 1337);
+
+		std::mutex os_mutex;
+		std::ofstream os("./data/results.msgpack", std::ios::app | std::ios::out | std::ios::binary);
+
+		auto yield_f([&](cv_result_t const& result) {
+			std::lock_guard<std::mutex> lock(os_mutex);
+			msgpack_serializer s;
+			serialize(s, "cv_result", result);
+			s.dump([&os](const char* buf, size_t len) {
+				os.write(buf, len);
+				os.flush();
+			});
+
+			std::cout << result << std::endl;
+		});
 
 		multitask m;
 		for(knn_params_t knn_params : ks)
@@ -109,23 +131,23 @@ public:
 					knn<cv::trainset_t const> ml(knn_params.k, trainset, d);
 					return performance::measure(d, test_row.row_i, ml.predict(test_row));
 				},
-				[knn_params](performance::metrics_t const& total_metrics) noexcept {
-					std::cout << "K=" << knn_params.k << " - " << total_metrics << std::endl;
+				[=](performance::metrics_t const& total_metrics) noexcept {
+					yield_f({corpus, knn_str, knn_params, boost::none, n, k, total_metrics});
 				},
 				d, silent
 			);
 		}
 
 		std::shared_ptr<nb_data_t> nb_data;
-		for(nb_params_t const& nb : nbs)
+		for(nb_params_t const& nb_params : nbs)
 		{
 			if(!nb_data)
 				nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
 
 			c.order_async(m,
-				[&d, nb_data, nb](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+				[&d, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
 					naive_bayes<decltype(trainset)> ml(
-						nb.pi, nb.sigma, nb.tau,
+						nb_params.pi, nb_params.sigma, nb_params.tau,
 						d,
 						nb_data->feature_occurance,
 						nb_data->dependants,
@@ -134,8 +156,8 @@ public:
 					);
 					return performance::measure(d, test_row.row_i, ml.predict(test_row));
 				},
-				[](performance::metrics_t const& total_metrics) noexcept {
-					std::cout << total_metrics << std::endl;
+				[=](performance::metrics_t const& total_metrics) noexcept {
+					yield_f({corpus, nb_str, boost::none, nb_params, n, k, total_metrics});
 				},
 				d, silent
 			);

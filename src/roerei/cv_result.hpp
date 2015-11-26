@@ -29,12 +29,22 @@ struct nb_params_t
 
 struct cv_result_t
 {
+	std::string corpus;
 	std::string ml;
 	boost::optional<knn_params_t> knn_params;
 	boost::optional<nb_params_t> nb_params;
 	size_t n, k;
 	performance::metrics_t metrics;
 };
+
+std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
+{
+	if(rhs.ml == "knn")
+		return os << rhs.corpus << ": " << rhs.ml << " K=" << rhs.knn_params->k << " " << rhs.metrics;
+
+	if(rhs.ml == "nb")
+		return os << rhs.corpus << ": " << rhs.ml << " " << rhs.nb_params->pi << " " << rhs.nb_params->sigma << " " << rhs.nb_params->tau << " " << rhs.metrics;
+}
 
 }
 
@@ -52,6 +62,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
 		roerei::cv_result_t,
+		(std::string, corpus)
 		(std::string, ml)
 		(boost::optional<roerei::knn_params_t>, knn_params)
 		(boost::optional<roerei::nb_params_t>, nb_params)

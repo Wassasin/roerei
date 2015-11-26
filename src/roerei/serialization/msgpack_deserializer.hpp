@@ -212,7 +212,6 @@ size_t msgpack_deserializer::read_object(const std::string& name)
 	read_key(name);
 
 	const msgpack::object& obj = read(msgpack::type::MAP);
-
 	if(obj.via.map.size > 0)
 		stack.emplace(&obj, type_t::map, obj.via.map.size*2, 0);
 
