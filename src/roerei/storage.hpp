@@ -1,5 +1,7 @@
 #pragma once
 
+#include <roerei/generic/encapsulated_vector.hpp>
+
 #include <roerei/serialization/serialize_fusion.hpp>
 #include <roerei/serialization/deserialize_fusion.hpp>
 

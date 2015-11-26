@@ -28,6 +28,7 @@ public:
 
 	void read(const std::string& key, uint64_t& x);
 	void read(const std::string& key, std::string& x);
+	void read(const std::string& key, float& x);
 
 	void feed(const std::string& str);
 
@@ -243,6 +244,15 @@ void msgpack_deserializer::read(const std::string& key, std::string& x)
 
 		const msgpack::object& obj = read(msgpack::type::STR);
 		x = std::string(obj.via.str.ptr, obj.via.str.size);
+	});
+}
+
+void msgpack_deserializer::read(const std::string& key, float& x)
+{
+	autorollbackonfailure(stack, [&]() {
+		read_key(key);
+		const msgpack::object& obj = read(msgpack::type::FLOAT);
+		x = obj.via.f64;
 	});
 }
 

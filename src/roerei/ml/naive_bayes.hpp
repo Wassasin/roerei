@@ -18,7 +18,7 @@ namespace roerei
 template<typename MATRIX>
 class naive_bayes
 {
-	static const float pi = 10, sigma = -15, tau = 20;
+	float const pi, sigma, tau;
 
 	dataset_t const& d;
 	encapsulated_vector<feature_id_t, std::vector<object_id_t>> const& feature_occurance;
@@ -50,13 +50,13 @@ private:
 		if(candidates.empty())
 			return -INFINITY;
 
-		size_t P = candidates.size();
+		size_t P = candidates.size() + tau;
 		float log_p = std::log((float)P);
 		float result = log_p;
 
 		for(auto const& kvp_j : test_row)
 		{
-			size_t p_j = 0;
+			size_t p_j = tau;
 			set_smart_intersect(feature_occurance[kvp_j.first], candidates, [&](object_id_t) { p_j++; });
 
 			if(p_j == 0)
@@ -69,8 +69,20 @@ private:
 	}
 
 public:
-	naive_bayes(dataset_t const& _d, decltype(feature_occurance) const& _feature_occurance, dependencies::dependant_matrix_t const& _dependants, std::vector<dependency_id_t> const& _allowed_dependencies, MATRIX const& _trainingset)
-		: d(_d)
+	naive_bayes(
+			float _pi, // default 10
+			float _sigma, // default -15
+			float _tau, // default 20
+			dataset_t const& _d,
+			decltype(feature_occurance) const& _feature_occurance,
+			dependencies::dependant_matrix_t const& _dependants,
+			std::vector<dependency_id_t> const& _allowed_dependencies,
+			MATRIX const& _trainingset
+		)
+		: pi(_pi)
+		, sigma(_sigma)
+		, tau(_tau)
+		, d(_d)
 		, feature_occurance(_feature_occurance)
 		, allowed_dependencies(_allowed_dependencies)
 		, dependants(_dependants)

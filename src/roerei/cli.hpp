@@ -1,15 +1,9 @@
 #pragma once
 
-#include <roerei/ml/knn.hpp>
-#include <roerei/ml/naive_bayes.hpp>
-#include <roerei/ml/cv.hpp>
-
-#include <roerei/generic/multitask.hpp>
 
 #include <roerei/generator.hpp>
-#include <roerei/performance.hpp>
-
 #include <roerei/inspector.hpp>
+#include <roerei/tester.hpp>
 
 #include <iostream>
 #include <boost/program_options.hpp>
@@ -73,7 +67,6 @@ private:
 					<< std::endl
 					<< "Actions:" << std::endl
 					<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
-					<< "  cv             test performance using cross-validation" << std::endl
 					<< "  inspect        inspect all objects" << std::endl
 					<< "  measure        run all scheduled tests and store the results" << std::endl
 					<< std::endl
@@ -115,90 +108,9 @@ public:
 			auto const d(storage::read_dataset(opt.corpus));
 			inspector::iterate_all(d);
 		}
-		else if(opt.action == "cv-knn")
+		else if(opt.action == "measure")
 		{
-			auto const d(storage::read_dataset(opt.corpus));
-			cv const c(d, 10, 3, 1337);
-
-			multitask m;
-			for(size_t k = 60; k < 61; ++k)
-			{
-				c.order_async(m,
-					[k, &d](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-						knn<cv::trainset_t const> ml(k, trainset, d);
-						return performance::measure(d, test_row.row_i, ml.predict(test_row));
-					},
-					[k](performance::metrics_t const& total_metrics) noexcept {
-						std::cout << "K=" << k << " - " << total_metrics << std::endl;
-					},
-					d, opt.silent
-				);
-			}
-
-			m.run(opt.jobs, true); // Blocking
-			std::cerr << "Finished" << std::endl;
-		}
-		else if(opt.action == "cv-nb")
-		{
-			auto const d(storage::read_dataset(opt.corpus));
-			cv const c(d, 10, 3, 1337);
-
-			std::map<object_id_t, dependency_id_t> dependency_revmap(d.create_dependency_revmap());
-			dependencies::dependant_matrix_t dependants(dependencies::create_dependants(d));
-			dependencies::dependant_obj_matrix_t dependants_trans(dependencies::create_obj_dependants(d));
-			dependants_trans.transitive();
-
-			encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
-			d.objects.keys([&](object_id_t i) {
-				std::vector<dependency_id_t> wl, bl;
-				for(object_id_t forbidden : dependants_trans[i])
-				{
-					auto it = dependency_revmap.find(forbidden);
-					if(it == dependency_revmap.end())
-						continue;
-					bl.emplace_back(it->second);
-				}
-
-				std::sort(bl.begin(), bl.end());
-
-				auto it = bl.begin();
-				d.dependencies.keys([&](dependency_id_t j) {
-					it = std::lower_bound(it, bl.end(), j);
-					if(it != bl.end() && *it == j)
-						return;
-
-					wl.emplace_back(j);
-				});
-
-				allowed_dependencies.emplace_back(std::move(wl));
-			});
-
-			encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance(d.features.size());
-			d.feature_matrix.citerate([&](dataset_t::feature_matrix_t::const_row_proxy_t const& row) {
-				for(auto const& kvp : row)
-				{
-					assert(kvp.second > 0);
-					feature_occurance[kvp.first].emplace_back(row.row_i);
-				}
-			});
-
-			multitask m;
-			size_t i = 0;
-			c.order_async(m,
-				[&i, &d, &feature_occurance, &dependants, &allowed_dependencies](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
-					naive_bayes<decltype(trainset)> ml(d, feature_occurance, dependants, allowed_dependencies[test_row.row_i], trainset);
-					return performance::measure(d, test_row.row_i, ml.predict(test_row));
-				},
-				[](performance::metrics_t const& total_metrics) noexcept {
-					std::cout << total_metrics << std::endl;
-				},
-				d, opt.silent
-			);
-
-			std::cerr << "Initialized" << std::endl;
-
-			m.run(opt.jobs, true); // Blocking
-			std::cerr << "Finished" << std::endl;
+			tester::exec(opt.corpus, opt.jobs, opt.silent);
 		}
 		else if(opt.action == "generate")
 		{
