@@ -7,8 +7,3 @@ ocamlfind ocamlc -g -o preloader -linkpkg -syntax camlp4o \
 	-package msgpack -package msgpack.conv -package meta_conv.syntax \
 	prelude.ml acic.ml counter.ml util.ml object.ml storage.ml \
 	interpreter.ml parser.ml preloader.ml
-
-ocamlfind ocamlc -g -o tester -linkpkg -syntax camlp4o \
-	-package str \
-	-package msgpack -package msgpack.conv -package meta_conv.syntax \
-	prelude.ml acic.ml counter.ml util.ml object.ml storage.ml dataset.ml tester.ml

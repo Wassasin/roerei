@@ -5,14 +5,17 @@ let count_all : ((Prelude.uri -> unit) -> unit) -> Object.freq_item list = fun f
     f (fun x -> map := Counter.touch x !map);
     Counter.to_list !map
 
+let repo_merge corpus path =
+    Printf.sprintf "%s:%s" corpus path
+
 let main () =
     let loaded_repo = ref StringSet.empty in
     let loaded_mapping = ref StringSet.empty in
-    
+
     if Storage.repository_exists then (
         Util.print "Repository already exists; loading...";
-        Storage.repository_load (fun (path, _, _, _) ->
-            loaded_repo := StringSet.add path !loaded_repo
+        Storage.repository_load (fun (corpus, path, _, _, _) ->
+            loaded_repo := StringSet.add (repo_merge corpus path) !loaded_repo
         );
         Printf.printf "Ignoring %i entries\n%!" (StringSet.cardinal !loaded_repo)
     ) else ();
@@ -28,8 +31,8 @@ let main () =
     let os_repo = open_out_gen [Open_creat; Open_append; Open_binary] 0o644 Storage.repository_file in
     let os_mapping = open_out_gen [Open_creat; Open_append; Open_binary] 0o644 Storage.mapping_file in
     let yield_obj : Object.summary -> unit = fun summary ->
-        let (path, _, _, _) = summary in
-        loaded_repo := StringSet.add path !loaded_repo;
+        let (corpus, path, _, _, _) = summary in
+        loaded_repo := StringSet.add (repo_merge corpus path) !loaded_repo;
         Printf.fprintf os_repo "%s\n%!" (Msgpack.Serialize.serialize_string (Object.msgpack_of_summary summary))
     in
     let yield_mapping : Object.mapping -> unit = fun mapping ->
@@ -37,8 +40,9 @@ let main () =
         loaded_mapping := StringSet.add path !loaded_mapping;
         Printf.fprintf os_mapping "%s\n%!" (Msgpack.Serialize.serialize_string (Object.msgpack_of_mapping mapping))
     in
-    Util.iter_files_rec "./Coq" (fun path ->
-        let path_loaded_in_repo = StringSet.mem path !loaded_repo in
+    Util.list_dir "./repo" (fun corpus ->
+    Util.iter_files_rec (Filename.concat "./repo/" corpus) (fun path ->
+        let path_loaded_in_repo = StringSet.mem (repo_merge corpus path) !loaded_repo in
         let path_loaded_in_mapping = StringSet.mem path !loaded_mapping in
         if Filename.check_suffix path ".con.xml.gz" then (
             if path_loaded_in_repo then
@@ -54,9 +58,9 @@ let main () =
                     let (body_id, body_uri, body_aconstr) = Parser.parse_constantbody body_path in
                     assert (type_id = body_id);
                     let body_uris = count_all (fun f -> Interpreter.fetch_uris f body_aconstr) in
-                    yield_obj (path, types_uri, type_uris, (Some body_uris))
+                    yield_obj (corpus, path, types_uri, type_uris, (Some body_uris))
                 else
-                    yield_obj (path, types_uri, type_uris, None)
+                    yield_obj (corpus, path, types_uri, type_uris, None)
             )
         ) else if Filename.check_suffix path ".ind.xml.gz" then (
             if path_loaded_in_repo && path_loaded_in_mapping then
@@ -68,7 +72,7 @@ let main () =
                 let ind = Parser.parse_inductivedef path in
                 if not path_loaded_in_repo then (
                     let type_uris = count_all (fun f -> Interpreter.fetch_type_uris f ind) in
-                    yield_obj (path, types_uri, type_uris, None)
+                    yield_obj (corpus, path, types_uri, type_uris, None)
                 );
                 if not path_loaded_in_mapping then (
                     Interpreter.fetch_constructors (fun src_f dest_f -> yield_mapping (path, (src_f types_uri), (dest_f types_uri))) ind
@@ -81,7 +85,7 @@ let main () =
         ] then () (* Irrelevant *)
         else
             Printf.eprintf "UNKNOWN %s\n%!" path
-    );
+    ));
     close_out os_mapping;
     close_out os_repo
 let () = main ()

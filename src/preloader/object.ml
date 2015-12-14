@@ -5,7 +5,7 @@ type uri = string with conv(msgpack) (* Redef of Prelude.uri *)
 type freq_item =
     uri * int with conv(msgpack)
 
-type summary = string * uri * freq_item list * freq_item list option
+type summary = string * string * uri * freq_item list * freq_item list option
     with conv(msgpack)
 
 type mapping = string * uri * uri
@@ -36,9 +36,9 @@ let print_frequency : freq_item list -> unit = fun xs ->
     List.iter (fun (str, c) -> Printf.printf "%s: %i\n%!" str c) xs_sorted 
 
 let print_summary : summary -> unit =
-    fun (file_path, obj_uri, obj_type_uris, obj_value_uris_opt) ->
+    fun (corpus, file_path, obj_uri, obj_type_uris, obj_value_uris_opt) ->
         Util.print "for";
-        Printf.printf "%s (in %s)\n%!" obj_uri file_path;
+        Printf.printf "%s (in %s:%s)\n%!" obj_uri corpus file_path;
         Util.print "types";
         print_frequency obj_type_uris;
         match obj_value_uris_opt with
