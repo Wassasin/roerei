@@ -87,7 +87,14 @@ public:
 		for(size_t k = 3; k < 120; ++k)
 			ks.emplace(knn_params_t({k}));
 
-		nbs.emplace(nb_params_t({10, -15, 20}));
+		for(size_t pi = 1; pi < 20; ++pi)
+			nbs.emplace(nb_params_t({pi, -15, 0}));
+
+		for(float sigma = -20; sigma < 0; ++sigma)
+			nbs.emplace(nb_params_t({10, sigma, 0}));
+
+		for(size_t tau = 0; tau < 20; ++tau)
+			nbs.emplace(nb_params_t({10, -15, tau}));
 
 		storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)

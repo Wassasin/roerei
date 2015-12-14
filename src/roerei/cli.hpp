@@ -69,6 +69,7 @@ private:
 					<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
 					<< "  inspect        inspect all objects" << std::endl
 					<< "  measure        run all scheduled tests and store the results" << std::endl
+					<< "  report         report on all results" << std::endl
 					<< std::endl
 					<< o_general;
 
@@ -110,7 +111,9 @@ public:
 		}
 		else if(opt.action == "measure")
 		{
-			tester::exec(opt.corpus, opt.jobs, opt.silent);
+			auto corpii = {"Coq", "CoRN", "ch2o", "mathcomp", "MathClasses"};
+			for(auto corpus : corpii)
+				tester::exec(corpus, opt.jobs, opt.silent);
 		}
 		else if(opt.action == "generate")
 		{
@@ -120,6 +123,12 @@ public:
 				storage::write_dataset(kvp.first, kvp.second);
 				std::cerr << "Written " << kvp.first << std::endl;
 			}
+		}
+		else if(opt.action == "report")
+		{
+			storage::read_result([](cv_result_t const& result) {
+				std::cout << result << std::endl;
+			});
 		}
 		else
 		{

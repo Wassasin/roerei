@@ -23,7 +23,7 @@ struct nb_params_t
 
 	bool operator<(nb_params_t const rhs) const
 	{
-		return pi < rhs.pi && sigma < rhs.sigma && tau < rhs.tau;
+		return pi < rhs.pi || sigma < rhs.sigma || tau < rhs.tau;
 	}
 };
 
