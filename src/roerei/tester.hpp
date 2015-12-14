@@ -7,6 +7,8 @@
 #include <roerei/ml/knn.hpp>
 #include <roerei/ml/naive_bayes.hpp>
 
+#include <roerei/ml/posetcons_pessimistic.hpp>
+
 #include <roerei/generic/encapsulated_vector.hpp>
 
 namespace roerei
@@ -113,6 +115,7 @@ public:
 		std::cerr << "Read results" << std::endl;
 
 		auto const d(storage::read_dataset(corpus));
+		posetcons_pessimistic pc(d);
 		cv const c(d, n, k, 1337);
 
 		std::mutex os_mutex;
@@ -134,8 +137,9 @@ public:
 		for(knn_params_t knn_params : ks)
 		{
 			c.order_async(m,
-				[knn_params, &d](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-					knn<cv::trainset_t const> ml(knn_params.k, trainset, d);
+				[knn_params, &d, &pc](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+					auto const trainset_sane(pc.exec(trainset, test_row));
+					knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, d);
 					return performance::measure(d, test_row.row_i, ml.predict(test_row));
 				},
 				[=](performance::metrics_t const& total_metrics) noexcept {
@@ -152,14 +156,15 @@ public:
 				nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
 
 			c.order_async(m,
-				[&d, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
-					naive_bayes<decltype(trainset)> ml(
+				[&d, &pc, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+				auto const trainset_sane(pc.exec(trainset, test_row));
+					naive_bayes<decltype(trainset_sane)> ml(
 						nb_params.pi, nb_params.sigma, nb_params.tau,
 						d,
 						nb_data->feature_occurance,
 						nb_data->dependants,
 						nb_data->allowed_dependencies[test_row.row_i],
-						trainset
+						trainset_sane
 					);
 					return performance::measure(d, test_row.row_i, ml.predict(test_row));
 				},
