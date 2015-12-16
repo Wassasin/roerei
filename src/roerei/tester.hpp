@@ -8,6 +8,8 @@
 #include <roerei/ml/naive_bayes.hpp>
 
 #include <roerei/ml/posetcons_pessimistic.hpp>
+#include <roerei/ml/posetcons_optimistic.hpp>
+#include <roerei/ml/posetcons_canonical.hpp>
 
 #include <roerei/generic/encapsulated_vector.hpp>
 

@@ -14,6 +14,7 @@ private:
 
 public:
 	encapsulated_vector() = default;
+	encapsulated_vector(encapsulated_vector const&) = default;
 	encapsulated_vector(encapsulated_vector&&) = default;
 	encapsulated_vector(size_t n)
 		: buf(n)

@@ -79,6 +79,16 @@ public:
 		for(size_t i = 0; i < m; ++i)
 			transitive_helper(i, visited);
 	}
+
+	sparse_unit_matrix_t<N, M> transpose() const
+	{
+		sparse_unit_matrix_t<N, M> result(n, m);
+		data.iterate([&result](M i, std::set<N> const& js) {
+			for(N j : js)
+				result.data[j].insert(i);
+		});
+		return result;
+	}
 };
 
 }
