@@ -88,7 +88,8 @@ public:
 		std::set<knn_params_t> ks;
 		std::set<nb_params_t> nbs;
 
-		for(size_t k = 3; k < 120; ++k)
+		ks.emplace(knn_params_t({55}));
+		/*for(size_t k = 3; k < 120; ++k)
 			ks.emplace(knn_params_t({k}));
 
 		for(size_t pi = 1; pi < 20; ++pi)
@@ -98,9 +99,9 @@ public:
 			nbs.emplace(nb_params_t({10, sigma, 0}));
 
 		for(size_t tau = 0; tau < 20; ++tau)
-			nbs.emplace(nb_params_t({10, -15, tau}));
+			nbs.emplace(nb_params_t({10, -15, tau}));*/
 
-		storage::read_result([&](cv_result_t const& result) {
+		/*storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)
 				return;
 
@@ -112,12 +113,13 @@ public:
 				throw std::runtime_error(std::string("Unknown ml method ") + result.ml);
 
 			std::cerr << "Skipping " << result << std::endl;
-		});
+		});*/
 
 		std::cerr << "Read results" << std::endl;
 
-		auto const d(storage::read_dataset(corpus));
-		posetcons_pessimistic pc(d);
+		auto const d_orig(storage::read_dataset(corpus));
+		auto const d(posetcons_canonical::consistentize(d_orig, 1337));
+		posetcons_canonical pc;
 		cv const c(d, n, k, 1337);
 
 		std::mutex os_mutex;
@@ -127,10 +129,10 @@ public:
 			std::lock_guard<std::mutex> lock(os_mutex);
 			msgpack_serializer s;
 			serialize(s, "cv_result", result);
-			s.dump([&os](const char* buf, size_t len) {
-				os.write(buf, len);
-				os.flush();
-			});
+			//s.dump([&os](const char* buf, size_t len) {
+			//	os.write(buf, len);
+			//	os.flush();
+			//});
 
 			std::cout << result << std::endl;
 		});

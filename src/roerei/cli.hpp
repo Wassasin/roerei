@@ -8,6 +8,9 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+
 namespace roerei
 {
 
@@ -17,7 +20,7 @@ private:
 	struct cli_options
 	{
 		std::string action;
-		std::string corpus;
+		std::string corpii;
 		bool silent = false;
 		size_t jobs = 1;
 	};
@@ -28,7 +31,7 @@ private:
 		o_general.add_options()
 				("help,h", "display this message")
 				("silent,s", "do not print progress")
-				("corpus,c", boost::program_options::value(&opt.corpus), "select which corpus to sample or generate (default: Coq)")
+				("corpii,c", boost::program_options::value(&opt.corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
@@ -85,9 +88,9 @@ private:
 			return EXIT_FAILURE;
 		}
 
-		if(!vm.count("corpus"))
+		if(!vm.count("corpii"))
 		{
-			opt.corpus = "Coq";
+			opt.corpii = "all";
 		}
 
 		return EXIT_SUCCESS;
@@ -104,15 +107,24 @@ public:
 		if(result != EXIT_SUCCESS)
 			return result;
 
+		std::vector<std::string> corpii;
+
+		if(opt.corpii == "all")
+			corpii = {"Coq", "CoRN", "ch2o", "mathcomp", "MathClasses"}; // TODO automate
+		else
+			boost::algorithm::split(corpii, opt.corpii, boost::algorithm::is_any_of(","));
+
 		if(opt.action == "inspect")
 		{
-			auto const d(storage::read_dataset(opt.corpus));
-			inspector::iterate_all(d);
+			for(auto&& corpus : corpii)
+			{
+				auto const d(storage::read_dataset(corpus));
+				inspector::iterate_all(d);
+			}
 		}
 		else if(opt.action == "measure")
 		{
-			auto corpii = {"Coq", "CoRN", "ch2o", "mathcomp", "MathClasses"};
-			for(auto corpus : corpii)
+			for(auto&& corpus : corpii)
 				tester::exec(corpus, opt.jobs, opt.silent);
 		}
 		else if(opt.action == "generate")
@@ -126,9 +138,28 @@ public:
 		}
 		else if(opt.action == "report")
 		{
-			storage::read_result([](cv_result_t const& result) {
+			storage::read_result([&corpii](cv_result_t const& result) {
+				if(!std::any_of(corpii.begin(), corpii.end(), [&result](std::string const& y) {
+					return y == result.corpus;
+				}))
+					return;
+
 				std::cout << result << std::endl;
 			});
+		}
+		else if(opt.action == "test")
+		{
+			// Does consistensizing change order?
+			for(auto&& corpus : corpii)
+			{
+				auto const d(storage::read_dataset(corpus));
+				auto const d_new(posetcons_canonical::consistentize(d));
+
+				if(d.objects == d_new.objects)
+					std::cerr << "Nothing changed" << std::endl;
+			}
+
+			// Is a consistent dataset truly consistent?
 		}
 		else
 		{

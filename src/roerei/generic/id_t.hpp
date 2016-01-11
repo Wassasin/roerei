@@ -26,6 +26,11 @@ public:
 	{
 		return id < rhs.id;
 	}
+
+	bool operator>=(id_t const rhs) const
+	{
+		return !operator<(rhs);
+	}
 };
 
 struct object_id_t : public id_t

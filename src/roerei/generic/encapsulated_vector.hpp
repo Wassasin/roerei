@@ -83,6 +83,11 @@ public:
 	{
 		return buf.end();
 	}
+
+	bool operator==(encapsulated_vector<ID, T> const& rhs) const
+	{
+		return buf == rhs.buf;
+	}
 };
 
 }

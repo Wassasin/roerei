@@ -2,6 +2,7 @@
 
 #include <roerei/dependencies.hpp>
 #include <roerei/dataset.hpp>
+#include <roerei/generic/split_sparse_matrix.hpp>
 
 #include <algorithm>
 
@@ -62,6 +63,12 @@ public:
 			std::move(feature_matrix),
 			std::move(dependency_matrix)
 		);
+	}
+
+	template<typename TRAINSET, typename TESTROW>
+	split_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
+	{
+		return split_sparse_matrix_t<TRAINSET>(train_m, test_row.row_i);
 	}
 };
 
