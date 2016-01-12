@@ -8,6 +8,6 @@ pushd build
 
 ln -s ../data .
 
-CC="clang" CXX="clang++" cmake ..
+CC="clang" CXX="clang++" cmake -DCMAKE_BUILD_TYPE=RELEASE ..
 popd
 
