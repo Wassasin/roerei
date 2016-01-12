@@ -36,7 +36,7 @@ public:
 	{}
 
 	template<typename TRAINSET, typename TESTROW>
-	bl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
+	bl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row) const
 	{
 		return bl_sparse_matrix_t<TRAINSET>(train_m, dependants_real[test_row.row_i]);
 	}

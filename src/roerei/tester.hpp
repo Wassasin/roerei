@@ -80,7 +80,7 @@ private:
 	}
 
 public:
-	inline static void exec(std::string const& corpus, size_t jobs, bool silent=false)
+	inline static void exec(std::string const& corpus, std::string const& strat, size_t jobs, bool silent=false)
 	{
 		std::string const knn_str = "knn", nb_str = "nb";
 		size_t const n = 10, k = 3;
@@ -89,6 +89,13 @@ public:
 		std::set<nb_params_t> nbs;
 
 		ks.emplace(knn_params_t({55}));
+
+		for(size_t k = 3; k < 10; ++k)
+			ks.emplace(knn_params_t({k}));
+
+		for(size_t k = 10; k < 130; k+=10)
+			ks.emplace(knn_params_t({k}));
+
 		/*for(size_t k = 3; k < 120; ++k)
 			ks.emplace(knn_params_t({k}));
 
@@ -101,8 +108,13 @@ public:
 		for(size_t tau = 0; tau < 20; ++tau)
 			nbs.emplace(nb_params_t({10, -15, tau}));*/
 
-		/*storage::read_result([&](cv_result_t const& result) {
+		nbs.emplace(nb_params_t({10, -15, 0}));
+
+		storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)
+				return;
+
+			if(result.strat != strat)
 				return;
 
 			if(result.ml == knn_str)
@@ -113,13 +125,12 @@ public:
 				throw std::runtime_error(std::string("Unknown ml method ") + result.ml);
 
 			std::cerr << "Skipping " << result << std::endl;
-		});*/
+		});
 
 		std::cerr << "Read results" << std::endl;
 
 		auto const d_orig(storage::read_dataset(corpus));
 		auto const d(posetcons_canonical::consistentize(d_orig, 1337));
-		posetcons_canonical pc;
 		cv const c(d, n, k, 1337);
 
 		std::mutex os_mutex;
@@ -129,55 +140,79 @@ public:
 			std::lock_guard<std::mutex> lock(os_mutex);
 			msgpack_serializer s;
 			serialize(s, "cv_result", result);
-			//s.dump([&os](const char* buf, size_t len) {
-			//	os.write(buf, len);
-			//	os.flush();
-			//});
+			s.dump([&os](const char* buf, size_t len) {
+				os.write(buf, len);
+				os.flush();
+			});
 
 			std::cout << result << std::endl;
 		});
 
 		multitask m;
-		for(knn_params_t knn_params : ks)
-		{
-			c.order_async(m,
-				[knn_params, &d, &pc](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-					auto const trainset_sane(pc.exec(trainset, test_row));
-					knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, d);
-					return performance::measure(d, test_row.row_i, ml.predict(test_row));
-				},
-				[=](performance::metrics_t const& total_metrics) noexcept {
-					yield_f({corpus, knn_str, knn_params, boost::none, n, k, total_metrics});
-				},
-				d, silent
-			);
-		}
 
-		std::shared_ptr<nb_data_t> nb_data;
-		for(nb_params_t const& nb_params : nbs)
-		{
-			if(!nb_data)
-				nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
+		auto schedule_f([&](auto gen_trainset_sane_f) {
+			for(knn_params_t knn_params : ks)
+			{
+				c.order_async(m,
+					[&d, gen_trainset_sane_f, knn_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+						knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, d);
+						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+					},
+					[=](performance::metrics_t const& total_metrics) noexcept {
+						yield_f({corpus, strat, knn_str, knn_params, boost::none, n, k, total_metrics});
+					},
+					d, silent
+				);
+			}
 
-			c.order_async(m,
-				[&d, &pc, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
-				auto const trainset_sane(pc.exec(trainset, test_row));
-					naive_bayes<decltype(trainset_sane)> ml(
-						nb_params.pi, nb_params.sigma, nb_params.tau,
-						d,
-						nb_data->feature_occurance,
-						nb_data->dependants,
-						nb_data->allowed_dependencies[test_row.row_i],
-						trainset_sane
-					);
-					return performance::measure(d, test_row.row_i, ml.predict(test_row));
-				},
-				[=](performance::metrics_t const& total_metrics) noexcept {
-					yield_f({corpus, nb_str, boost::none, nb_params, n, k, total_metrics});
-				},
-				d, silent
-			);
+			std::shared_ptr<nb_data_t> nb_data;
+			for(nb_params_t const& nb_params : nbs)
+			{
+				if(!nb_data)
+					nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
+
+				c.order_async(m,
+					[&d, gen_trainset_sane_f, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+						naive_bayes<decltype(trainset_sane)> ml(
+							nb_params.pi, nb_params.sigma, nb_params.tau,
+							d,
+							nb_data->feature_occurance,
+							nb_data->dependants,
+							nb_data->allowed_dependencies[test_row.row_i],
+							trainset_sane
+						);
+						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+					},
+					[=](performance::metrics_t const& total_metrics) noexcept {
+						yield_f({corpus, strat, nb_str, boost::none, nb_params, n, k, total_metrics});
+					},
+					d, silent
+				);
+			}
+		});
+
+		if(strat == "canonical")
+			schedule_f([](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+				return posetcons_canonical::exec(trainset, test_row);
+			});
+		else if(strat == "pessimistic")
+		{
+			posetcons_pessimistic pc(d);
+			schedule_f([pc=std::move(pc)](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+				return pc.exec(trainset, test_row);
+			});
 		}
+		else if(strat == "optimistic")
+		{
+			posetcons_optimistic pc(d);
+			schedule_f([pc=std::move(pc)](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+				return pc.exec(trainset, test_row);
+			});
+		}
+		else
+			throw std::runtime_error("Unknown strat");
 
 		m.run(jobs, true); // Blocking
 		std::cerr << "Finished" << std::endl;

@@ -35,7 +35,7 @@ public:
 	{}
 
 	template<typename TRAINSET, typename TESTROW>
-	wl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
+	wl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row) const
 	{
 		return wl_sparse_matrix_t<TRAINSET>(train_m, parents_real[test_row.row_i]);
 	}

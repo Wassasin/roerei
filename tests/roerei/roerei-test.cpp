@@ -1,3 +1,6 @@
+#include <initializer_list> // force libstdc++ to include its config
+#undef _GLIBCXX_HAVE_GETS // correct broken config
+
 #include <roerei/generic/sparse_matrix.hpp>
 #include <roerei/generic/sliced_sparse_matrix.hpp>
 #include <roerei/generic/compact_sparse_matrix.hpp>

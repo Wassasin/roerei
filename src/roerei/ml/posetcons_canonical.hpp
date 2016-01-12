@@ -66,7 +66,7 @@ public:
 	}
 
 	template<typename TRAINSET, typename TESTROW>
-	split_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
+	static split_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
 	{
 		return split_sparse_matrix_t<TRAINSET>(train_m, test_row.row_i);
 	}

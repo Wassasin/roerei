@@ -21,6 +21,7 @@ private:
 	{
 		std::string action;
 		std::string corpii;
+		std::string strats;
 		bool silent = false;
 		size_t jobs = 1;
 	};
@@ -32,6 +33,7 @@ private:
 				("help,h", "display this message")
 				("silent,s", "do not print progress")
 				("corpii,c", boost::program_options::value(&opt.corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
+				("strats,r", boost::program_options::value(&opt.strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
@@ -93,6 +95,11 @@ private:
 			opt.corpii = "all";
 		}
 
+		if(!vm.count("strats"))
+		{
+			opt.strats = "all";
+		}
+
 		return EXIT_SUCCESS;
 	}
 
@@ -108,11 +115,16 @@ public:
 			return result;
 
 		std::vector<std::string> corpii;
-
 		if(opt.corpii == "all")
 			corpii = {"Coq", "CoRN", "ch2o", "mathcomp", "MathClasses"}; // TODO automate
 		else
 			boost::algorithm::split(corpii, opt.corpii, boost::algorithm::is_any_of(","));
+
+		std::vector<std::string> strats;
+		if(opt.strats == "all")
+			strats = {"canonical", "optimistic", "pessimistic"};
+		else
+			boost::algorithm::split(strats, opt.strats, boost::algorithm::is_any_of(","));
 
 		if(opt.action == "inspect")
 		{
@@ -125,7 +137,8 @@ public:
 		else if(opt.action == "measure")
 		{
 			for(auto&& corpus : corpii)
-				tester::exec(corpus, opt.jobs, opt.silent);
+				for(auto&& strat : strats)
+					tester::exec(corpus, strat, opt.jobs, opt.silent);
 		}
 		else if(opt.action == "generate")
 		{
@@ -149,17 +162,22 @@ public:
 		}
 		else if(opt.action == "test")
 		{
-			// Does consistensizing change order?
 			for(auto&& corpus : corpii)
 			{
 				auto const d(storage::read_dataset(corpus));
 				auto const d_new(posetcons_canonical::consistentize(d));
 
+				// Does consistensizing change order?
 				if(d.objects == d_new.objects)
-					std::cerr << "Nothing changed" << std::endl;
-			}
+					std::cerr << "<Notice> Nothing changed" << std::endl;
 
-			// Is a consistent dataset truly consistent?
+				// Is a consistent dataset truly consistent?
+				auto dependants_trans(dependencies::create_obj_dependants(d));
+				dependants_trans.transitive();
+
+				posetcons_canonical pc;
+
+			}
 		}
 		else
 		{
