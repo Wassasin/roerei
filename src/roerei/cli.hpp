@@ -116,7 +116,7 @@ public:
 
 		std::vector<std::string> corpii;
 		if(opt.corpii == "all")
-			corpii = {"Coq", "CoRN", "ch2o", "mathcomp", "MathClasses"}; // TODO automate
+			corpii = {"Coq", "CoRN", "CoRN-legacy", "ch2o", "mathcomp", "MathClasses"}; // TODO automate
 		else
 			boost::algorithm::split(corpii, opt.corpii, boost::algorithm::is_any_of(","));
 

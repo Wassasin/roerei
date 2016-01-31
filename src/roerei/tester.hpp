@@ -83,7 +83,7 @@ public:
 	inline static void exec(std::string const& corpus, std::string const& strat, size_t jobs, bool silent=false)
 	{
 		std::string const knn_str = "knn", nb_str = "nb";
-		size_t const n = 10, k = 3;
+		size_t const n = 10, k = 1;
 
 		std::set<knn_params_t> ks;
 		std::set<nb_params_t> nbs;
@@ -115,6 +115,12 @@ public:
 				return;
 
 			if(result.strat != strat)
+				return;
+
+			if(n != result.n)
+				return;
+
+			if(k != result.k)
 				return;
 
 			if(result.ml == knn_str)
