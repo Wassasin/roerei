@@ -5,6 +5,7 @@
 
 #include <roerei/ml/cv.hpp>
 #include <roerei/ml/knn.hpp>
+#include <roerei/ml/knn_adaptive.hpp>
 #include <roerei/ml/naive_bayes.hpp>
 
 #include <roerei/ml/posetcons_pessimistic.hpp>
@@ -80,9 +81,9 @@ private:
 	}
 
 public:
-	inline static void exec(std::string const& corpus, std::string const& strat, size_t jobs, bool silent=false)
+	inline static void exec(std::string const& corpus, std::string const& strat, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
 	{
-		std::string const knn_str = "knn", nb_str = "nb";
+		std::string const knn_str = "knn", knn_adaptive_str = "knn_adaptive", nb_str = "nb";
 		size_t const n = 10, k = 1;
 
 		std::set<knn_params_t> ks;
@@ -109,6 +110,7 @@ public:
 			nbs.emplace(nb_params_t({10, -15, tau}));*/
 
 		nbs.emplace(nb_params_t({10, -15, 0}));
+		bool ka = true;
 
 		storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)
@@ -127,6 +129,8 @@ public:
 				ks.erase(*result.knn_params);
 			else if(result.ml == nb_str)
 				nbs.erase(*result.nb_params);
+			else if(result.ml == knn_adaptive_str)
+				ka = false;
 			else
 				throw std::runtime_error(std::string("Unknown ml method ") + result.ml);
 
@@ -136,8 +140,8 @@ public:
 		std::cerr << "Read results" << std::endl;
 
 		auto const d_orig(storage::read_dataset(corpus));
-		auto const d(posetcons_canonical::consistentize(d_orig, 1337));
-		cv const c(d, n, k, 1337);
+		auto const d(posetcons_canonical::consistentize(d_orig, seed));
+		cv const c(d, n, k, seed);
 
 		std::mutex os_mutex;
 		std::ofstream os("./data/results.msgpack", std::ios::app | std::ios::out | std::ios::binary);
@@ -167,6 +171,21 @@ public:
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
 						yield_f({corpus, strat, knn_str, knn_params, boost::none, n, k, total_metrics});
+					},
+					d, silent
+				);
+			}
+
+			if(ka)
+			{
+				c.order_async(m,
+					[&d, gen_trainset_sane_f](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+						knn_adaptive<decltype(trainset_sane)> ml(trainset_sane, d);
+						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+					},
+					[=](performance::metrics_t const& total_metrics) noexcept {
+						yield_f({corpus, strat, knn_adaptive_str, boost::none, boost::none, n, k, total_metrics});
 					},
 					d, silent
 				);
