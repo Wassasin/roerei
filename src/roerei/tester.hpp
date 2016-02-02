@@ -81,36 +81,45 @@ private:
 	}
 
 public:
-	inline static void exec(std::string const& corpus, std::string const& strat, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
+	inline static void exec(std::string const& corpus, std::string const& strat, std::string const& method, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
 	{
 		std::string const knn_str = "knn", knn_adaptive_str = "knn_adaptive", nb_str = "nb";
 		size_t const n = 10, k = 1;
 
 		std::set<knn_params_t> ks;
 		std::set<nb_params_t> nbs;
+		bool ka = false;
 
-		ks.emplace(knn_params_t({55}));
+		if(method == knn_str)
+		{
+			ks.emplace(knn_params_t({55}));
 
-		for(size_t k = 3; k < 10; ++k)
-			ks.emplace(knn_params_t({k}));
+			for(size_t k = 3; k < 10; ++k)
+				ks.emplace(knn_params_t({k}));
 
-		for(size_t k = 10; k < 130; k+=10)
-			ks.emplace(knn_params_t({k}));
+			for(size_t k = 10; k < 130; k+=10)
+				ks.emplace(knn_params_t({k}));
 
-		/*for(size_t k = 3; k < 120; ++k)
-			ks.emplace(knn_params_t({k}));
+			/*for(size_t k = 3; k < 120; ++k)
+				ks.emplace(knn_params_t({k}));*/
+		}
 
-		for(size_t pi = 1; pi < 20; ++pi)
-			nbs.emplace(nb_params_t({pi, -15, 0}));
+		if(method == nb_str)
+		{
+			/*for(size_t pi = 1; pi < 20; ++pi)
+				nbs.emplace(nb_params_t({pi, -15, 0}));
 
-		for(float sigma = -20; sigma < 0; ++sigma)
-			nbs.emplace(nb_params_t({10, sigma, 0}));
+			for(float sigma = -20; sigma < 0; ++sigma)
+				nbs.emplace(nb_params_t({10, sigma, 0}));
 
-		for(size_t tau = 0; tau < 20; ++tau)
-			nbs.emplace(nb_params_t({10, -15, tau}));*/
+			for(size_t tau = 0; tau < 20; ++tau)
+				nbs.emplace(nb_params_t({10, -15, tau}));*/
 
-		nbs.emplace(nb_params_t({10, -15, 0}));
-		bool ka = true;
+			nbs.emplace(nb_params_t({10, -15, 0}));
+		}
+
+		if(method == knn_adaptive_str)
+			ka = true;
 
 		storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)

@@ -21,6 +21,7 @@ private:
 	{
 		std::string action;
 		std::string corpii;
+		std::string methods;
 		std::string strats;
 		bool silent = false;
 		size_t jobs = 1;
@@ -33,6 +34,7 @@ private:
 				("help,h", "display this message")
 				("silent,s", "do not print progress")
 				("corpii,c", boost::program_options::value(&opt.corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
+				("methods,m", boost::program_options::value(&opt.methods), "select which methods to use, possibly comma separated (default: all)")
 				("strats,r", boost::program_options::value(&opt.strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
@@ -95,6 +97,11 @@ private:
 			opt.corpii = "all";
 		}
 
+		if(!vm.count("methods"))
+		{
+			opt.methods = "all";
+		}
+
 		if(!vm.count("strats"))
 		{
 			opt.strats = "all";
@@ -120,6 +127,12 @@ public:
 		else
 			boost::algorithm::split(corpii, opt.corpii, boost::algorithm::is_any_of(","));
 
+		std::vector<std::string> methods;
+		if(opt.methods == "all")
+			methods = {"knn", "knn_adaptive", "nb"};
+		else
+			boost::algorithm::split(methods, opt.methods, boost::algorithm::is_any_of(","));
+
 		std::vector<std::string> strats;
 		if(opt.strats == "all")
 			strats = {"canonical", "optimistic", "pessimistic"};
@@ -138,7 +151,10 @@ public:
 		{
 			for(auto&& corpus : corpii)
 				for(auto&& strat : strats)
-					tester::exec(corpus, strat, opt.jobs, opt.silent);
+					for(auto&& method : methods)
+					{
+						tester::exec(corpus, strat, method, opt.jobs, opt.silent);
+					}
 		}
 		else if(opt.action == "generate")
 		{
