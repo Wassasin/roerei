@@ -4,6 +4,7 @@
 #include <roerei/dependencies.hpp>
 
 #include <roerei/ml/knn.hpp>
+#include <roerei/ml/knn_adaptive.hpp>
 
 #include <iostream>
 
@@ -25,7 +26,7 @@ private:
 	}
 
 public:
-	static void iterate_all(dataset_t const& d)
+	static void iterate_all(std::string const& method, dataset_t const& d)
 	{
 		auto const dependants(dependencies::create_obj_dependants(d));
 		d.objects.keys([&](object_id_t i) {
@@ -35,8 +36,20 @@ public:
 				feature_matrix.try_remove_key(j);
 			});
 
-			knn<decltype(feature_matrix)> c(5, feature_matrix, d);
-			performance::result_t result(performance::measure(d, i, c.predict(d.feature_matrix[i])));
+			performance::result_t result = ([&]() {
+				if(method == "knn")
+				{
+					knn<decltype(feature_matrix)> ml(5, feature_matrix, d);
+					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
+				}
+				else if(method == "knn_adaptive")
+				{
+					knn_adaptive<decltype(feature_matrix)> ml(feature_matrix, d);
+					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
+				}
+				else
+					throw std::runtime_error("Unknown method");
+			})();
 
 			std::cout << i.unseal() << " " << d.objects[i] << " ";
 			print(d.feature_matrix[i]);

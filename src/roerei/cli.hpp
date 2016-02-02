@@ -142,10 +142,11 @@ public:
 		if(opt.action == "inspect")
 		{
 			for(auto&& corpus : corpii)
-			{
-				auto const d(storage::read_dataset(corpus));
-				inspector::iterate_all(d);
-			}
+				for(auto&& method : methods)
+				{
+					auto const d(storage::read_dataset(corpus));
+					inspector::iterate_all(method, d);
+				}
 		}
 		else if(opt.action == "measure")
 		{

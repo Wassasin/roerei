@@ -43,6 +43,9 @@ std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 	if(rhs.ml == "knn")
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " K=" << rhs.knn_params->k << " " << rhs.metrics;
 
+	if(rhs.ml == "knn_adaptive")
+		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " " << rhs.metrics;
+
 	if(rhs.ml == "nb")
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " " << rhs.nb_params->pi << " " << rhs.nb_params->sigma << " " << rhs.nb_params->tau << " " << rhs.metrics;
 }
