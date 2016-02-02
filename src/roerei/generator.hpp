@@ -176,16 +176,17 @@ private:
 	};
 
 public:
-	static std::map<std::string, dataset_t> construct_from_repo()
+	template<typename MAP_F, typename SUMMARY_F>
+	static std::map<std::string, dataset_t> construct(MAP_F read_mapping_f, SUMMARY_F read_summary_f)
 	{
 		std::map<uri_t, uri_t> mapping;
-		storage::read_mapping([&](mapping_t&& m) {
+		read_mapping_f([&](mapping_t&& m) {
 			std::cout << m.src << " -> " << m.dest << std::endl;
 			mapping.emplace(std::make_pair(std::move(m.src), std::move(m.dest)));
 		});
 
 		std::map<std::string, phase1> p1;
-		storage::read_summaries([&](summary_t&& s) {
+		read_summary_f([&](summary_t&& s) {
 			p1[s.corpus].add(std::move(s), mapping);
 		});
 
@@ -193,7 +194,7 @@ public:
 		for(auto&& kvp : p1)
 			p2.emplace(std::move(kvp)); // Non-trivial move-constructor
 
-		storage::read_summaries([&](summary_t&& s) {
+		read_summary_f([&](summary_t&& s) {
 			p2.find(s.corpus)->second.add(std::move(s), mapping);
 		});
 
@@ -209,7 +210,7 @@ public:
 			p3.emplace(std::move(kvp));
 		}
 
-		storage::read_summaries([&](summary_t&& s) {
+		read_summary_f([&](summary_t&& s) {
 			p3.find(s.corpus)->second.add(std::move(s), mapping);
 		});
 
@@ -220,6 +221,14 @@ public:
 			result.emplace(kvp.first, std::move(kvp.second.d));
 
 		return result;
+	}
+
+	static std::map<std::string, dataset_t> construct_from_repo()
+	{
+		return construct(
+			[](auto f) { storage::read_mapping(f); },
+			[](auto f) { storage::read_summaries(f); }
+		);
 	}
 };
 
