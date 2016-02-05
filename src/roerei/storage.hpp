@@ -28,16 +28,16 @@ private:
 	storage() = delete;
 
 public:
-	template<typename F, typename = std::enable_if_t<is_function<F, void(summary_t&&)>::value>>
+	template<typename F>
 	static void read_summaries(F const& f);
 
-	template<typename F, typename = std::enable_if_t<is_function<F, void(mapping_t&&)>::value>>
+	template<typename F>
 	static void read_mapping(F const& f);
 
 	static void write_dataset(std::string const& corpus, dataset_t const& d);
 	static dataset_t read_dataset(std::string const& corpus);
 
-	template<typename F, typename = std::enable_if_t<is_function<F, void(cv_result_t&&)>::value>>
+	template<typename F>
 	static void read_result(F const& f);
 };
 
@@ -94,7 +94,7 @@ std::string read_to_string(std::string const& filename)
 
 }
 
-template<typename F, typename>
+template<typename F>
 void storage::read_summaries(F const& f)
 {
 	static const std::string repo_path = "./data/repo.msgpack";
@@ -156,7 +156,7 @@ void storage::read_summaries(F const& f)
 	});
 }
 
-template<typename F, typename>
+template<typename F>
 void storage::read_mapping(F const& f)
 {
 	static const std::string mapping_path = "./data/mapping.msgpack";
@@ -206,7 +206,7 @@ dataset_t storage::read_dataset(std::string const& corpus)
 	return deserialize<dataset_t>(d, "dataset");
 }
 
-template<typename F, typename>
+template<typename F>
 void storage::read_result(F const& f)
 {
 	std::string const results_path = "./data/results.msgpack";
