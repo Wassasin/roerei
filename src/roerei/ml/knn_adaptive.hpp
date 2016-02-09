@@ -36,7 +36,7 @@ public:
 		});
 
 		std::sort(items.begin(), items.end(), [](distance_t const& x, distance_t const& y) {
-			return x.second > y.second;
+			return x.second < y.second;
 		});
 
 		std::map<dependency_id_t, float> suggestions;
