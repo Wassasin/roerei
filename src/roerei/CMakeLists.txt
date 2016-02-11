@@ -17,5 +17,6 @@ target_link_libraries(roerei-legacy
 
 list(APPEND Roerei_INCLUDE_DIRS ${msgpack_INCLUDE_DIRS})
 
+include_directories("${CMAKE_CURRENT_LIST_DIR}/..")
 include_directories(SYSTEM ${Roerei_INCLUDE_DIRS})
 set(Roerei_INCLUDE_DIRS ${Roerei_INCLUDE_DIRS} PARENT_SCOPE)

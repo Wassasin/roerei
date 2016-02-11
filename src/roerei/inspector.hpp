@@ -3,8 +3,14 @@
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
 
+#include <roerei/ml/ml_type.hpp>
+
 #include <roerei/ml/knn.hpp>
 #include <roerei/ml/knn_adaptive.hpp>
+#include <roerei/ml/omniscient.hpp>
+#include <roerei/ml/naive_bayes.hpp>
+
+#include <roerei/ml/posetcons_pessimistic.hpp>
 
 #include <iostream>
 
@@ -26,29 +32,33 @@ private:
 	}
 
 public:
-	static void iterate_all(std::string const& method, dataset_t const& d)
+	static void iterate_all(ml_type method, dataset_t const& d)
 	{
-		auto const dependants(dependencies::create_obj_dependants(d));
+		posetcons_pessimistic pc(d);
 		d.objects.keys([&](object_id_t i) {
-			sliced_sparse_matrix_t<decltype(d.feature_matrix) const> feature_matrix(d.feature_matrix, true);
-			dependencies::iterate_dependants(dependants, i, [&](object_id_t j)
-			{
-				feature_matrix.try_remove_key(j);
-			});
+			auto feature_matrix(pc.exec(d.feature_matrix, i));
 
 			performance::result_t result = ([&]() {
-				if(method == "knn")
+				switch(method)
+				{
+				case ml_type::knn:
 				{
 					knn<decltype(feature_matrix)> ml(5, feature_matrix, d);
 					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
 				}
-				else if(method == "knn_adaptive")
+				case ml_type::knn_adaptive:
 				{
 					knn_adaptive<decltype(feature_matrix)> ml(feature_matrix, d);
 					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
 				}
-				else
-					throw std::runtime_error("Unknown method");
+				case ml_type::omniscient:
+				{
+					omniscient ml(d);
+					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
+				}
+				case ml_type::naive_bayes:
+					throw std::runtime_error("Not implemented naive_bayes");
+				}
 			})();
 
 			std::cout << i.unseal() << " " << d.objects[i] << " ";

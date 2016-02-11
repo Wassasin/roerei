@@ -53,8 +53,8 @@ public:
 		best_set_t set(k);
 
 		trainingset.citerate([&](typename MATRIX::const_row_proxy_t const& xs) {
-			float d = distance::euclidean<decltype(xs.begin()->second), decltype(xs), ROW>(xs, ys);
-			set.try_add(std::make_pair(xs.row_i, d));
+			float dist = distance::euclidean<decltype(xs.begin()->second), decltype(xs), ROW>(xs, ys);
+			set.try_add(std::make_pair(xs.row_i, dist));
 		});
 
 		std::map<dependency_id_t, float> suggestions;
@@ -63,7 +63,7 @@ public:
 			float weight = 1.0f / (kvp.second + 1.0f); // "Similarity", higher is more similar
 
 			for(auto dep_kvp : d.dependency_matrix[kvp.first])
-				suggestions[dep_kvp.first] += ((float)dep_kvp.second) * weight;
+				suggestions[dep_kvp.first] += static_cast<float>(dep_kvp.second) * weight;
 		}
 
 		return std::vector<std::pair<dependency_id_t, float>>(suggestions.begin(), suggestions.end());

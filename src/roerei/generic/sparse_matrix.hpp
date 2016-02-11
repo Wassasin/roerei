@@ -48,7 +48,7 @@ public:
 			return parent.data[row_i][j];
 		}
 
-		T const& operator[](N j) const
+		T const operator[](N j) const
 		{
 			assert(j < parent.n);
 			try

@@ -98,8 +98,6 @@ std::string convert_msgpack_type(const msgpack::type::object_type t)
 		return "BIN";
 	case msgpack::type::EXT:
 		return "EXT";
-	default:
-		return "UNKNOWN";
 	}
 }
 

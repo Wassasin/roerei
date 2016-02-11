@@ -1,13 +1,14 @@
 #pragma once
 
-
 #include <roerei/generator.hpp>
 #include <roerei/inspector.hpp>
 #include <roerei/tester.hpp>
 
-#include <iostream>
-#include <boost/program_options.hpp>
+#include <roerei/ml/ml_type.hpp>
 
+#include <iostream>
+
+#include <boost/program_options.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
@@ -21,21 +22,23 @@ private:
 	{
 		std::string action;
 		std::string corpii;
-		std::string methods;
-		std::string strats;
+		std::vector<ml_type> methods;
+		std::vector<posetcons_type> strats;
 		bool silent = false;
 		size_t jobs = 1;
 	};
 
 	static int read_options(cli_options& opt, int argc, char** argv)
 	{
+		std::string methods, strats;
+
 		boost::program_options::options_description o_general("Options");
 		o_general.add_options()
 				("help,h", "display this message")
 				("silent,s", "do not print progress")
 				("corpii,c", boost::program_options::value(&opt.corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
-				("methods,m", boost::program_options::value(&opt.methods), "select which methods to use, possibly comma separated (default: all)")
-				("strats,r", boost::program_options::value(&opt.strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
+				("methods,m", boost::program_options::value(&methods), "select which methods to use, possibly comma separated (default: all)")
+				("strats,r", boost::program_options::value(&strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
 				("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
 
 		boost::program_options::variables_map vm;
@@ -97,14 +100,28 @@ private:
 			opt.corpii = "all";
 		}
 
-		if(!vm.count("methods"))
+		if(!vm.count("methods") || methods == "all")
+			opt.methods = {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::omniscient};
+		else
 		{
-			opt.methods = "all";
+			std::vector<std::string> methods_arr;
+			boost::algorithm::split(methods_arr, methods, boost::algorithm::is_any_of(","));
+
+			for(auto m : methods_arr)
+				opt.methods.emplace_back(to_ml_type(m));
 		}
 
-		if(!vm.count("strats"))
+		if(!vm.count("strats") || strats == "all")
 		{
-			opt.strats = "all";
+			opt.strats = {posetcons_type::canonical, posetcons_type::optimistic, posetcons_type::pessimistic};
+		}
+		else
+		{
+			std::vector<std::string> strats_arr;
+			boost::algorithm::split(strats_arr, strats, boost::algorithm::is_any_of(","));
+
+			for(auto s : strats_arr)
+				opt.strats.emplace_back(to_posetcons_type(s));
 		}
 
 		return EXIT_SUCCESS;
@@ -117,9 +134,9 @@ public:
 	{
 		cli_options opt;
 
-		int result = read_options(opt, argc, argv);
-		if(result != EXIT_SUCCESS)
-			return result;
+		int rv = read_options(opt, argc, argv);
+		if(rv != EXIT_SUCCESS)
+			return rv;
 
 		std::vector<std::string> corpii;
 		if(opt.corpii == "all")
@@ -127,22 +144,10 @@ public:
 		else
 			boost::algorithm::split(corpii, opt.corpii, boost::algorithm::is_any_of(","));
 
-		std::vector<std::string> methods;
-		if(opt.methods == "all")
-			methods = {"knn", "knn_adaptive", "nb"};
-		else
-			boost::algorithm::split(methods, opt.methods, boost::algorithm::is_any_of(","));
-
-		std::vector<std::string> strats;
-		if(opt.strats == "all")
-			strats = {"canonical", "optimistic", "pessimistic"};
-		else
-			boost::algorithm::split(strats, opt.strats, boost::algorithm::is_any_of(","));
-
 		if(opt.action == "inspect")
 		{
 			for(auto&& corpus : corpii)
-				for(auto&& method : methods)
+				for(auto&& method : opt.methods)
 				{
 					auto const d(storage::read_dataset(corpus));
 					inspector::iterate_all(method, d);
@@ -151,8 +156,8 @@ public:
 		else if(opt.action == "measure")
 		{
 			for(auto&& corpus : corpii)
-				for(auto&& strat : strats)
-					for(auto&& method : methods)
+				for(auto&& strat : opt.strats)
+					for(auto&& method : opt.methods)
 					{
 						tester::exec(corpus, strat, method, opt.jobs, opt.silent);
 					}
@@ -176,25 +181,6 @@ public:
 
 				std::cout << result << std::endl;
 			});
-		}
-		else if(opt.action == "test")
-		{
-			for(auto&& corpus : corpii)
-			{
-				auto const d(storage::read_dataset(corpus));
-				auto const d_new(posetcons_canonical::consistentize(d));
-
-				// Does consistensizing change order?
-				if(d.objects == d_new.objects)
-					std::cerr << "<Notice> Nothing changed" << std::endl;
-
-				// Is a consistent dataset truly consistent?
-				auto dependants_trans(dependencies::create_obj_dependants(d));
-				dependants_trans.transitive();
-
-				posetcons_canonical pc;
-
-			}
 		}
 		else
 		{

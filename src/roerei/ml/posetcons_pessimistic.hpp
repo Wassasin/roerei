@@ -35,10 +35,10 @@ public:
 		: dependants_real(generate_dependants(d))
 	{}
 
-	template<typename TRAINSET, typename TESTROW>
-	bl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row) const
+	template<typename TRAINSET>
+	bl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, object_id_t test_row_i) const
 	{
-		return bl_sparse_matrix_t<TRAINSET>(train_m, dependants_real[test_row.row_i]);
+		return bl_sparse_matrix_t<TRAINSET>(train_m, dependants_real[test_row_i]);
 	}
 };
 

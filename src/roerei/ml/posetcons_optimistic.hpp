@@ -34,10 +34,10 @@ public:
 		: parents_real(generate_parents(d))
 	{}
 
-	template<typename TRAINSET, typename TESTROW>
-	wl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row) const
+	template<typename TRAINSET>
+	wl_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, object_id_t test_row_id) const
 	{
-		return wl_sparse_matrix_t<TRAINSET>(train_m, parents_real[test_row.row_i]);
+		return wl_sparse_matrix_t<TRAINSET>(train_m, parents_real[test_row_id]);
 	}
 };
 

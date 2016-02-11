@@ -6,6 +6,9 @@
 
 #include <boost/optional.hpp>
 
+#include <roerei/ml/ml_type.hpp>
+#include <roerei/ml/posetcons_type.hpp>
+
 namespace roerei
 {
 namespace detail
@@ -89,6 +92,24 @@ struct serialize_value<boost::optional<T>, S>
 			serialize_value<T, S>::exec(s, name, x.get());
 		else
 			s.write_null(name);
+	}
+};
+
+template<typename S>
+struct serialize_value<ml_type, S>
+{
+	static inline void exec(S& s, std::string const& name, ml_type x)
+	{
+		s.write(name, to_string(x));
+	}
+};
+
+template<typename S>
+struct serialize_value<posetcons_type, S>
+{
+	static inline void exec(S& s, std::string const& name, posetcons_type x)
+	{
+		s.write(name, to_string(x));
 	}
 };
 

@@ -61,10 +61,10 @@ public:
 			else if(rhs.n == 0)
 				return *this;
 
-			float total = n + rhs.n;
+			size_t total = n + rhs.n;
 
-			float nr_f = (float)n / total;
-			float rhs_nr_f = (float)rhs.n / total;
+			float nr_f = static_cast<float>(n) / static_cast<float>(total);
+			float rhs_nr_f = static_cast<float>(rhs.n) / static_cast<float>(total);
 
 			return {
 				oocover * nr_f + rhs.oocover * rhs_nr_f,
@@ -154,7 +154,7 @@ public:
 				if(x < y) // Lower rank is 'better'
 					auc_sum += 1.0f;
 
-		return auc_sum / (float)(found_deps.size() * irrelevant_deps.size());
+		return auc_sum / static_cast<float>(found_deps.size() * irrelevant_deps.size());
 	}
 
 	static result_t measure(dataset_t const& d, object_id_t test_row_i, std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept

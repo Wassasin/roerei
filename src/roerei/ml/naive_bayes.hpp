@@ -51,7 +51,7 @@ private:
 			return -INFINITY;
 
 		size_t P = candidates.size() + tau;
-		float log_p = std::log((float)P);
+		float log_p = std::log(static_cast<float>(P));
 		float result = log_p;
 
 		for(auto const& kvp_j : test_row)
@@ -62,7 +62,7 @@ private:
 			if(p_j == 0)
 				result += kvp_j.second * sigma;
 			else
-				result += kvp_j.second * (std::log(pi * (float)p_j) - log_p);
+				result += kvp_j.second * (std::log(pi * static_cast<float>(p_j)) - log_p);
 		}
 
 		return result;

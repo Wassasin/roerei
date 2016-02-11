@@ -1,6 +1,8 @@
 #pragma once
 
 #include <roerei/performance.hpp>
+#include <roerei/ml/ml_type.hpp>
+#include <roerei/ml/posetcons_type.hpp>
 
 #include <boost/fusion/include/adapt_struct.hpp>
 
@@ -30,8 +32,8 @@ struct nb_params_t
 struct cv_result_t
 {
 	std::string corpus;
-	std::string strat;
-	std::string ml;
+	posetcons_type strat;
+	ml_type ml;
 	boost::optional<knn_params_t> knn_params;
 	boost::optional<nb_params_t> nb_params;
 	size_t n, k;
@@ -40,14 +42,18 @@ struct cv_result_t
 
 std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 {
-	if(rhs.ml == "knn")
+	switch(rhs.ml)
+	{
+	case ml_type::knn:
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " K=" << rhs.knn_params->k << " " << rhs.metrics;
-
-	if(rhs.ml == "knn_adaptive")
+	case ml_type::knn_adaptive:
+	case ml_type::omniscient:
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " " << rhs.metrics;
-
-	if(rhs.ml == "nb")
+	case ml_type::naive_bayes:
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " " << rhs.nb_params->pi << " " << rhs.nb_params->sigma << " " << rhs.nb_params->tau << " " << rhs.metrics;
+	}
+
+	throw std::runtime_error("Unknown ml_type");
 }
 
 }
@@ -67,8 +73,8 @@ BOOST_FUSION_ADAPT_STRUCT(
 BOOST_FUSION_ADAPT_STRUCT(
 		roerei::cv_result_t,
 		(std::string, corpus)
-		(std::string, strat)
-		(std::string, ml)
+		(roerei::posetcons_type, strat)
+		(roerei::ml_type, ml)
 		(boost::optional<roerei::knn_params_t>, knn_params)
 		(boost::optional<roerei::nb_params_t>, nb_params)
 		(size_t, n)

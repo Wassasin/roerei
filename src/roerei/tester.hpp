@@ -3,10 +3,14 @@
 #include <roerei/dataset.hpp>
 #include <roerei/cv_result.hpp>
 
+#include <roerei/ml/ml_type.hpp>
+#include <roerei/ml/posetcons_type.hpp>
+
 #include <roerei/ml/cv.hpp>
 #include <roerei/ml/knn.hpp>
 #include <roerei/ml/knn_adaptive.hpp>
 #include <roerei/ml/naive_bayes.hpp>
+#include <roerei/ml/omniscient.hpp>
 
 #include <roerei/ml/posetcons_pessimistic.hpp>
 #include <roerei/ml/posetcons_optimistic.hpp>
@@ -81,17 +85,18 @@ private:
 	}
 
 public:
-	inline static void exec(std::string const& corpus, std::string const& strat, std::string const& method, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
+	inline static void exec(std::string const& corpus, posetcons_type strat, ml_type method, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
 	{
-		std::string const knn_str = "knn", knn_adaptive_str = "knn_adaptive", nb_str = "nb";
-		size_t const n = 10, k = 1;
+		size_t const cv_n = 10, cv_k = 1;
 
 		std::set<knn_params_t> ks;
 		std::set<nb_params_t> nbs;
-		bool ka = false;
+		bool run_knn_adaptive = false;
+		bool run_omniscient = false;
 
-		if(method == knn_str)
+		switch(method)
 		{
+		case ml_type::knn:
 			ks.emplace(knn_params_t({55}));
 
 			for(size_t k = 3; k < 10; ++k)
@@ -102,10 +107,8 @@ public:
 
 			/*for(size_t k = 3; k < 120; ++k)
 				ks.emplace(knn_params_t({k}));*/
-		}
-
-		if(method == nb_str)
-		{
+			break;
+		case ml_type::naive_bayes:
 			/*for(size_t pi = 1; pi < 20; ++pi)
 				nbs.emplace(nb_params_t({pi, -15, 0}));
 
@@ -116,10 +119,14 @@ public:
 				nbs.emplace(nb_params_t({10, -15, tau}));*/
 
 			nbs.emplace(nb_params_t({10, -15, 0}));
+			break;
+		case ml_type::knn_adaptive:
+			run_knn_adaptive = true;
+			break;
+		case ml_type::omniscient:
+			run_omniscient = true;
+			break;
 		}
-
-		if(method == knn_adaptive_str)
-			ka = true;
 
 		storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)
@@ -128,20 +135,27 @@ public:
 			if(result.strat != strat)
 				return;
 
-			if(n != result.n)
+			if(cv_n != result.n)
 				return;
 
-			if(k != result.k)
+			if(cv_k != result.k)
 				return;
 
-			if(result.ml == knn_str)
+			switch(result.ml)
+			{
+			case ml_type::knn:
 				ks.erase(*result.knn_params);
-			else if(result.ml == nb_str)
+				break;
+			case ml_type::naive_bayes:
 				nbs.erase(*result.nb_params);
-			else if(result.ml == knn_adaptive_str)
-				ka = false;
-			else
-				throw std::runtime_error(std::string("Unknown ml method ") + result.ml);
+				break;
+			case ml_type::knn_adaptive:
+				run_knn_adaptive = false;
+				break;
+			case ml_type::omniscient:
+				run_omniscient = false;
+				break;
+			}
 
 			std::cerr << "Skipping " << result << std::endl;
 		});
@@ -150,7 +164,7 @@ public:
 
 		auto const d_orig(storage::read_dataset(corpus));
 		auto const d(posetcons_canonical::consistentize(d_orig, seed));
-		cv const c(d, n, k, seed);
+		cv const c(d, cv_n, cv_k, seed);
 
 		std::mutex os_mutex;
 		std::ofstream os("./data/results.msgpack", std::ios::app | std::ios::out | std::ios::binary);
@@ -179,13 +193,13 @@ public:
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, knn_str, knn_params, boost::none, n, k, total_metrics});
+						yield_f({corpus, strat, ml_type::knn, knn_params, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
 			}
 
-			if(ka)
+			if(run_knn_adaptive)
 			{
 				c.order_async(m,
 					[&d, gen_trainset_sane_f](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
@@ -194,7 +208,21 @@ public:
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, knn_adaptive_str, boost::none, boost::none, n, k, total_metrics});
+						yield_f({corpus, strat, ml_type::knn_adaptive, boost::none, boost::none, cv_n, cv_k, total_metrics});
+					},
+					d, silent
+				);
+			}
+
+			if(run_omniscient)
+			{
+				c.order_async(m,
+					[&d, gen_trainset_sane_f](cv::trainset_t const& /*trainset*/, cv::testrow_t const& test_row) noexcept {
+						omniscient ml(d);
+						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+					},
+					[=](performance::metrics_t const& total_metrics) noexcept {
+						yield_f({corpus, strat, ml_type::omniscient, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
@@ -220,33 +248,39 @@ public:
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, nb_str, boost::none, nb_params, n, k, total_metrics});
+						yield_f({corpus, strat, ml_type::naive_bayes, boost::none, nb_params, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
 			}
 		});
 
-		if(strat == "canonical")
+		switch(strat)
+		{
+		case posetcons_type::canonical:
+		{
 			schedule_f([](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
 				return posetcons_canonical::exec(trainset, test_row);
 			});
-		else if(strat == "pessimistic")
+			break;
+		}
+		case posetcons_type::pessimistic:
 		{
 			posetcons_pessimistic pc(d);
 			schedule_f([pc=std::move(pc)](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-				return pc.exec(trainset, test_row);
+				return pc.exec(trainset, test_row.row_i);
 			});
+			break;
 		}
-		else if(strat == "optimistic")
+		case posetcons_type::optimistic:
 		{
 			posetcons_optimistic pc(d);
 			schedule_f([pc=std::move(pc)](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-				return pc.exec(trainset, test_row);
+				return pc.exec(trainset, test_row.row_i);
 			});
+			break;
 		}
-		else
-			throw std::runtime_error("Unknown strat");
+		}
 
 		m.run(jobs, true); // Blocking
 		std::cerr << "Finished" << std::endl;

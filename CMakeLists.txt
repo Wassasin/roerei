@@ -14,8 +14,8 @@ include("contrib/wubwubcmake/enable_cpp14.cmake")
 include("contrib/wubwubcmake/warning_settings.cmake")
 add_sane_warning_flags()
 
-list(APPEND Roerei_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/")
-
 enable_testing()
 add_subdirectory("src/roerei")
+
+list(APPEND Roerei_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/")
 add_subdirectory("tests/roerei")

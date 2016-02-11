@@ -79,7 +79,7 @@ public:
 
 		float sum = 0.0f;
 		detail::yield_nonempty_pairs<T, VEC1 const&, VEC2 const&>(xs, ys, [&](T const x, T const y) {
-			float v = (float)x - (float)y;
+			float v = static_cast<float>(x) - static_cast<float>(y);
 			sum += v * v;
 		});
 		return std::sqrt(sum);

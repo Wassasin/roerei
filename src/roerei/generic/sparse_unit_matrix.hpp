@@ -43,7 +43,7 @@ public:
 		return data[i];
 	}
 
-	bool const& operator[](std::pair<M, N> const& p) const
+	bool operator[](std::pair<M, N> const& p) const
 	{
 		return (data[p.first].find(p.second) == data[p.first].end());
 	}

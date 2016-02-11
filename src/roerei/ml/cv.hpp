@@ -132,8 +132,8 @@ public:
 		{
 			performance::metrics_t total_metrics;
 
-			for(auto& m : future_metrics)
-				total_metrics += m.get();
+			for(auto& fut_m : future_metrics)
+				total_metrics += fut_m.get();
 
 			result_f(total_metrics);
 		});

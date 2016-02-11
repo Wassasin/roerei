@@ -2,6 +2,9 @@
 
 #include <roerei/serialization/deserialize_common.hpp>
 
+#include <roerei/ml/ml_type.hpp>
+#include <roerei/ml/posetcons_type.hpp>
+
 #include <boost/fusion/include/at.hpp>
 #include <boost/fusion/include/for_each.hpp>
 #include <boost/fusion/adapted.hpp>
@@ -125,6 +128,28 @@ struct deserialize_value<boost::optional<T>, D>
 		{
 			return deserialize_value<T, D>::exec(s, name);
 		}
+	}
+};
+
+template<typename D>
+struct deserialize_value<ml_type, D>
+{
+	static inline ml_type exec(D& s, const std::string name)
+	{
+		std::string str;
+		s.read(name, str);
+		return to_ml_type(str);
+	}
+};
+
+template<typename D>
+struct deserialize_value<posetcons_type, D>
+{
+	static inline posetcons_type exec(D& s, const std::string name)
+	{
+		std::string str;
+		s.read(name, str);
+		return to_posetcons_type(str);
 	}
 };
 
