@@ -1,6 +1,7 @@
 #pragma once
 
 #include <roerei/dataset.hpp>
+#include <roerei/storage.hpp>
 #include <roerei/cv_result.hpp>
 
 #include <roerei/ml/ml_type.hpp>
@@ -167,17 +168,9 @@ public:
 		cv const c(d, cv_n, cv_k, seed);
 
 		std::mutex os_mutex;
-		std::ofstream os("./data/results.msgpack", std::ios::app | std::ios::out | std::ios::binary);
-
 		auto yield_f([&](cv_result_t const& result) {
 			std::lock_guard<std::mutex> lock(os_mutex);
-			msgpack_serializer s;
-			serialize(s, "cv_result", result);
-			s.dump([&os](const char* buf, size_t len) {
-				os.write(buf, len);
-				os.flush();
-			});
-
+			storage::write_result(result);
 			std::cout << result << std::endl;
 		});
 

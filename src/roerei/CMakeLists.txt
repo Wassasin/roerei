@@ -3,13 +3,13 @@ project(roerei)
 find_package(Threads)
 find_package(Boost COMPONENTS system program_options regex chrono date_time filesystem REQUIRED)
 
-add_executable(roerei main.cpp)
+add_executable(roerei main.cpp cli_read.cpp cli_exec.cpp storage.cpp)
 target_link_libraries(roerei
 	${Boost_LIBRARIES}
 	${msgpack_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT})
 
-add_executable(roerei-legacy legacy.cpp)
+add_executable(roerei-legacy legacy.cpp storage.cpp)
 target_link_libraries(roerei-legacy
 	${Boost_LIBRARIES}
 	${msgpack_LIBRARIES}

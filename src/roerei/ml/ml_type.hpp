@@ -15,7 +15,7 @@ enum class ml_type
 	omniscient
 };
 
-std::string to_string(ml_type t)
+inline std::string to_string(ml_type t)
 {
 	switch(t)
 	{
@@ -32,12 +32,12 @@ std::string to_string(ml_type t)
 	throw std::logic_error("Unknown ml_type");
 }
 
-std::ostream& operator<<(std::ostream& os, ml_type t)
+inline std::ostream& operator<<(std::ostream& os, ml_type t)
 {
 	return os << to_string(t);
 }
 
-ml_type to_ml_type(std::string const& str)
+inline ml_type to_ml_type(std::string const& str)
 {
 	static const std::map<std::string, ml_type> tmap({
 		{"knn", ml_type::knn},

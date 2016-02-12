@@ -40,7 +40,7 @@ struct cv_result_t
 	performance::metrics_t metrics;
 };
 
-std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
+inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 {
 	switch(rhs.ml)
 	{

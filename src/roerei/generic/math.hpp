@@ -6,7 +6,7 @@
 namespace roerei
 {
 
-float round(float x, float decs)
+inline float round(float x, float decs)
 {
 	float mult = std::pow(10.0f, decs);
 	return std::round(x*mult)/mult;

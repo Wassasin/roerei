@@ -91,7 +91,7 @@ public:
 	}
 };
 
-std::ostream& operator<<(std::ostream& os, string_view const& rhs)
+inline std::ostream& operator<<(std::ostream& os, string_view const& rhs)
 {
 	os << rhs.to_string();
 	return os;

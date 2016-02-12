@@ -51,30 +51,30 @@ private:
 	std::stack<stack_e> stack;
 };
 
-msgpack_deserializer::msgpack_deserializer()
+inline msgpack_deserializer::msgpack_deserializer()
 	: pac()
 	, pac_result()
 	, stack()
 {}
 
-msgpack_deserializer::~msgpack_deserializer()
+inline msgpack_deserializer::~msgpack_deserializer()
 {}
 
-msgpack_deserializer::stack_e::stack_e(const msgpack::object* _obj_ptr, type_t _t, size_t _n, size_t _i)
+inline msgpack_deserializer::stack_e::stack_e(const msgpack::object* _obj_ptr, type_t _t, size_t _n, size_t _i)
 	: obj_ptr(_obj_ptr)
 	, t(_t)
 	, n(_n)
 	, i(_i)
 {}
 
-void msgpack_deserializer::feed(const std::string& str)
+inline void msgpack_deserializer::feed(const std::string& str)
 {
 	pac.reserve_buffer(str.size());
 	memcpy(pac.buffer(), str.data(), str.size());
 	pac.buffer_consumed(str.size());
 }
 
-std::string convert_msgpack_type(const msgpack::type::object_type t)
+inline std::string convert_msgpack_type(const msgpack::type::object_type t)
 {
 	switch(t)
 	{
@@ -101,7 +101,7 @@ std::string convert_msgpack_type(const msgpack::type::object_type t)
 	}
 }
 
-const msgpack::object& msgpack_deserializer::read(const msgpack::type::object_type t_expected)
+inline const msgpack::object& msgpack_deserializer::read(const msgpack::type::object_type t_expected)
 {
 	if(stack.empty())
 	{
@@ -141,7 +141,7 @@ const msgpack::object& msgpack_deserializer::read(const msgpack::type::object_ty
 	return *result_ptr;
 }
 
-void msgpack_deserializer::read_key(const std::string& key)
+inline void msgpack_deserializer::read_key(const std::string& key)
 {
 	if(stack.empty() || stack.top().t != type_t::map)
 		return; //Do not check if we're not in a map
@@ -191,7 +191,7 @@ inline R autorollbackonfailure(S& stack, F f)
 	}
 }
 
-size_t msgpack_deserializer::read_array(const std::string& name)
+inline size_t msgpack_deserializer::read_array(const std::string& name)
 {
 	return autorollbackonfailure<size_t>(stack, [&]() {
 		read_key(name);
@@ -205,7 +205,7 @@ size_t msgpack_deserializer::read_array(const std::string& name)
 	});
 }
 
-size_t msgpack_deserializer::read_object(const std::string& name)
+inline size_t msgpack_deserializer::read_object(const std::string& name)
 {
 	read_key(name);
 
@@ -216,7 +216,7 @@ size_t msgpack_deserializer::read_object(const std::string& name)
 	return obj.via.map.size;
 }
 
-void msgpack_deserializer::read_null(const std::string& name)
+inline void msgpack_deserializer::read_null(const std::string& name)
 {
 	autorollbackonfailure(stack, [&]() {
 		read_key(name);
@@ -224,7 +224,7 @@ void msgpack_deserializer::read_null(const std::string& name)
 	});
 }
 
-void msgpack_deserializer::read(const std::string& key, uint64_t& x)
+inline void msgpack_deserializer::read(const std::string& key, uint64_t& x)
 {
 	autorollbackonfailure(stack, [&]() {
 		read_key(key);
@@ -234,7 +234,7 @@ void msgpack_deserializer::read(const std::string& key, uint64_t& x)
 }
 
 
-void msgpack_deserializer::read(const std::string& key, std::string& x)
+inline void msgpack_deserializer::read(const std::string& key, std::string& x)
 {
 	autorollbackonfailure(stack, [&]() {
 		read_key(key);
@@ -244,7 +244,7 @@ void msgpack_deserializer::read(const std::string& key, std::string& x)
 	});
 }
 
-void msgpack_deserializer::read(const std::string& key, float& x)
+inline void msgpack_deserializer::read(const std::string& key, float& x)
 {
 	autorollbackonfailure(stack, [&]() {
 		read_key(key);

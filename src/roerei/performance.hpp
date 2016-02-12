@@ -242,12 +242,7 @@ public:
 	}
 };
 
-}
-
-namespace std
-{
-
-std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t const& rhs)
+inline std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t const& rhs)
 {
 	os
 		<< "100Cover " << roerei::fill(roerei::round(rhs.oocover, 3), 5) << " + "

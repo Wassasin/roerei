@@ -58,7 +58,7 @@ namespace detail
 	}
 }
 
-std::map<dependency_id_t, object_id_t> dataset_t::create_dependency_map() const
+inline std::map<dependency_id_t, object_id_t> dataset_t::create_dependency_map() const
 {
 	std::map<uri_t, object_id_t> object_map;
 	objects.iterate([&](object_id_t id, uri_t const& u) {
@@ -76,7 +76,7 @@ std::map<dependency_id_t, object_id_t> dataset_t::create_dependency_map() const
 	return dependency_map;
 }
 
-std::map<object_id_t, dependency_id_t> dataset_t::create_dependency_revmap() const
+inline std::map<object_id_t, dependency_id_t> dataset_t::create_dependency_revmap() const
 {
 	std::map<uri_t, dependency_id_t> dependency_urimap;
 	dependencies.iterate([&](dependency_id_t id, uri_t const& u) {
@@ -103,7 +103,7 @@ dataset_t::dataset_t(CONTAINER&& _objects, CONTAINER&& _features, CONTAINER&& _d
 	, dependency_matrix(objects.size(), dependencies.size())
 {}
 
-dataset_t::dataset_t(
+inline dataset_t::dataset_t(
 		std::remove_const<decltype(objects)>::type&& _objects,
 		std::remove_const<decltype(features)>::type&& _features,
 		std::remove_const<decltype(dependencies)>::type&& _dependencies,

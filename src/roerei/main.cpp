@@ -2,6 +2,7 @@
 #undef _GLIBCXX_HAVE_GETS // correct broken config
 
 #include <roerei/cli.hpp>
+#include <roerei/util/performance.hpp>
 
 register_performance
 

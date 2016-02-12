@@ -2,6 +2,7 @@
 
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
+#include <roerei/performance.hpp>
 
 #include <roerei/ml/ml_type.hpp>
 
