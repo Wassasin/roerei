@@ -4,6 +4,7 @@
 #include <roerei/storage.hpp>
 #include <roerei/inspector.hpp>
 #include <roerei/tester.hpp>
+#include <roerei/legacy.hpp>
 
 namespace roerei
 {
@@ -28,6 +29,11 @@ int cli::exec(int argc, char** argv)
 	{
 		auto const d(storage::read_dataset("CoRN-legacy"));
 		storage::write_legacy_dataset("/home/wgeraedts/tmp/new", d);
+	}
+	else if(opt.action == "legacy-import")
+	{
+		auto const d(legacy::read("/home/wgeraedts/tmp", "CoRN-legacy"));
+		storage::write_dataset("CoRN-legacy", d);
 	}
 	else
 	{

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <roerei/dataset.hpp>
 #include <roerei/generator.hpp>
 #include <roerei/util/string_view.hpp>
 
@@ -92,11 +93,8 @@ class legacy
 	}
 
 public:
-	static void exec()
+	static dataset_t read(std::string const& dir, std::string const& corpus)
 	{
-		const std::string dir = "/home/wgeraedts/tmp";
-		const std::string corpus = "CoRN-legacy";
-
 		std::map<uri_t, summary_t> result;
 
 		{
@@ -110,7 +108,10 @@ public:
 					summary_t s = {corpus, dir, symb.to_string(), {}, boost::none};
 
 					for(auto kvp : features)
-						s.type_uris.emplace_back((summary_t::frequency_t){kvp.first, kvp.second});
+					{
+						summary_t::frequency_t freq = {kvp.first, kvp.second};
+						s.type_uris.emplace_back(freq);
+					}
 
 					std::sort(s.type_uris.begin(), s.type_uris.end(), [](auto x, auto y) {
 						return x.freq > y.freq;
@@ -134,7 +135,10 @@ public:
 					s.body_uris.reset(std::vector<summary_t::frequency_t>());
 
 					for(auto kvp : dependencies)
-						s.body_uris->emplace_back((summary_t::frequency_t){kvp.first, kvp.second});
+					{
+						summary_t::frequency_t freq = {kvp.first, kvp.second};
+						s.body_uris->emplace_back(freq);
+					}
 
 					std::sort(s.body_uris->begin(), s.body_uris->end(), [](auto x, auto y) {
 						return x.freq > y.freq;
@@ -153,7 +157,7 @@ public:
 			}
 		));
 
-		storage::write_dataset(corpus, d_map.at(corpus));
+		return std::move(d_map.at(corpus));
 	}
 };
 

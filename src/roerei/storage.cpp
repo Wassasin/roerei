@@ -217,7 +217,6 @@ void storage::write_result(cv_result_t const& result)
 void storage::write_legacy_dataset(std::string const& path, dataset_t const& d)
 {
 	{
-		std::cout << path + "/feat" << std::endl;
 		std::ofstream os_feat(path + "/feat");
 		os_feat << '\n';
 		for(uri_t const& feat_str : d.features)

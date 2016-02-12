@@ -9,12 +9,6 @@ target_link_libraries(roerei
 	${msgpack_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT})
 
-add_executable(roerei-legacy legacy.cpp storage.cpp)
-target_link_libraries(roerei-legacy
-	${Boost_LIBRARIES}
-	${msgpack_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT})
-
 list(APPEND Roerei_INCLUDE_DIRS ${msgpack_INCLUDE_DIRS})
 
 include_directories("${CMAKE_CURRENT_LIST_DIR}/..")

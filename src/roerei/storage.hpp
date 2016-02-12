@@ -22,8 +22,8 @@ public:
 	static void read_result(std::function<void(cv_result_t)> const& f);
 	static void write_result(cv_result_t const& r);
 
-	static void write_dataset(std::string const& corpus, dataset_t const& d);
 	static dataset_t read_dataset(std::string const& corpus);
+	static void write_dataset(std::string const& corpus, dataset_t const& d);
 
 	static void write_legacy_dataset(std::string const& path, dataset_t const& d);
 };
