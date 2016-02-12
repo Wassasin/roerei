@@ -214,4 +214,53 @@ void storage::write_result(cv_result_t const& result)
 	});
 }
 
+void storage::write_legacy_dataset(std::string const& path, dataset_t const& d)
+{
+	{
+		std::cout << path + "/feat" << std::endl;
+		std::ofstream os_feat(path + "/feat");
+		os_feat << '\n';
+		for(uri_t const& feat_str : d.features)
+			os_feat << '"' << feat_str << '"' << "\n";
+	}
+
+	{
+		std::ofstream os_symb(path + "/symb");
+		d.feature_matrix.citerate([&](auto row) {
+			os_symb << '"' << d.objects[row.row_i] << "\":";
+
+			bool first = true;
+			for(std::pair<feature_id_t, dataset_t::value_t> const& kvp : row)
+			{
+				if(first)
+					first = false;
+				else
+					os_symb << ", ";
+
+				os_symb << '"' << d.features[kvp.first] << '"';
+			}
+			os_symb << '\n';
+		});
+	}
+
+	{
+		std::ofstream os_deps(path + "/deps");
+		d.dependency_matrix.citerate([&](auto row) {
+			os_deps << '"' << d.objects[row.row_i] << "\":";
+
+			bool first = true;
+			for(std::pair<dependency_id_t, dataset_t::value_t> const& kvp : row)
+			{
+				if(first)
+					first = false;
+				else
+					os_deps << ' ';
+
+				os_deps << '"' << d.dependencies[kvp.first] << '"';
+			}
+			os_deps << '\n';
+		});
+	}
+}
+
 }

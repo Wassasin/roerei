@@ -24,6 +24,8 @@ public:
 
 	static void write_dataset(std::string const& corpus, dataset_t const& d);
 	static dataset_t read_dataset(std::string const& corpus);
+
+	static void write_legacy_dataset(std::string const& path, dataset_t const& d);
 };
 
 }

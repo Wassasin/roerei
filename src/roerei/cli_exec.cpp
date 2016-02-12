@@ -24,6 +24,11 @@ int cli::exec(int argc, char** argv)
 		exec_generate(opt);
 	else if(opt.action == "report")
 		exec_report(opt);
+	else if(opt.action == "legacy-export")
+	{
+		auto const d(storage::read_dataset("CoRN-legacy"));
+		storage::write_legacy_dataset("/home/wgeraedts/tmp/new", d);
+	}
 	else
 	{
 		std::cerr << "Unknown action '" << opt.action << "', see --help." << std::endl;
