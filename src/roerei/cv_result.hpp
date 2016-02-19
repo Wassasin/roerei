@@ -29,6 +29,7 @@ struct nb_params_t
 	}
 };
 
+
 struct cv_result_t
 {
 	std::string corpus;
@@ -48,6 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " K=" << rhs.knn_params->k << " " << rhs.metrics;
 	case ml_type::knn_adaptive:
 	case ml_type::omniscient:
+	case ml_type::ensemble:
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " " << rhs.metrics;
 	case ml_type::naive_bayes:
 		return os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " " << rhs.nb_params->pi << " " << rhs.nb_params->sigma << " " << rhs.nb_params->tau << " " << rhs.metrics;

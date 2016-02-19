@@ -12,7 +12,8 @@ enum class ml_type
 	knn,
 	knn_adaptive,
 	naive_bayes,
-	omniscient
+	omniscient,
+	ensemble
 };
 
 inline std::string to_string(ml_type t)
@@ -27,6 +28,8 @@ inline std::string to_string(ml_type t)
 		return "naive_bayes";
 	case ml_type::omniscient:
 		return "omniscient";
+	case ml_type::ensemble:
+		return "ensemble";
 	}
 
 	throw std::logic_error("Unknown ml_type");
@@ -45,7 +48,8 @@ inline ml_type to_ml_type(std::string const& str)
 		{"naive_bayes", ml_type::naive_bayes},
 		{"nb", ml_type::naive_bayes},
 		{"omniscient", ml_type::omniscient},
-		{"omni", ml_type::omniscient}
+		{"omni", ml_type::omniscient},
+		{"ensemble", ml_type::ensemble}
 	});
 
 	return tmap.at(str);

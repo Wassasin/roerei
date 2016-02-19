@@ -12,6 +12,7 @@
 #include <roerei/ml/knn_adaptive.hpp>
 #include <roerei/ml/naive_bayes.hpp>
 #include <roerei/ml/omniscient.hpp>
+#include <roerei/ml/ensemble.hpp>
 
 #include <roerei/ml/posetcons_pessimistic.hpp>
 #include <roerei/ml/posetcons_optimistic.hpp>
@@ -94,6 +95,7 @@ public:
 		std::set<nb_params_t> nbs;
 		bool run_knn_adaptive = false;
 		bool run_omniscient = false;
+		bool run_ensemble = false;
 
 		switch(method)
 		{
@@ -127,6 +129,9 @@ public:
 		case ml_type::omniscient:
 			run_omniscient = true;
 			break;
+		case ml_type::ensemble:
+			run_ensemble = true;
+			break;
 		}
 
 		storage::read_result([&](cv_result_t const& result) {
@@ -155,6 +160,9 @@ public:
 				break;
 			case ml_type::omniscient:
 				run_omniscient = false;
+				break;
+			case ml_type::ensemble:
+				run_ensemble = false;
 				break;
 			}
 
@@ -222,6 +230,42 @@ public:
 			}
 
 			std::shared_ptr<nb_data_t> nb_data;
+			if(run_ensemble)
+			{
+				if(!nb_data)
+					nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
+
+				c.order_async(m,
+					[&d, gen_trainset_sane_f, nb_data](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+						ensemble<cv::testrow_t> e_ml(d);
+
+						knn_adaptive<decltype(trainset_sane)> knn_ml(trainset_sane, d);
+						e_ml.add_predictor([&knn_ml](auto row) {
+							return knn_ml.predict(row);
+						}, 0.5f);
+
+						naive_bayes<decltype(trainset_sane)> nb_ml(
+							10, -15, 0,
+							d,
+							nb_data->feature_occurance,
+							nb_data->dependants,
+							nb_data->allowed_dependencies[test_row.row_i],
+							trainset_sane
+						);
+						e_ml.add_predictor([&nb_ml](auto row) {
+							return nb_ml.predict(row);
+						}, 0.5f);
+
+						return performance::measure(d, test_row.row_i, e_ml.predict(test_row));
+					},
+					[=](performance::metrics_t const& total_metrics) noexcept {
+						yield_f({corpus, strat, ml_type::ensemble, boost::none, boost::none, cv_n, cv_k, total_metrics});
+					},
+					d, silent
+				);
+			}
+
 			for(nb_params_t const& nb_params : nbs)
 			{
 				if(!nb_data)

@@ -59,6 +59,8 @@ public:
 				}
 				case ml_type::naive_bayes:
 					throw std::runtime_error("Not implemented naive_bayes");
+				case ml_type::ensemble:
+					throw std::runtime_error("Not implemented ensemble");
 				}
 			})();
 
