@@ -62,6 +62,8 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 				<< "  inspect        inspect all objects" << std::endl
 				<< "  measure        run all scheduled tests and store the results" << std::endl
 				<< "  report         report on all results" << std::endl
+                                << "  legacy-export  export dataset in the legacy format" << std::endl
+                                << "  legacy-import  import dataset in the legacy format" << std::endl
 				<< std::endl
 				<< o_general;
 
