@@ -1,3 +1,4 @@
+#include <roerei/cpp14_fix.hpp>
 #include <roerei/storage.hpp>
 
 #include <roerei/generic/encapsulated_vector.hpp>

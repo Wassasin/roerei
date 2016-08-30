@@ -1,6 +1,4 @@
-#include <initializer_list> // force libstdc++ to include its config
-#undef _GLIBCXX_HAVE_GETS // correct broken config
-
+#include <roerei/cpp14_fix.hpp>
 #include <roerei/cli.hpp>
 #include <roerei/util/performance.hpp>
 

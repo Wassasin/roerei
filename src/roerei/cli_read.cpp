@@ -1,3 +1,4 @@
+#include <roerei/cpp14_fix.hpp>
 #include <roerei/cli.hpp>
 
 #include <boost/program_options.hpp>
