@@ -89,6 +89,18 @@ public:
 
 		return result - start;
 	}
+	
+	size_t rfind(char ch, size_t pos = std::string::npos) const
+	{
+		if(pos == std::string::npos)
+			pos = size;
+
+		size_t result = buffer.rfind(ch, start+pos);
+		if(result == buffer.npos || result > start+size)
+			return buffer.npos;
+
+		return result - start;
+	}
 };
 
 inline std::ostream& operator<<(std::ostream& os, string_view const& rhs)

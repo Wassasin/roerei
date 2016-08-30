@@ -8,6 +8,8 @@
 #include <set>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
+
 namespace roerei
 {
 
@@ -29,6 +31,28 @@ class legacy
 		str.remove_prefix(intermediate.get_start() + next - str.get_start() + 1);
 
 		return intermediate.substr(0, next);
+	}
+
+	static std::string rewrite_name(std::string str)
+	{
+		// CoRN.algebra.CRings.cr_crr -> cic:/CoRN/algebra/CRings/cr_crr [.con]
+		// CoRN.algebra.CFields.CField -> cic:/CoRN/algebra/CFields/CField [.ind::CField]
+		boost::replace_all(str, ".", "/");
+		str = "cic:/" + str;
+
+		/* Heuristic to determine if object is construct or inductive
+		 * Do not use, because it is not correct
+		{
+			string_view strv(str);
+			string_view strv_end(strv.substr(strv.rfind('/')+1));
+
+			if(std::isupper(*strv_end.begin()))
+				str += ".ind";
+			else
+				str += ".con";
+		} */
+
+		return str;
 	}
 
 	template<typename F>
@@ -105,18 +129,19 @@ public:
 					features[feat.to_string()]++;
 				},
 				[&result, &features, &dir, &corpus](string_view const& symb) {
-					summary_t s = {corpus, dir, symb.to_string(), {}, boost::none};
+					std::string symb_str(rewrite_name(symb.to_string()));
+					summary_t s = {corpus, dir, symb_str, {}, boost::none};
 
 					for(auto kvp : features)
 					{
-						summary_t::frequency_t freq = {kvp.first, kvp.second};
+						summary_t::frequency_t freq = {rewrite_name(kvp.first), kvp.second};
 						s.type_uris.emplace_back(freq);
 					}
 
 					std::sort(s.type_uris.begin(), s.type_uris.end(), [](auto x, auto y) {
 						return x.freq > y.freq;
 					});
-					result.emplace(std::make_pair(symb.to_string(), std::move(s)));
+					result.emplace(std::make_pair(symb_str, std::move(s)));
 
 					features.clear();
 				}
@@ -131,12 +156,13 @@ public:
 					dependencies[feat.to_string()]++;
 				},
 				[&result, &dependencies, &dir, &corpus](string_view const& symb) {
-					summary_t& s = result.at(symb.to_string());
+					std::string symb_str(rewrite_name(symb.to_string()));
+					summary_t& s = result.at(symb_str);
 					s.body_uris.reset(std::vector<summary_t::frequency_t>());
 
 					for(auto kvp : dependencies)
 					{
-						summary_t::frequency_t freq = {kvp.first, kvp.second};
+						summary_t::frequency_t freq = {rewrite_name(kvp.first), kvp.second};
 						s.body_uris->emplace_back(freq);
 					}
 
