@@ -6,6 +6,7 @@
 #include <roerei/inspector.hpp>
 #include <roerei/tester.hpp>
 #include <roerei/legacy.hpp>
+#include <roerei/diff.hpp>
 
 namespace roerei
 {
@@ -26,6 +27,8 @@ int cli::exec(int argc, char** argv)
 		exec_generate(opt);
 	else if(opt.action == "report")
 		exec_report(opt);
+	else if(opt.action == "diff")
+		exec_diff(opt);
 	else if(opt.action == "legacy-export")
 	{
 		auto const d(storage::read_dataset("CoRN-legacy"));
@@ -82,6 +85,14 @@ void cli::exec_report(cli_options& opt)
 
 		std::cout << result << std::endl;
 	}, path);
+}
+
+void cli::exec_diff(cli_options& opt)
+{
+	if(opt.args.size() != 2)
+		throw std::runtime_error("Incorrect number of arguments for diff");
+
+	diff::exec(opt.args[0], opt.args[1]);
 }
 
 void cli::exec_measure(cli_options& opt)
