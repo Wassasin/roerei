@@ -52,7 +52,7 @@ private:
 			i = str.find(".ind");
 		
 		if(i == str.npos)
-			throw std::runtime_error(std::string("No extension can be found for ")+str);
+			return;
 
 		str.erase(i);
 	}
