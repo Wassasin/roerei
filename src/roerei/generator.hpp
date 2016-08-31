@@ -34,10 +34,35 @@ private:
 				swap_f(b.uri, mapping);
 	}
 
+	/* Added late-stage in writing of thesis, as previous work thought the difference
+	 * between ind and con to be irrelevant.
+	 *
+	 * Remove .con and .ind
+	 * Keep .var, so that it later can be blacklisted (ugly, I know)
+	 */
+	static void remove_irrelevant(std::string& str)
+	{
+		auto i = str.find(".var");
+		if(i != str.npos)
+			return;
+
+		i = str.find(".con");
+		
+		if(i == str.npos)
+			i = str.find(".ind");
+		
+		if(i == str.npos)
+			throw std::runtime_error(std::string("No extension can be found for ")+str);
+
+		str.erase(i);
+	}
+
 	static void swap_f(std::string& str, std::map<uri_t, uri_t> const& mapping) {
 		auto const it = mapping.find(str);
 		if(it != mapping.end())
 			str.assign(it->second); // Copy
+		
+		remove_irrelevant(str);
 	}
 
 	struct phase1
