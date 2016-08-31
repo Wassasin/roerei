@@ -181,10 +181,8 @@ dataset_t storage::read_dataset(std::string const& corpus)
 	return deserialize<dataset_t>(d, "dataset");
 }
 
-void storage::read_result(std::function<void(cv_result_t)> const& f)
+void storage::read_result(std::function<void(cv_result_t)> const& f, std::string const& results_path)
 {
-	std::string const results_path = "./data/results.msgpack";
-
 	if(!boost::filesystem::exists(results_path))
 		return; // Do nothing
 

@@ -27,11 +27,13 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 	boost::program_options::positional_options_description pos;
 
 	pos.add("action", 1);
+	pos.add("path", 1);
 
 	boost::program_options::options_description options("Allowed options");
 	options.add(o_general);
 	options.add_options()
-			("action", boost::program_options::value(&opt.action));
+			("action", boost::program_options::value(&opt.action))
+			("path", boost::program_options::value(&opt.path));
 
 	try
 	{
@@ -61,7 +63,7 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 				<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
 				<< "  inspect        inspect all objects" << std::endl
 				<< "  measure        run all scheduled tests and store the results" << std::endl
-				<< "  report         report on all results" << std::endl
+				<< "  report [path]  report on all results [in file 'path']" << std::endl
                                 << "  legacy-export  export dataset in the legacy format" << std::endl
                                 << "  legacy-import  import dataset in the legacy format" << std::endl
 				<< std::endl

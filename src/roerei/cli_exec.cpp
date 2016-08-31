@@ -67,6 +67,10 @@ void cli::exec_inspect(cli_options& opt)
 
 void cli::exec_report(cli_options& opt)
 {
+	std::string path = opt.path;
+	if(path == "")
+		path = "./data/results.msgpack";
+
 	storage::read_result([&opt](cv_result_t const& result) {
 		if(!std::any_of(opt.corpii.begin(), opt.corpii.end(), [&result](std::string const& y) {
 			return y == result.corpus;
@@ -74,7 +78,7 @@ void cli::exec_report(cli_options& opt)
 			return;
 
 		std::cout << result << std::endl;
-	});
+	}, path);
 }
 
 void cli::exec_measure(cli_options& opt)

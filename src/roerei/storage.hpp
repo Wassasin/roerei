@@ -19,7 +19,7 @@ public:
 	static void read_summaries(std::function<void(summary_t&&)> const& f);
 	static void read_mapping(std::function<void(mapping_t&&)> const& f);
 
-	static void read_result(std::function<void(cv_result_t)> const& f);
+	static void read_result(std::function<void(cv_result_t)> const& f, std::string const& results_path = "./data/results.msgpack");
 	static void write_result(cv_result_t const& r);
 
 	static dataset_t read_dataset(std::string const& corpus);
