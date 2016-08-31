@@ -27,13 +27,13 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 	boost::program_options::positional_options_description pos;
 
 	pos.add("action", 1);
-	pos.add("path", 1);
+	pos.add("args", 2); // Max 2 for diff
 
 	boost::program_options::options_description options("Allowed options");
 	options.add(o_general);
 	options.add_options()
 			("action", boost::program_options::value(&opt.action))
-			("path", boost::program_options::value(&opt.path));
+			("args", boost::program_options::value(&opt.args));
 
 	try
 	{

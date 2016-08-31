@@ -12,7 +12,7 @@ namespace roerei
 struct cli_options
 {
 	std::string action;
-	std::string path;
+	std::vector<std::string> args;
 	std::vector<std::string> corpii;
 	std::vector<ml_type> methods;
 	std::vector<posetcons_type> strats;

@@ -67,9 +67,12 @@ void cli::exec_inspect(cli_options& opt)
 
 void cli::exec_report(cli_options& opt)
 {
-	std::string path = opt.path;
-	if(path == "")
-		path = "./data/results.msgpack";
+	std::string path = "./data/results.msgpack";
+
+	if(opt.args.size() > 1)
+		throw std::runtime_error("Too many arguments for report");
+	else if(opt.args.size() == 1)
+		path = opt.args[0];
 
 	storage::read_result([&opt](cv_result_t const& result) {
 		if(!std::any_of(opt.corpii.begin(), opt.corpii.end(), [&result](std::string const& y) {
