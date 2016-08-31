@@ -24,11 +24,12 @@ private:
 public:
 	struct metrics_t
 	{
-		float oocover, ooprecision, recall, rank, auc;
+		float oocover, cover, ooprecision, recall, rank, auc;
 		size_t n;
 
 		metrics_t()
 			: oocover(1.0f)
+			, cover(1.0f)
 			, ooprecision(1.0f)
 			, recall(std::numeric_limits<float>::max())
 			, rank(std::numeric_limits<float>::max())
@@ -36,8 +37,9 @@ public:
 			, n(0)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank, float _auc)
+		metrics_t(float _oocover, float _cover, float _ooprecision, float _recall, float _rank, float _auc)
 			: oocover(_oocover)
+			, cover(_cover)
 			, ooprecision(_ooprecision)
 			, recall(_recall)
 			, rank(_rank)
@@ -45,8 +47,9 @@ public:
 			, n(1)
 		{}
 
-		metrics_t(float _oocover, float _ooprecision, float _recall, float _rank, float _auc, size_t _n)
+		metrics_t(float _oocover, float _cover, float _ooprecision, float _recall, float _rank, float _auc, size_t _n)
 			: oocover(_oocover)
+			, cover(_cover)
 			, ooprecision(_ooprecision)
 			, recall(_recall)
 			, rank(_rank)
@@ -68,6 +71,7 @@ public:
 
 			return {
 				oocover * nr_f + rhs.oocover * rhs_nr_f,
+				cover * nr_f + rhs.cover * rhs_nr_f,
 				ooprecision * nr_f + rhs.ooprecision * rhs_nr_f,
 				recall * nr_f + rhs.recall * rhs_nr_f,
 				rank * nr_f + rhs.rank * rhs_nr_f,
@@ -213,6 +217,7 @@ public:
 		float c_oofound = oofound_deps.size();
 
 		float oocover = c_oofound/c_required;
+		float cover = c_found/c_required;
 		float ooprecision = c_oofound/c_oosuggested;
 
 		if(c_oofound == 0.0f)
@@ -221,6 +226,7 @@ public:
 		if(c_required == 0.0f)
 		{
 			oocover = 1.0f;
+			cover = 1.0f;
 			ooprecision = 1.0f;
 		}
 
@@ -229,6 +235,7 @@ public:
 		return {
 			{
 				oocover,
+				cover,
 				ooprecision,
 				recall_rank_kvp.first,
 				recall_rank_kvp.second,
@@ -246,6 +253,7 @@ inline std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t
 {
 	os
 		<< "100Cover " << roerei::fill(roerei::round(rhs.oocover, 3), 5) << " + "
+		<< "Cover " << roerei::fill(roerei::round(rhs.cover, 3), 5) << " + "
 		<< "100Precision " << roerei::fill(roerei::round(rhs.ooprecision, 3), 5) << " + "
 		<< "FullRecall " << roerei::fill(roerei::round(rhs.recall, 1), 4) << " + "
 		<< "Rank " << roerei::fill(roerei::round(rhs.rank, 1), 4) << " + "
@@ -258,6 +266,7 @@ inline std::ostream& operator<<(std::ostream& os, roerei::performance::metrics_t
 BOOST_FUSION_ADAPT_STRUCT(
 		roerei::performance::metrics_t,
 		(float, oocover)
+		(float, cover)
 		(float, ooprecision)
 		(float, recall)
 		(float, rank)
