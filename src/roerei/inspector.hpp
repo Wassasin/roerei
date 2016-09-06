@@ -11,6 +11,7 @@
 #include <roerei/ml/omniscient.hpp>
 #include <roerei/ml/naive_bayes.hpp>
 
+#include <roerei/ml/posetcons_canonical.hpp>
 #include <roerei/ml/posetcons_pessimistic.hpp>
 
 #include <iostream>
@@ -33,11 +34,15 @@ private:
 	}
 
 public:
-	static void iterate_all(ml_type method, dataset_t const& d)
+	static void iterate_all(ml_type method, dataset_t const& d_orig)
 	{
+		auto const d(posetcons_canonical::consistentize(d_orig));
+
 		posetcons_pessimistic pc(d);
+
 		d.objects.keys([&](object_id_t i) {
 			auto feature_matrix(pc.exec(d.feature_matrix, i));
+			std::shared_ptr<nb_preload_data_t> nb_data;
 
 			performance::result_t result = ([&]() {
 				switch(method)
@@ -58,7 +63,18 @@ public:
 					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
 				}
 				case ml_type::naive_bayes:
-					throw std::runtime_error("Not implemented naive_bayes");
+				{
+					if(!nb_data)
+						nb_data = std::make_shared<nb_preload_data_t>(d);
+
+					naive_bayes<decltype(feature_matrix)> ml(
+						10, -15, 0,
+						d,
+						*nb_data,
+						feature_matrix
+					);
+					return performance::measure(d, i, ml.predict(d.feature_matrix[i], i));
+				}
 				case ml_type::ensemble:
 					throw std::runtime_error("Not implemented ensemble");
 				}
