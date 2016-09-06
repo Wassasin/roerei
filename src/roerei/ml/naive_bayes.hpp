@@ -24,6 +24,7 @@ struct nb_preload_data_t
 	encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
 	encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance;
 
+	// d needs to be consistentized
 	nb_preload_data_t(dataset_t const& d)
 		: dependants(dependencies::create_dependants(d))
 		, allowed_dependencies(d.objects.size())
@@ -54,7 +55,7 @@ struct nb_preload_data_t
 				wl.emplace_back(j);
 			});
 
-			allowed_dependencies.emplace_back(std::move(wl));
+			allowed_dependencies[i] = std::move(wl);
 		});
 
 		d.feature_matrix.citerate([&](dataset_t::feature_matrix_t::const_row_proxy_t const& row) {
@@ -174,11 +175,13 @@ public:
 		{
 			float r = rank(phi_id, test_row, whitelist);
 
-			if(r == -INFINITY)
+			if(r <= 0.0f)
 				continue;
 
 			ranks.emplace_back(std::make_pair(phi_id, r));
 		}
+
+		normalize::exec(ranks);
 
 		return ranks;
 	}
