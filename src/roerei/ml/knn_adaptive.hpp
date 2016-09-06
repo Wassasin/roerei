@@ -2,6 +2,7 @@
 
 #include <roerei/dataset.hpp>
 #include <roerei/distance.hpp>
+#include <roerei/normalize.hpp>
 
 #include <list>
 #include <algorithm>
@@ -51,7 +52,9 @@ public:
 				break;
 		}
 
-		return std::vector<std::pair<dependency_id_t, float>>(suggestions.begin(), suggestions.end());
+		std::vector<std::pair<dependency_id_t, float>> result(suggestions.begin(), suggestions.end());
+		normalize::exec(result);
+		return result;
 	}
 };
 

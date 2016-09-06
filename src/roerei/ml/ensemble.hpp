@@ -44,8 +44,7 @@ public:
 
 			prediction_t ps = predict_f(ys);
 			for(auto prediction_kvp : ps)
-				if(prediction_kvp.second != 0.0f)
-					value_sums[prediction_kvp.first] += weight / prediction_kvp.second;
+				value_sums[prediction_kvp.first] += weight * prediction_kvp.second;
 
 			weight_sum += weight;
 		}
@@ -53,8 +52,10 @@ public:
 		std::vector<std::pair<dependency_id_t, float>> result;
 		result.reserve(d.dependencies.size()); // TODO too much
 		value_sums.iterate([&result, weight_sum](dependency_id_t id, float value) {
-			if(value != 0.0f)
-				result.emplace_back(std::make_pair(id, weight_sum / value));
+			if(value == 0.0f)
+				return;
+
+			result.emplace_back(std::make_pair(id, value / weight_sum));
 		});
 		return result;
 	}
