@@ -28,64 +28,6 @@ class tester
 private:
 	tester() = delete;
 
-	struct nb_data_t
-	{
-		nb_data_t(nb_data_t const&) = delete;
-		nb_data_t(nb_data_t&&) = default;
-
-		dependencies::dependant_matrix_t dependants;
-		encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
-		encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance;
-	};
-
-	inline static nb_data_t load_nb_data(dataset_t const& d)
-	{
-		std::map<object_id_t, dependency_id_t> dependency_revmap(d.create_dependency_revmap());
-		dependencies::dependant_matrix_t dependants(dependencies::create_dependants(d));
-		dependencies::dependant_obj_matrix_t dependants_trans(dependencies::create_obj_dependants(d));
-		dependants_trans.transitive();
-
-		encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
-		d.objects.keys([&](object_id_t i) {
-			std::vector<dependency_id_t> wl, bl;
-			for(object_id_t forbidden : dependants_trans[i])
-			{
-				auto it = dependency_revmap.find(forbidden);
-				if(it == dependency_revmap.end())
-					continue;
-				bl.emplace_back(it->second);
-			}
-
-			std::sort(bl.begin(), bl.end());
-
-			auto it = bl.begin();
-			d.dependencies.keys([&](dependency_id_t j) {
-				it = std::lower_bound(it, bl.end(), j);
-				if(it != bl.end() && *it == j)
-					return;
-
-				wl.emplace_back(j);
-			});
-
-			allowed_dependencies.emplace_back(std::move(wl));
-		});
-
-		encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance(d.features.size());
-		d.feature_matrix.citerate([&](dataset_t::feature_matrix_t::const_row_proxy_t const& row) {
-			for(auto const& kvp : row)
-			{
-				assert(kvp.second > 0);
-				feature_occurance[kvp.first].emplace_back(row.row_i);
-			}
-		});
-
-		return {
-			std::move(dependants),
-			std::move(allowed_dependencies),
-			std::move(feature_occurance)
-		};
-	}
-
 public:
 	inline static void exec(std::string const& corpus, posetcons_type strat, ml_type method, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
 	{
@@ -229,11 +171,11 @@ public:
 				);
 			}
 
-			std::shared_ptr<nb_data_t> nb_data;
+			std::shared_ptr<nb_preload_data_t> nb_data;
 			if(run_ensemble)
 			{
 				if(!nb_data)
-					nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
+					nb_data = std::make_shared<nb_preload_data_t>(d);
 
 				c.order_async(m,
 					[&d, gen_trainset_sane_f, nb_data](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
@@ -248,13 +190,11 @@ public:
 						naive_bayes<decltype(trainset_sane)> nb_ml(
 							10, -15, 0,
 							d,
-							nb_data->feature_occurance,
-							nb_data->dependants,
-							nb_data->allowed_dependencies[test_row.row_i],
+							*nb_data,
 							trainset_sane
 						);
-						e_ml.add_predictor([&nb_ml](auto row) {
-							return nb_ml.predict(row);
+						e_ml.add_predictor([&nb_ml, test_row_id=test_row.row_i](auto row) {
+							return nb_ml.predict(row, test_row_id); // TODO remove the use of test_row_id, when time allows
 						}, 0.5f);
 
 						return performance::measure(d, test_row.row_i, e_ml.predict(test_row));
@@ -269,7 +209,7 @@ public:
 			for(nb_params_t const& nb_params : nbs)
 			{
 				if(!nb_data)
-					nb_data = std::make_shared<nb_data_t>(std::move(load_nb_data(d)));
+					nb_data = std::make_shared<nb_preload_data_t>(d);
 
 				c.order_async(m,
 					[&d, gen_trainset_sane_f, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
@@ -277,12 +217,10 @@ public:
 						naive_bayes<decltype(trainset_sane)> ml(
 							nb_params.pi, nb_params.sigma, nb_params.tau,
 							d,
-							nb_data->feature_occurance,
-							nb_data->dependants,
-							nb_data->allowed_dependencies[test_row.row_i],
+							*nb_data,
 							trainset_sane
 						);
-						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+						return performance::measure(d, test_row.row_i, ml.predict(test_row, test_row.row_i));
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
 						yield_f({corpus, strat, ml_type::naive_bayes, boost::none, nb_params, cv_n, cv_k, total_metrics});

@@ -15,15 +15,66 @@
 namespace roerei
 {
 
+struct nb_preload_data_t
+{
+	nb_preload_data_t(nb_preload_data_t const&) = delete;
+	nb_preload_data_t(nb_preload_data_t&&) = default;
+
+	dependencies::dependant_matrix_t dependants;
+	encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
+	encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance;
+
+	nb_preload_data_t(dataset_t const& d)
+		: dependants(dependencies::create_dependants(d))
+		, allowed_dependencies(d.objects.size())
+		, feature_occurance(d.features.size())
+	{
+		std::map<object_id_t, dependency_id_t> dependency_revmap(d.create_dependency_revmap());
+		dependencies::dependant_obj_matrix_t dependants_trans(dependencies::create_obj_dependants(d));
+		dependants_trans.transitive();
+
+		d.objects.keys([&](object_id_t i) {
+			std::vector<dependency_id_t> wl, bl;
+			for(object_id_t forbidden : dependants_trans[i])
+			{
+				auto it = dependency_revmap.find(forbidden);
+				if(it == dependency_revmap.end())
+					continue;
+				bl.emplace_back(it->second);
+			}
+
+			std::sort(bl.begin(), bl.end());
+
+			auto it = bl.begin();
+			d.dependencies.keys([&](dependency_id_t j) {
+				it = std::lower_bound(it, bl.end(), j);
+				if(it != bl.end() && *it == j)
+					return;
+
+				wl.emplace_back(j);
+			});
+
+			allowed_dependencies.emplace_back(std::move(wl));
+		});
+
+		d.feature_matrix.citerate([&](dataset_t::feature_matrix_t::const_row_proxy_t const& row) {
+			for(auto const& kvp : row)
+			{
+				assert(kvp.second > 0);
+				feature_occurance[kvp.first].emplace_back(row.row_i);
+			}
+		});
+	}
+};
+
 template<typename MATRIX>
 class naive_bayes
 {
+private:
 	float const pi, sigma, tau;
 
 	dataset_t const& d;
-	encapsulated_vector<feature_id_t, std::vector<object_id_t>> const& feature_occurance;
-	std::vector<dependency_id_t> const& allowed_dependencies;
-	dependencies::dependant_matrix_t const& dependants;
+	nb_preload_data_t const& pld;
 	MATRIX const& trainingset;
 
 private:
@@ -39,7 +90,7 @@ private:
 
 		// TODO encapsulate feature weight (might yield better performance)
 
-		std::set<object_id_t> const& dependant_objs = dependants[phi_id];
+		std::set<object_id_t> const& dependant_objs = pld.dependants[phi_id];
 		std::vector<object_id_t> candidates;
 		candidates.reserve(std::min(whitelist.size(), dependant_objs.size())); // Upper bound reserve
 
@@ -57,7 +108,7 @@ private:
 		for(auto const& kvp_j : test_row)
 		{
 			size_t p_j = tau;
-			set_smart_intersect(feature_occurance[kvp_j.first], candidates, [&](object_id_t) { p_j++; });
+			set_smart_intersect(pld.feature_occurance[kvp_j.first], candidates, [&](object_id_t) { p_j++; });
 
 			if(p_j == 0)
 				result += kvp_j.second * sigma;
@@ -74,23 +125,19 @@ public:
 			float _sigma, // default -15
 			float _tau, // default 20
 			dataset_t const& _d,
-			decltype(feature_occurance) const& _feature_occurance,
-			dependencies::dependant_matrix_t const& _dependants,
-			std::vector<dependency_id_t> const& _allowed_dependencies,
+			nb_preload_data_t const& _pld,
 			MATRIX const& _trainingset
 		)
 		: pi(_pi)
 		, sigma(_sigma)
 		, tau(_tau)
 		, d(_d)
-		, feature_occurance(_feature_occurance)
-		, allowed_dependencies(_allowed_dependencies)
-		, dependants(_dependants)
+		, pld(_pld)
 		, trainingset(_trainingset)
 	{}
 
 	template<typename ROW>
-	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row) const
+	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row, object_id_t test_row_id) const
 	{
 		std::vector<std::pair<dependency_id_t, float>> ranks;
 
@@ -98,7 +145,7 @@ public:
 		feature_objs.reserve(trainingset.size_m());
 		for(auto const& kvp_j : test_row)
 		{
-			auto const& xs = feature_occurance[kvp_j.first];
+			auto const& xs = pld.feature_occurance[kvp_j.first];
 			feature_objs.insert(feature_objs.end(), xs.begin(), xs.end());
 		}
 		std::sort(feature_objs.begin(), feature_objs.end());
@@ -122,8 +169,8 @@ public:
 		if(whitelist.empty())
 			return ranks;
 
-		ranks.reserve(allowed_dependencies.size());
-		for(dependency_id_t phi_id : allowed_dependencies)
+		ranks.reserve(pld.allowed_dependencies.size());
+		for(dependency_id_t phi_id : pld.allowed_dependencies[test_row_id])
 		{
 			float r = rank(phi_id, test_row, whitelist);
 
