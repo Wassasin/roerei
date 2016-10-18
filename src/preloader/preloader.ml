@@ -1,9 +1,13 @@
 module StringSet = Set.Make (String) ;;
 
-let count_all : ((Prelude.uri -> unit) -> unit) -> Object.freq_item list = fun f ->
-    let map : Counter.t ref = ref Counter.empty in
-    f (fun x -> map := Counter.touch x !map);
-    Counter.to_list !map
+let analyze_all : ((Prelude.uri -> int -> unit) -> unit) -> (Object.freq_item list * Object.freq_item list) = fun f ->
+    let counter_map : Counter.t ref = ref Counter.empty in
+    let minlister_map : Minlister.t ref = ref Minlister.empty in
+    f (fun x d ->
+        counter_map := Counter.touch x !counter_map;
+        minlister_map := Minlister.touch x d !minlister_map
+    );
+    (Counter.to_list !counter_map, Minlister.to_list !minlister_map)
 
 let repo_merge corpus path =
     Printf.sprintf "%s:%s" corpus path
@@ -53,14 +57,14 @@ let main () =
                 let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
                 let types_uri = Parser.parse_constanttypes types_path in 
                 let (type_id, _type_name, type_aconstr) = Parser.parse_constanttype path in
-                let type_uris = count_all (fun f -> Interpreter.fetch_uris f type_aconstr) in
+                let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 type_aconstr) in
                 if Sys.file_exists body_path then
                     let (body_id, body_uri, body_aconstr) = Parser.parse_constantbody body_path in
                     assert (type_id = body_id);
-                    let body_uris = count_all (fun f -> Interpreter.fetch_uris f body_aconstr) in
-                    yield_obj (corpus, path, types_uri, type_uris, (Some body_uris))
+                    let (body_uris, body_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 body_aconstr) in
+                    yield_obj (corpus, path, types_uri, (type_uris, type_depths), (Some (body_uris, body_depths)))
                 else
-                    yield_obj (corpus, path, types_uri, type_uris, None)
+                    yield_obj (corpus, path, types_uri, (type_uris, type_depths), None)
             )
         ) else if Filename.check_suffix path ".ind.xml.gz" then (
             if path_loaded_in_repo && path_loaded_in_mapping then
@@ -71,8 +75,8 @@ let main () =
                 let types_uri = Parser.parse_constanttypes types_path in 
                 let ind = Parser.parse_inductivedef path in
                 if not path_loaded_in_repo then (
-                    let type_uris = count_all (fun f -> Interpreter.fetch_type_uris f ind) in
-                    yield_obj (corpus, path, types_uri, type_uris, None)
+                    let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_type_uris f ind) in
+                    yield_obj (corpus, path, types_uri, (type_uris, type_depths), None)
                 );
                 if not path_loaded_in_mapping then (
                     Interpreter.fetch_constructors (fun src_f dest_f -> yield_mapping (path, (src_f types_uri), (dest_f types_uri))) ind
