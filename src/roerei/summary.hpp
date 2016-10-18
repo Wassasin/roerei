@@ -13,25 +13,27 @@ namespace roerei
 
 struct summary_t
 {
-	struct frequency_t
+	struct occurance_t
 	{
 		uri_t uri;
 		size_t freq;
+		size_t depth;
 	};
 
 	std::string corpus;
 	std::string file;
 	uri_t uri;
-	std::vector<frequency_t> type_uris;
-	boost::optional<std::vector<frequency_t>> body_uris;
+	std::vector<occurance_t> type_uris;
+	boost::optional<std::vector<occurance_t>> body_uris;
 };
 
 }
 
 BOOST_FUSION_ADAPT_STRUCT(
-		roerei::summary_t::frequency_t,
+		roerei::summary_t::occurance_t,
 		(roerei::uri_t, uri)
 		(size_t, freq)
+		(size_t, depth)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
@@ -39,6 +41,6 @@ BOOST_FUSION_ADAPT_STRUCT(
 		(std::string, corpus)
 		(std::string, file)
 		(roerei::uri_t, uri)
-		(std::vector<roerei::summary_t::frequency_t>, type_uris)
-		(boost::optional<std::vector<roerei::summary_t::frequency_t>>, body_uris)
+		(std::vector<roerei::summary_t::occurance_t>, type_uris)
+		(boost::optional<std::vector<roerei::summary_t::occurance_t>>, body_uris)
 )

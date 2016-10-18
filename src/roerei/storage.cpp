@@ -76,6 +76,48 @@ void storage::read_summaries(std::function<void(summary_t&&)> const& f)
 	static const std::string repo_path = "./data/repo.msgpack";
 	static const std::string __bogus = "__bogus";
 
+	auto read_freq_or_depth = [&](msgpack_deserializer& d) {
+		if(2 != d.read_array(__bogus))
+			throw std::logic_error("Pair 'freq or depth'' does not have appropriate size");
+
+		std::pair<std::string, size_t> p;
+		d.read(__bogus, p.first);
+		d.read(__bogus, p.second);
+		return p;
+	};
+
+	auto read_occurance_map = [&](msgpack_deserializer& d) {
+		std::map<uri_t, summary_t::occurance_t> map;
+		if(2 != d.read_array(__bogus))
+			throw std::logic_error("Pair 'freqlist and depthlist' does not have appropriate size");
+
+		{
+			size_t size = d.read_array(__bogus);
+			for(size_t i = 0; i < size; ++i)
+			{
+				auto p = read_freq_or_depth(d);
+				auto result = map.emplace(std::make_pair(p.first, summary_t::occurance_t{p.first, p.second, 0}));
+
+				if(!result.second)
+					result.first->second.freq += p.second;
+			}
+		}
+
+		{
+			size_t size = d.read_array(__bogus);
+			for(size_t i = 0; i < size; ++i)
+			{
+				auto p = read_freq_or_depth(d);
+				auto result = map.emplace(std::make_pair(p.first, summary_t::occurance_t{p.first, 0, p.second}));
+
+				if(!result.second)
+					result.first->second.depth += p.second;
+			}
+		}
+
+		return map;
+	};
+
 	if(!boost::filesystem::exists(repo_path))
 		throw std::runtime_error("Repo does not exist");
 
@@ -83,50 +125,28 @@ void storage::read_summaries(std::function<void(summary_t&&)> const& f)
 		summary_t s;
 
 		if(5 != d.read_array(__bogus))
-			throw std::logic_error("Array does not have appropriate size");
+			throw std::logic_error("Pair 'summary' does not have appropriate size");
 
 		d.read(__bogus, s.corpus);
 		d.read(__bogus, s.file);
 		d.read(__bogus, s.uri);
 
-		size_t type_uris_size = d.read_array(__bogus);
-		s.type_uris.reserve(type_uris_size);
-		for(size_t i = 0; i < type_uris_size; ++i)
 		{
-			if(2 != d.read_array(__bogus))
-				throw std::logic_error("Pair does not have appropriate size");
-
-			summary_t::frequency_t freq;
-			d.read(__bogus, freq.uri);
-			d.read(__bogus, freq.freq);
-
-			s.type_uris.emplace_back(std::move(freq));
+			auto map = read_occurance_map(d);
+			s.type_uris.reserve(map.size());
+			for(auto&& kvp : map)
+				s.type_uris.emplace_back(std::move(kvp.second));
 		}
 
-		boost::optional<size_t> body_uris_size;
 		try
 		{
-			body_uris_size = d.read_array(__bogus);
-		} catch(type_error e)
+			auto map = read_occurance_map(d);
+			s.body_uris.reset(std::vector<summary_t::occurance_t>());
+			s.body_uris->reserve(map.size());
+			for(auto&& kvp : map)
+				s.body_uris->emplace_back(std::move(kvp.second));
+		} catch(type_error /*e*/)
 		{}
-
-		if(body_uris_size)
-		{
-			s.body_uris.reset(std::vector<summary_t::frequency_t>());
-			s.body_uris->reserve(*body_uris_size);
-
-			for(size_t i = 0; i < *body_uris_size; ++i)
-			{
-				if(2 != d.read_array(__bogus))
-					throw std::logic_error("Pair does not have appropriate size");
-
-				summary_t::frequency_t freq;
-				d.read(__bogus, freq.uri);
-				d.read(__bogus, freq.freq);
-
-				s.body_uris->emplace_back(std::move(freq));
-			}
-		}
 
 		f(std::move(s));
 	});

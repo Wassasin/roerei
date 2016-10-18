@@ -134,8 +134,9 @@ public:
 
 					for(auto kvp : features)
 					{
-						summary_t::frequency_t freq = {rewrite_name(kvp.first), kvp.second};
-						s.type_uris.emplace_back(freq);
+						// There is no depth info in the legacy dataset, so set to 0
+						summary_t::occurance_t occurance = {rewrite_name(kvp.first), kvp.second, 0};
+						s.type_uris.emplace_back(occurance);
 					}
 
 					std::sort(s.type_uris.begin(), s.type_uris.end(), [](auto x, auto y) {
@@ -158,12 +159,13 @@ public:
 				[&result, &dependencies, &dir, &corpus](string_view const& symb) {
 					std::string symb_str(rewrite_name(symb.to_string()));
 					summary_t& s = result.at(symb_str);
-					s.body_uris.reset(std::vector<summary_t::frequency_t>());
+					s.body_uris.reset(std::vector<summary_t::occurance_t>());
 
 					for(auto kvp : dependencies)
 					{
-						summary_t::frequency_t freq = {rewrite_name(kvp.first), kvp.second};
-						s.body_uris->emplace_back(freq);
+						// There is no depth info in the legacy dataset, so set to 0
+						summary_t::occurance_t occurance = {rewrite_name(kvp.first), kvp.second, 0};
+						s.body_uris->emplace_back(occurance);
 					}
 
 					std::sort(s.body_uris->begin(), s.body_uris->end(), [](auto x, auto y) {
