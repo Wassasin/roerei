@@ -19,7 +19,8 @@ _build
 
 data
 build
-CMakeLists.txt.user
+backup
+CMakeLists.txt.user*
 
 src/preloader/preloader
 src/preloader/tester
