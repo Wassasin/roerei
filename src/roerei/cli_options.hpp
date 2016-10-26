@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+#include <boost/optional.hpp>
+
 #include <roerei/ml/ml_type.hpp>
 #include <roerei/ml/posetcons_type.hpp>
 
@@ -16,6 +18,7 @@ struct cli_options
 	std::vector<std::string> corpii;
 	std::vector<ml_type> methods;
 	std::vector<posetcons_type> strats;
+	boost::optional<std::string> filter;
 	bool silent = false;
 	size_t jobs = 1;
 };

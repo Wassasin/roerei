@@ -12,7 +12,7 @@ namespace roerei
 
 int cli::read_options(cli_options& opt, int argc, char** argv)
 {
-	std::string corpii, methods, strats;
+	std::string corpii, methods, strats, filter;
 
 	boost::program_options::options_description o_general("Options");
 	o_general.add_options()
@@ -21,7 +21,8 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 			("corpii,c", boost::program_options::value(&corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
 			("methods,m", boost::program_options::value(&methods), "select which methods to use, possibly comma separated (default: all)")
 			("strats,r", boost::program_options::value(&strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
-			("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)");
+			("jobs,j", boost::program_options::value(&opt.jobs), "number of concurrent jobs (default: 1)")
+			("filter,f", boost::program_options::value(&filter), "show only objects which include the filter string");
 
 	boost::program_options::variables_map vm;
 	boost::program_options::positional_options_description pos;
@@ -116,6 +117,11 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 
 		for(auto s : strats_arr)
 			opt.strats.emplace_back(to_posetcons_type(s));
+	}
+
+	if(vm.count("filter"))
+	{
+		opt.filter = filter;
 	}
 
 	return EXIT_SUCCESS;

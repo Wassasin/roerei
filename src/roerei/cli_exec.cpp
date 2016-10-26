@@ -71,7 +71,7 @@ void cli::exec_inspect(cli_options& opt)
 		for(auto&& method : opt.methods)
 		{
 			auto const d(storage::read_dataset(corpus));
-			inspector::iterate_all(method, d);
+			inspector::iterate_all(method, d, opt.filter);
 		}
 }
 

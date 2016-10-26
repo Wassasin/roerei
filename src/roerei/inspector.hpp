@@ -34,13 +34,16 @@ private:
 	}
 
 public:
-	static void iterate_all(ml_type method, dataset_t const& d_orig)
+	static void iterate_all(ml_type method, dataset_t const& d_orig, boost::optional<std::string> filter = boost::none)
 	{
 		auto const d(posetcons_canonical::consistentize(d_orig));
 
 		posetcons_pessimistic pc(d);
 
-		d.objects.keys([&](object_id_t i) {
+		d.objects.iterate([&](object_id_t i, uri_t const& uri) {
+			if(filter && uri.find(*filter) == std::string::npos)
+				return;
+
 			auto feature_matrix(pc.exec(d.feature_matrix, i));
 			std::shared_ptr<nb_preload_data_t> nb_data;
 
