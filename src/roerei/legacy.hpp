@@ -182,7 +182,8 @@ public:
 			[&result](auto f) {
 				for(std::pair<uri_t, summary_t>&& kvp : result)
 					f(std::move(kvp.second));
-			}
+			},
+			generator::variant_e::frequency
 		));
 
 		return std::move(d_map.at(corpus));

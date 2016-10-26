@@ -160,7 +160,8 @@ private:
 			std::cout << "Loaded maps" << std::endl;
 		}
 
-		void add(summary_t&& s, std::map<uri_t, uri_t> const& mapping)
+		template<typename F>
+		void add(summary_t&& s, std::map<uri_t, uri_t> const& mapping, F const& read_value)
 		{
 			map_summary_f(s, mapping);
 
@@ -178,8 +179,7 @@ private:
 					continue;
 
 				feature_id_t col = type_uris_map.at(t.uri);
-				assert(t.freq > 0);
-				fv[col] = t.freq;
+				fv[col] = read_value(t);
 			}
 
 			if(s.body_uris)
@@ -192,17 +192,21 @@ private:
 					if(it_col == dependency_map.end())
 						continue;
 					dependency_id_t col = it_col->second;
-
-					assert(b.freq > 0);
-					dv[col] = b.freq;
+					dv[col] = read_value(b);
 				}
 		}
 
 	};
 
 public:
+	enum class variant_e {
+		frequency,
+		depth,
+		flat
+	};
+
 	template<typename MAP_F, typename SUMMARY_F>
-	static std::map<std::string, dataset_t> construct(MAP_F read_mapping_f, SUMMARY_F read_summary_f)
+	static std::map<std::string, dataset_t> construct(MAP_F&& read_mapping_f, SUMMARY_F&& read_summary_f, variant_e variant)
 	{
 		std::map<uri_t, uri_t> mapping;
 		read_mapping_f([&](mapping_t&& m) {
@@ -235,9 +239,23 @@ public:
 			p3.emplace(std::move(kvp));
 		}
 
-		read_summary_f([&](summary_t&& s) {
-			p3.find(s.corpus)->second.add(std::move(s), mapping);
-		});
+		switch(variant) {
+		case variant_e::frequency:
+			read_summary_f([&](summary_t&& s) {
+				p3.find(s.corpus)->second.add(std::move(s), mapping, [](summary_t::occurance_t const& occ) { return occ.freq; });
+			});
+			break;
+		case variant_e::depth:
+			read_summary_f([&](summary_t&& s) {
+				p3.find(s.corpus)->second.add(std::move(s), mapping, [](summary_t::occurance_t const& occ) { return occ.depth; });
+			});
+			break;
+		case variant_e::flat:
+			read_summary_f([&](summary_t&& s) {
+				p3.find(s.corpus)->second.add(std::move(s), mapping, [](summary_t::occurance_t const& occ) { return occ.freq == 1 ? 1 : 0; });
+			});
+			break;
+		}
 
 		std::cout << "Loaded datasets" << std::endl;
 
@@ -248,11 +266,12 @@ public:
 		return result;
 	}
 
-	static std::map<std::string, dataset_t> construct_from_repo()
+	static std::map<std::string, dataset_t> construct_from_repo(variant_e variant)
 	{
 		return construct(
 			[](auto f) { storage::read_mapping(f); },
-			[](auto f) { storage::read_summaries(f); }
+			[](auto f) { storage::read_summaries(f); },
+			variant
 		);
 	}
 };

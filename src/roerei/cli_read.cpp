@@ -83,7 +83,14 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 	}
 
 	if(!vm.count("corpii") || corpii == "all")
-		opt.corpii = {"Coq", "CoRN", "CoRN-legacy", "ch2o", "mathcomp", "MathClasses"}; // TODO automate
+	{
+		// TODO automate
+		for(std::string corpus : {"Coq", "CoRN", "ch2o", "mathcomp", "MathClasses"}) {
+			opt.corpii.emplace_back(corpus+".frequency");
+			opt.corpii.emplace_back(corpus+".depth");
+			opt.corpii.emplace_back(corpus+".flat");
+		}
+	}
 	else
 		boost::algorithm::split(opt.corpii, corpii, boost::algorithm::is_any_of(","));
 

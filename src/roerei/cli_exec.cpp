@@ -50,12 +50,19 @@ int cli::exec(int argc, char** argv)
 
 void cli::exec_generate(cli_options& /*opt*/)
 {
-	std::map<std::string, dataset_t> map(generator::construct_from_repo());
-	for(auto const& kvp : map)
-	{
-		storage::write_dataset(kvp.first, kvp.second);
-		std::cerr << "Written " << kvp.first << std::endl;
-	}
+	auto generate = [](generator::variant_e variant, std::string postfix) {
+		std::map<std::string, dataset_t> map(generator::construct_from_repo(variant));
+		for(auto const& kvp : map)
+		{
+			auto name = kvp.first+"."+postfix;
+			storage::write_dataset(name, kvp.second);
+			std::cerr << "Written " << name << std::endl;
+		}
+	};
+
+	generate(generator::variant_e::frequency, "frequency");
+	generate(generator::variant_e::depth, "depth");
+	generate(generator::variant_e::flat, "flat");
 }
 
 void cli::exec_inspect(cli_options& opt)
