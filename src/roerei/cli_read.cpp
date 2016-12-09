@@ -61,13 +61,14 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 				<< "Usage: ./roerei [options] action" << std::endl
 				<< std::endl
 				<< "Actions:" << std::endl
-				<< "  generate       load repo.msgpack, convert and write to dataset.msgpack" << std::endl
-				<< "  inspect        inspect all objects" << std::endl
-				<< "  measure        run all scheduled tests and store the results" << std::endl
-				<< "  report [path]  report on all results [in file 'path']" << std::endl
-				<< "  diff <c1> <c2> show the difference between two corpii" << std::endl
-				<< "  legacy-export  export dataset in the legacy format" << std::endl
-				<< "  legacy-import  import dataset in the legacy format" << std::endl
+				<< "  generate                 load repo.msgpack, convert and write to dataset.msgpack" << std::endl
+				<< "  inspect                  inspect all objects" << std::endl
+				<< "  measure                  run all scheduled tests and store the results" << std::endl
+				<< "  report [results]         report on all results [in file 'results']" << std::endl
+				<< "  diff <c1> <c2>           show the difference between two corpii" << std::endl
+				<< "  export [results] <dest>  dump all results [from file 'results-path'] into predefined format for thesis in directory <path>" << std::endl
+				<< "  legacy-export            export dataset in the legacy format" << std::endl
+				<< "  legacy-import            import dataset in the legacy format" << std::endl
 				<< std::endl
 				<< o_general;
 

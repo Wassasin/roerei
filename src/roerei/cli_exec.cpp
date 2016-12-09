@@ -7,6 +7,7 @@
 #include <roerei/tester.hpp>
 #include <roerei/legacy.hpp>
 #include <roerei/diff.hpp>
+#include <roerei/exporter.hpp>
 
 namespace roerei
 {
@@ -27,6 +28,8 @@ int cli::exec(int argc, char** argv)
 		exec_generate(opt);
 	else if(opt.action == "report")
 		exec_report(opt);
+	else if(opt.action == "export")
+		exec_export(opt);
 	else if(opt.action == "diff")
 		exec_diff(opt);
 	else if(opt.action == "legacy-export")
@@ -110,6 +113,23 @@ void cli::exec_measure(cli_options& opt)
 			{
 				tester::exec(corpus, strat, method, opt.jobs, opt.silent);
 			}
+}
+
+void cli::exec_export(cli_options& opt)
+{
+	std::string source_path = "./data/results.msgpack";
+	std::string output_path;
+
+	if(opt.args.size() > 2) {
+		throw std::runtime_error("Too many arguments for report");
+	} else if(opt.args.size() == 2) {
+		source_path = opt.args[0];
+		output_path = opt.args[1];
+	} else if(opt.args.size() == 1) {
+		output_path = opt.args[0];
+	}
+	
+	exporter::exec(source_path, output_path);
 }
 
 }

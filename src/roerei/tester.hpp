@@ -54,16 +54,21 @@ public:
 				ks.emplace(knn_params_t({k}));*/
 			break;
 		case ml_type::naive_bayes:
-			/*for(size_t pi = 1; pi < 20; ++pi)
-				nbs.emplace(nb_params_t({pi, -15, 0}));
+			/*for(size_t pi = 0; pi < 20; ++pi)
+				nbs.emplace(nb_params_t({(float)pi, -15, 0}));
 
 			for(float sigma = -20; sigma < 0; ++sigma)
-				nbs.emplace(nb_params_t({10, sigma, 0}));
+				nbs.emplace(nb_params_t({10, (float)sigma, 0}));
 
 			for(size_t tau = 0; tau < 20; ++tau)
-				nbs.emplace(nb_params_t({10, -15, tau}));*/
+				nbs.emplace(nb_params_t({10, -15, (float)tau}));*/
 
-			nbs.emplace(nb_params_t({10, -15, 0}));
+			for(float pi = 0; pi < 20; ++pi)
+				for(float sigma = -20; sigma < 0; ++sigma)
+					for(float tau = 0; tau < 20; ++tau)
+						nbs.emplace(nb_params_t({pi, sigma, tau}));
+
+			//nbs.emplace(nb_params_t({10, -15, 0}));
 			break;
 		case ml_type::knn_adaptive:
 			run_knn_adaptive = true;
@@ -124,14 +129,18 @@ public:
 			std::cout << result << std::endl;
 		});
 
+		std::cerr << "Scheduling..." << std::endl;
+
 		multitask m;
 
 		auto schedule_f([&](auto gen_trainset_sane_f) {
+			auto gen_trainset_sane_f_ptr(std::make_shared<decltype(gen_trainset_sane_f)>(std::move(gen_trainset_sane_f)));
+
 			for(knn_params_t knn_params : ks)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f, knn_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+					[&d, gen_trainset_sane_f_ptr, knn_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 						knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, d);
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
@@ -145,8 +154,8 @@ public:
 			if(run_knn_adaptive)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 						knn_adaptive<decltype(trainset_sane)> ml(trainset_sane, d);
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
@@ -160,7 +169,7 @@ public:
 			if(run_omniscient)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f](cv::trainset_t const& /*trainset*/, cv::testrow_t const& test_row) noexcept {
+					[&d](cv::trainset_t const& /*trainset*/, cv::testrow_t const& test_row) noexcept {
 						omniscient ml(d);
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
@@ -178,8 +187,8 @@ public:
 					nb_data = std::make_shared<nb_preload_data_t>(d);
 
 				c.order_async(m,
-					[&d, gen_trainset_sane_f, nb_data](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
-						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+					[&d, gen_trainset_sane_f_ptr, nb_data](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 						ensemble<cv::testrow_t> e_ml(d);
 
 						knn_adaptive<decltype(trainset_sane)> knn_ml(trainset_sane, d);
@@ -212,8 +221,8 @@ public:
 					nb_data = std::make_shared<nb_preload_data_t>(d);
 
 				c.order_async(m,
-					[&d, gen_trainset_sane_f, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
-						auto const trainset_sane(gen_trainset_sane_f(trainset, test_row));
+					[&d, gen_trainset_sane_f_ptr, nb_data, nb_params](cv::trainset_t const& trainset, cv::testrow_t const& test_row) {
+						auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 						naive_bayes<decltype(trainset_sane)> ml(
 							nb_params.pi, nb_params.sigma, nb_params.tau,
 							d,
@@ -256,6 +265,8 @@ public:
 			break;
 		}
 		}
+
+		std::cerr << "Scheduled" << std::endl;
 
 		m.run(jobs, true); // Blocking
 		std::cerr << "Finished" << std::endl;
