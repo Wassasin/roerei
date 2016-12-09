@@ -20,13 +20,18 @@ namespace roerei
 		ss << std::round(f*factor)/factor;
 
 		std::string result = ss.str();
-		size_t split = result.find(',');
+		size_t split = result.find('.');
 
 		if(split == result.npos) {
-			return result;
+			if(digits > 0) {
+				ss << '.';
+				split = result.size()-1;
+			} else {
+				return result;
+			}
 		}
 
-		for(size_t i = digits - split; i > 0; i--)
+		for(size_t i = digits - (result.size() - 1 - split); i > 0; i--)
 		{
 			ss << '0';
 		}
@@ -49,8 +54,7 @@ namespace roerei
 
 		{
 			std::ofstream os(output_path+"/knn_coq_k.tex");
-			latex_tabular t(os, {'r', 'r', 'r', 'r', 'r', 'r', 'r'});
-			t.write_header({"K", "\\oocover", "\\ooprecision", "\\recall", "\\rank", "\\auc", "\\volume"});
+			latex_tabular t(os);
 			
 			for(cv_result_t const& row : results) {
 				t.write_row({

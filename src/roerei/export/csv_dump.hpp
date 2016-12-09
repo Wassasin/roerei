@@ -7,12 +7,10 @@ namespace roerei {
 	{
 	private:
 		std::ostream& os;
-		bool ended;
 
 	public:
 		csv_dump(std::ostream& _os)
 		: os(_os)
-		, ended(false)
 		{}
 
 		template<typename COL>
@@ -34,10 +32,7 @@ namespace roerei {
 
 		void write_end()
 		{
-			if(!ended) {
-				os.flush();
-				ended = true;
-			}
+			os.flush();
 		}
 
 		~csv_dump()
