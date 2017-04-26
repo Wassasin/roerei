@@ -24,8 +24,9 @@ private:
 			return;
 
 		yield(i);
-		for(object_id_t const j : dependants[i])
+                for(object_id_t const& j : dependants[i]) {
 			_iterate_dependants_helper(dependants, j, yield, visited);
+                }
 	}
 
 public:

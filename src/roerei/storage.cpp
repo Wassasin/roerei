@@ -248,7 +248,7 @@ void storage::write_legacy_dataset(std::string const& path, dataset_t const& d)
 			os_symb << '"' << d.objects[row.row_i] << "\":";
 
 			bool first = true;
-			for(std::pair<feature_id_t, dataset_t::value_t> const& kvp : row)
+            for(std::pair<feature_id_t, dataset_t::value_t> const kvp : row)
 			{
 				if(first)
 					first = false;
@@ -267,7 +267,7 @@ void storage::write_legacy_dataset(std::string const& path, dataset_t const& d)
 			os_deps << '"' << d.objects[row.row_i] << "\":";
 
 			bool first = true;
-			for(std::pair<dependency_id_t, dataset_t::value_t> const& kvp : row)
+            for(std::pair<dependency_id_t, dataset_t::value_t> const kvp : row)
 			{
 				if(first)
 					first = false;

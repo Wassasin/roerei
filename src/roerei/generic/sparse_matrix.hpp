@@ -161,7 +161,7 @@ struct serialize_value<sparse_matrix_t<M, N, T>, S>
 		m.citerate([&](typename sparse_matrix_t<M, N, T>::const_row_proxy_t const& row) {
 			s.write_array("row", row.nonempty_size());
 
-			for(auto const kvp : row)
+                        for(auto kvp : row)
 			{
 				s.write_array("kvp", 2);
 				s.write("j", kvp.first.unseal());
