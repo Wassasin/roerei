@@ -233,8 +233,8 @@ public:
 			std::cout << kvp.first << std::endl;
 			std::cout << "Defined constants: " << kvp.second.objects.size() << std::endl;
 			std::cout << "Term constants: " << kvp.second.term_uris.size() << std::endl;
-			std::cout << "Type constants: " << kvp.second.type_uris.size() << std::endl;
-			std::cout << "Dependencies: " << kvp.second.dependencies.size() << std::endl;
+                        std::cout << "Type constants (defs): " << kvp.second.type_uris.size() << std::endl;
+                        std::cout << "Dependencies (thms): " << kvp.second.dependencies.size() << std::endl;
 
 			p3.emplace(std::move(kvp));
 		}

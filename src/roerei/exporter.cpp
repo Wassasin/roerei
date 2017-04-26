@@ -249,8 +249,34 @@ namespace roerei
     }
   }
 
+  void export_counts(std::string const& output_path)
+  {
+      std::ofstream os(output_path+"/counts.tex");
+      latex_tabular t(os);
+
+      auto corpii = {
+          "Coq.frequency",
+          "ch2o.frequency",
+          "CoRN.frequency",
+          "MathClasses.frequency",
+          "mathcomp.frequency"
+      };
+
+      t.write_row({"Corpus", "$|S|$", "$|\terms|$"});
+      for(std::string const corpus : corpii) {
+          dataset_t d(storage::read_dataset(corpus));
+          t.write_row({
+                corpus,
+                round_print(d.objects.size(), 0),
+                round_print(d.features.size(), 0)
+          });
+      }
+  }
+
 	void exporter::exec(std::string const& source_path, std::string const& output_path)
 	{
+        export_counts(output_path);
+
 		export_knn("Coq.flat", source_path, output_path);
 		export_knn("Coq.depth", source_path, output_path);
 		export_knn("Coq.frequency", source_path, output_path);
