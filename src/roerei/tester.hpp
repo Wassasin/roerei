@@ -46,8 +46,11 @@ public:
 
 			for(size_t k = 3; k < 10; ++k)
 				ks.emplace(knn_params_t({k}));
+			
+			for(size_t k = 10; k < 40; k+=2)
+				ks.emplace(knn_params_t({k}));
 
-			for(size_t k = 10; k < 130; k+=10)
+			for(size_t k = 40; k < 130; k+=4)
 				ks.emplace(knn_params_t({k}));
 
 			/*for(size_t k = 3; k < 120; ++k)
@@ -63,11 +66,22 @@ public:
 			for(size_t tau = 0; tau < 20; ++tau)
 				nbs.emplace(nb_params_t({10, -15, (float)tau}));*/
 
-			for(float pi = 0; pi < 20; ++pi)
-				for(float sigma = -20; sigma < 0; ++sigma)
-					for(float tau = 0; tau < 20; ++tau)
-						nbs.emplace(nb_params_t({pi, sigma, tau}));
+			for(float pi = 0; pi < 40; pi+=4) {
+				for(float tau = -20; tau < 20; tau+=2) {
+					float sigma = -15;
+					nbs.emplace(nb_params_t({pi, sigma, tau}));
+				}
+			}
+			
+			for(float pi = 0; pi < 40; pi+=4) {
+				for(float sigma = -20; sigma < 20; sigma+=2)
+				{
+					float tau = 0;
+					nbs.emplace(nb_params_t({pi, sigma, tau}));
+				}
+			}
 
+			std::cout << nbs.size() << std::endl;
 			//nbs.emplace(nb_params_t({10, -15, 0}));
 			break;
 		case ml_type::knn_adaptive:
@@ -81,6 +95,7 @@ public:
 			break;
 		}
 
+		size_t i = 0;
 		storage::read_result([&](cv_result_t const& result) {
 			if(result.corpus != corpus)
 				return;
@@ -97,11 +112,36 @@ public:
 			switch(result.ml)
 			{
 			case ml_type::knn:
-				ks.erase(*result.knn_params);
+			{
+				size_t skipped = ks.erase(*result.knn_params);
+				if(skipped > 0) {
+					//std::cerr << "Skipping " << result << std::endl;
+				}
+				i += skipped;
 				break;
+			}
 			case ml_type::naive_bayes:
-				nbs.erase(*result.nb_params);
+			{
+				auto it = nbs.find(*result.nb_params);
+				
+				if(it != nbs.end()) {
+//					std::cerr << "Found: " << it->pi << " " << it->sigma << " " << it->tau << std::endl;
+//					std::cerr << "Orig: " << result << std::endl;
+				}
+				
+				size_t skipped = nbs.erase(*result.nb_params);
+				if(skipped > 0) {
+//					std::cerr << "Skipping " << result << std::endl;
+//					std::cerr << std::endl;
+				}
+
+				if(skipped > 1) {
+					std::cerr << "Double" << std::endl;
+				}
+
+				i += skipped;
 				break;
+			}
 			case ml_type::knn_adaptive:
 				run_knn_adaptive = false;
 				break;
@@ -112,10 +152,9 @@ public:
 				run_ensemble = false;
 				break;
 			}
-
-			std::cerr << "Skipping " << result << std::endl;
 		});
 
+		std::cerr << "Skipped " << i << std::endl;
 		std::cerr << "Read results" << std::endl;
 
 		auto const d_orig(storage::read_dataset(corpus));
@@ -215,6 +254,7 @@ public:
 				);
 			}
 
+			std::cout << nbs.size() << std::endl;
 			for(nb_params_t const& nb_params : nbs)
 			{
 				if(!nb_data)
