@@ -262,13 +262,13 @@ namespace roerei
           "mathcomp.frequency"
       };
 
-      t.write_row({"Corpus", "$|S|$", "$|\terms|$"});
       for(std::string const corpus : corpii) {
           dataset_t d(storage::read_dataset(corpus));
           t.write_row({
                 corpus,
                 round_print(d.objects.size(), 0),
-                round_print(d.features.size(), 0)
+                round_print(d.features.size(), 0),
+                round_print(d.dependencies.size(), 0),
           });
       }
   }
