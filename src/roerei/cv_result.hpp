@@ -57,6 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
   case ml_type::knn_adaptive:
   case ml_type::omniscient:
   case ml_type::ensemble:
+  case ml_type::adarank:
     break;
   case ml_type::naive_bayes:
     os << rhs.nb_params->pi << " " << rhs.nb_params->sigma << " " << rhs.nb_params->tau << " ";

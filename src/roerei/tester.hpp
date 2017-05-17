@@ -13,6 +13,7 @@
 #include <roerei/ml/naive_bayes.hpp>
 #include <roerei/ml/omniscient.hpp>
 #include <roerei/ml/ensemble.hpp>
+#include <roerei/ml/adarank.hpp>
 
 #include <roerei/ml/posetcons_pessimistic.hpp>
 #include <roerei/ml/posetcons_optimistic.hpp>
@@ -38,6 +39,7 @@ public:
 		bool run_knn_adaptive = false;
 		bool run_omniscient = false;
 		bool run_ensemble = false;
+		bool run_adarank = false;
 
 		switch(method)
 		{
@@ -92,6 +94,9 @@ public:
 			break;
 		case ml_type::ensemble:
 			run_ensemble = true;
+			break;
+		case ml_type::adarank:
+			run_adarank = true;
 			break;
 		}
 
@@ -151,6 +156,8 @@ public:
 			case ml_type::ensemble:
 				run_ensemble = false;
 				break;
+			case ml_type::adarank:
+				run_adarank = false;
 			}
 		});
 
@@ -273,6 +280,20 @@ public:
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
 						yield_f({corpus, strat, ml_type::naive_bayes, boost::none, nb_params, cv_n, cv_k, total_metrics});
+					},
+					d, silent
+				);
+			}
+
+			if(run_adarank) {
+				c.order_async(m,
+					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
+						auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
+						adarank<decltype(trainset_sane)> ml(100, d, trainset_sane);
+						return performance::measure(d, test_row.row_i, ml.predict(test_row));
+					},
+					[=](performance::metrics_t const& total_metrics) noexcept {
+						yield_f({corpus, strat, ml_type::adarank, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
