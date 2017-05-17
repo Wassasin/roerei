@@ -45,23 +45,23 @@ public:
         T& operator[](N j)
         {
             assert(j < parent.n);
-            return parent.data[row_i.unseal() * parent.m + j.unseal()];
+			return parent.data[row_i.unseal() * parent.n + j.unseal()];
         }
 
         T const operator[](N j) const
         {
             assert(j < parent.n);
-            return parent.data[row_i.unseal() * parent.m + j.unseal()];
+			return parent.data[row_i.unseal() * parent.n + j.unseal()];
         }
 
         iterator begin() const
         {
-            return &parent.data[row_i.unseal() * parent.m];
+			return parent.data.begin() + (row_i.unseal() * parent.n);
         }
 
         iterator end() const
         {
-            return &parent.data[(row_i.unseal() + 1) * parent.m];
+			return parent.data.begin() + ((row_i.unseal() + 1) * parent.n);
         }
 
         size_t size() const

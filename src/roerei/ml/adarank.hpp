@@ -2,6 +2,7 @@
 
 #include <roerei/dataset.hpp>
 #include <roerei/dependencies.hpp>
+#include <roerei/performance.hpp>
 
 #include <roerei/generic/full_matrix.hpp>
 #include <roerei/generic/id_t.hpp>
@@ -18,26 +19,68 @@ template<typename MATRIX>
 class adarank
 {
 private:
-	size_t D;
+	struct t_t : public id_t<t_t>
+	{
+		t_t(size_t _id) : id_t<t_t>(_id) {}
+	};
+
+private:
+	size_t T;
 	dataset_t const& d;
 	MATRIX const& trainingset;
 
+	full_matrix_t<t_t, object_id_t, float> p;
+	full_matrix_t<dependency_id_t, feature_id_t, float> x;
+
+
+
+private:
+	static decltype(x) create_features(dataset_t const& d)
+	{
+		full_matrix_t<dependency_id_t, feature_id_t, float> x(d.dependencies.size(), d.features.size());
+
+		auto dependants = dependencies::create_dependants(d);
+		d.dependencies.keys([&](dependency_id_t dep_id) {
+			for (object_id_t obj_id : dependants[dep_id]) {
+				for (std::pair<feature_id_t, float> kvp : d.feature_matrix[obj_id]) {
+					x[dep_id][kvp.first] += kvp.second;
+					std::cout << x[dep_id][kvp.first] << std::endl;
+				}
+			}
+		});
+
+		return x;
+	}
+
+	float E(std::pair<dependency_id_t, float> pi, object_id_t test_row_i)
+	{
+		return performance::measure(d, test_row_i, pi).metrics.oocover; // Metric we want to maximize
+	}
+
 public:
 	adarank(
-			size_t _D,
+			size_t _T,
 			dataset_t const& _d,
 			MATRIX const& _trainingset
 			)
-		: D(_D)
+		: T(_T)
 		, d(_d)
 		, trainingset(_trainingset)
+		, p(T, d.objects.size())
+		, x(adarank::create_features(d)) // TODO Only consider training set
 	{
+		auto row = p[0];
+		const float m = d.objects.size();
+		for (auto& pij : row) {
+			pij = 1.0f / m;
+		}
 	}
 
 	template<typename ROW>
-	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row) const
+	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& /*test_row*/) const
 	{
 		//normalize::exec(ranks);
+		return {};
 	}
 };
 

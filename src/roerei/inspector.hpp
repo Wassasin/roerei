@@ -10,6 +10,7 @@
 #include <roerei/ml/knn_adaptive.hpp>
 #include <roerei/ml/omniscient.hpp>
 #include <roerei/ml/naive_bayes.hpp>
+#include <roerei/ml/adarank.hpp>
 
 #include <roerei/ml/posetcons_canonical.hpp>
 #include <roerei/ml/posetcons_pessimistic.hpp>
@@ -77,6 +78,11 @@ public:
 						feature_matrix
 					);
 					return performance::measure(d, i, ml.predict(d.feature_matrix[i], i));
+				}
+				case ml_type::adarank:
+				{
+					adarank<decltype(feature_matrix)> ml(5, d, feature_matrix);
+					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
 				}
 				case ml_type::ensemble:
 					throw std::runtime_error("Not implemented ensemble");
