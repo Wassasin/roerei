@@ -8,9 +8,11 @@
 #include <roerei/generic/id_t.hpp>
 
 #include <roerei/util/performance.hpp>
+#include <roerei/generic/common.hpp>
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 
 namespace roerei
 {
@@ -24,6 +26,8 @@ private:
 		t_t(size_t _id) : id_t<t_t>(_id) {}
 	};
 
+	typedef std::vector<std::pair<dependency_id_t, float>> ranking_t;
+
 private:
 	size_t T;
 	dataset_t const& d;
@@ -32,7 +36,8 @@ private:
 	full_matrix_t<t_t, object_id_t, float> p;
 	full_matrix_t<dependency_id_t, feature_id_t, float> x;
 
-
+	encapsulated_vector<t_t, feature_id_t> h;
+	encapsulated_vector<t_t, float> alpha;
 
 private:
 	static decltype(x) create_features(dataset_t const& d)
@@ -44,7 +49,6 @@ private:
 			for (object_id_t obj_id : dependants[dep_id]) {
 				for (std::pair<feature_id_t, float> kvp : d.feature_matrix[obj_id]) {
 					x[dep_id][kvp.first] += kvp.second;
-					std::cout << x[dep_id][kvp.first] << std::endl;
 				}
 			}
 		});
@@ -52,9 +56,69 @@ private:
 		return x;
 	}
 
-	float E(std::pair<dependency_id_t, float> pi, object_id_t test_row_i)
+	float E(ranking_t const& ranking, object_id_t test_row_i)
 	{
-		return performance::measure(d, test_row_i, pi).metrics.oocover; // Metric we want to maximize
+		return performance::measure(d, test_row_i, ranking).metrics.oocover; // Metric we want to maximize
+	}
+
+	ranking_t create_ranking(feature_id_t k)
+	{
+		ranking_t ranking;
+		d.dependencies.keys([&](dependency_id_t doc) {
+			ranking.emplace_back(std::make_pair(doc, x[doc][k]));
+		});
+		return ranking;
+	}
+
+	feature_id_t compute_h(t_t t)
+	{
+		feature_id_t result_k = d.features.size(); // Non-existing feature
+		float result_score = std::numeric_limits<float>::min();
+
+		d.features.keys([&](feature_id_t k) {
+			std::cout << k.unseal() << std::endl;
+			float sum  = 0;
+			ranking_t ranking = create_ranking(k);
+			trainingset.citerate([&](typename MATRIX::const_row_proxy_t const& row) {
+				const object_id_t i = row.row_i;
+				sum += p[t][i] * E(ranking, i);
+			});
+
+			if (result_score < sum) {
+				result_score = sum;
+				result_k = k;
+			}
+		});
+
+		return result_k;
+	}
+
+	float compute_alpha(t_t t)
+	{
+		ranking_t ranking = create_ranking(h[t]);
+
+		float a = 0.0f;
+		float b = 0.0f;
+
+		trainingset.citerate([&](auto const& row) {
+			object_id_t i = row.row_i;
+			float e = E(ranking, i);
+
+			a += p[t][i] * (1 + e);
+			b += p[t][i] * (1 - e);
+		});
+
+		return 0.5f * std::log(a / b);
+	}
+
+	template<typename FEATURES>
+	float compute_f(t_t t, FEATURES const& features)
+	{
+		float result = 0.0f;
+		t_t::iterate([&](t_t k) {
+			result += alpha[k] * features[h[k]];
+		}, t.unseal()+1);
+		return result;
 	}
 
 public:
@@ -68,12 +132,24 @@ public:
 		, trainingset(_trainingset)
 		, p(T, d.objects.size())
 		, x(adarank::create_features(d)) // TODO Only consider training set
+		, h(T, d.features.size()) // Initialize with non existing feature
+		, alpha(T)
 	{
 		auto row = p[0];
 		const float m = d.objects.size();
 		for (auto& pij : row) {
 			pij = 1.0f / m;
 		}
+
+		t_t::iterate([&](t_t t) {
+			h[t] = compute_h(t);
+			std::cout << "h[t]: " << h[t].unseal() << std::endl;
+			alpha[t] = compute_alpha(t);
+			std::cout << "alpha[t]: " << alpha[t] << std::endl;
+
+
+			std::cout << "t: " << t.unseal() << std::endl;
+		}, T);
 	}
 
 	template<typename ROW>
@@ -86,41 +162,3 @@ public:
 
 }
 
-/*
-struct d_t : public id_t<d_t>
-{
-	d_t(size_t _id) : id_t<d_t>(_id) {}
-};
-
-struct k_t : public id_t<k_t>
-{
-	k_t(size_t _id) : id_t<k_t>(_id) {}
-};
-
-
-enum class valuation_t : std::int8_t {
-	negative = -1,
-	positive = 1,
-};
-
-typedef std::pair<dependency_id_t, valuation_t> pair_t;
-typedef std::vector<pair_t> subset_t;
-
-	full_matrix_t<d_t, k_t, float> alpha, beta;
-
-	float alphaf(subset_t const& c)
-	{
-		float n_neg = std::count()
-	}
-
-	float betaf(subset_t const& c)
-	{
-
-	}
-
-	float lambda(d_t d, k_t kn, subset_t const& c)
-	{
-		k_t k(kn.unseal()-1);
-
-		return (alpha[d][kn] - alpha[d][k]) * betaf(c) - (beta[d][kn] - beta[d][k]) * alphaf(c);
-	}*/

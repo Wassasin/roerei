@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace roerei
 {
 
@@ -32,6 +34,14 @@ public:
 	bool operator>=(T const rhs) const
 	{
 		return !operator<(rhs);
+	}
+
+	template<typename F>
+	static void iterate(F&& f, size_t count)
+	{
+		for (size_t i = 0; i < count; ++i) {
+			f(T(i));
+		}
 	}
 };
 

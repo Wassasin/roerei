@@ -19,6 +19,9 @@ public:
 	encapsulated_vector(size_t n)
 		: buf(n)
 	{}
+	encapsulated_vector(size_t n, T default_value)
+		: buf(n, default_value)
+	{}
 
 	template<class... Args>
 	void emplace_back(Args&&... args)
@@ -48,20 +51,14 @@ public:
 
 	template<typename F> void keys(F const& f) const
 	{
-		for(size_t i = 0; i < this->size(); ++i)
-		{
-			ID it(i);
-			f(it);
-		}
+		ID::iterate(f, this->size());
 	}
 
 	template<typename F> void iterate(F const& f) const
 	{
-		for(size_t i = 0; i < this->size(); ++i)
-		{
-			ID it(i);
-			f(it, buf[i]);
-		}
+		ID::iterate([&](ID it) {
+			f(it, buf[it.unseal()]);
+		} , this->size());
 	}
 
 	decltype(buf.begin()) begin()
