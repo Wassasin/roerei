@@ -165,13 +165,60 @@ public:
 		return auc_sum / static_cast<float>(found_deps.size() * irrelevant_deps.size());
 	}
 
+	static void sort(std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept
+	{
+		std::sort(suggestions.begin(), suggestions.end(), [&](std::pair<dependency_id_t, float> const& x, std::pair<dependency_id_t, float> const& y) {
+			return x.second > y.second;
+		});
+	}
+
+	static float measure_oocover(dataset_t const& d, object_id_t test_row_i, std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept
+	{
+		performance::sort(suggestions);
+
+		std::vector<dependency_id_t> required_deps, suggested_deps, oosuggested_deps, oofound_deps;
+		for(auto const& kvp : d.dependency_matrix[test_row_i])
+			required_deps.emplace_back(kvp.first);
+
+		for(size_t j = 0; j < suggestions.size(); ++j)
+			suggested_deps.emplace_back(suggestions[j].first);
+
+		if(suggested_deps.size() > 100)
+		{
+			oosuggested_deps.insert(oosuggested_deps.end(), suggested_deps.begin(), suggested_deps.begin()+100);
+			std::sort(suggested_deps.begin(), suggested_deps.end()); // After copy
+			std::sort(oosuggested_deps.begin(), oosuggested_deps.end());
+		}
+		else
+		{
+			std::sort(suggested_deps.begin(), suggested_deps.end()); // Before copy
+			oosuggested_deps = suggested_deps;
+		}
+
+		std::set_intersection(
+			required_deps.begin(), required_deps.end(),
+			oosuggested_deps.begin(), oosuggested_deps.end(),
+			std::inserter(oofound_deps, oofound_deps.begin())
+		);
+
+		float c_required = required_deps.size();
+		float c_oofound = oofound_deps.size();
+
+		float oocover = c_oofound/c_required;
+
+		if(c_required == 0.0f)
+		{
+			oocover = 1.0f;
+		}
+
+		return oocover;
+	}
+
 	static result_t measure(dataset_t const& d, object_id_t test_row_i, std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept
 	{
 		performance_scope("measure_analyze")
 
-		std::sort(suggestions.begin(), suggestions.end(), [&](std::pair<dependency_id_t, float> const& x, std::pair<dependency_id_t, float> const& y) {
-			return x.second > y.second;
-		});
+		performance::sort(suggestions);
 
 		std::map<dependency_id_t, size_t> suggestions_ranks;
 		for(size_t j = 0; j < suggestions.size(); ++j)

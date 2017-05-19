@@ -33,55 +33,75 @@ private:
 	dataset_t const& d;
 	MATRIX const& trainingset;
 
+	sparse_matrix_t<dependency_id_t, feature_id_t, float> x;
+	//sparse_matrix_t<feature_id_t, dependency_id_t, float> x_rev;
+
+	full_matrix_t<feature_id_t, object_id_t, float> E_cached;
 	full_matrix_t<t_t, object_id_t, float> p;
-	full_matrix_t<dependency_id_t, feature_id_t, float> x;
 
 	encapsulated_vector<t_t, feature_id_t> h;
 	encapsulated_vector<t_t, float> alpha;
 
 private:
-	static decltype(x) create_features(dataset_t const& d)
+	void init_features()
 	{
-		full_matrix_t<dependency_id_t, feature_id_t, float> x(d.dependencies.size(), d.features.size());
-
 		auto dependants = dependencies::create_dependants(d);
 		d.dependencies.keys([&](dependency_id_t dep_id) {
 			for (object_id_t obj_id : dependants[dep_id]) {
-				for (std::pair<feature_id_t, float> kvp : d.feature_matrix[obj_id]) {
-					x[dep_id][kvp.first] += kvp.second;
+				try {
+					for (std::pair<feature_id_t, float> kvp : trainingset[obj_id]) {
+						x[dep_id][kvp.first] += kvp.second;
+					}
+				} catch (std::out_of_range) {
+					// Do nothing
 				}
 			}
 		});
-
-		return x;
 	}
 
-	float E(ranking_t const& ranking, object_id_t test_row_i)
+	/*void init_features_rev()
 	{
-		return performance::measure(d, test_row_i, ranking).metrics.oocover; // Metric we want to maximize
+		x.citerate([&](auto const& row) {
+			dependency_id_t dep_id = row.row_i;
+			for (std::pair<feature_id_t, float> kvp : row) {
+				x_rev[kvp.first][dep_id] = kvp.second;
+			}
+		});
+	}*/
+
+	float compute_E(ranking_t const& ranking, object_id_t test_row_i)
+	{
+		return performance::measure_oocover(d, test_row_i, ranking); // Metric we want to maximize
 	}
 
-	ranking_t create_ranking(feature_id_t k)
+	ranking_t create_ranking_weak(object_id_t i, feature_id_t k)
 	{
 		ranking_t ranking;
-		d.dependencies.keys([&](dependency_id_t doc) {
-			ranking.emplace_back(std::make_pair(doc, x[doc][k]));
-		});
+		for (auto&& kvp : d.dependency_matrix[i]) {
+			ranking.emplace_back(std::make_pair(kvp.first, x[kvp.first][k]));
+		}
+		return ranking;
+	}
+
+	ranking_t create_ranking_strong(object_id_t query_id, t_t t)
+	{
+		ranking_t ranking;
+		for (auto kvp : d.dependency_matrix[query_id]) {
+			ranking.emplace_back(std::make_pair(kvp.first, compute_f(t, x[kvp.first])));
+		}
 		return ranking;
 	}
 
 	feature_id_t compute_h(t_t t)
 	{
 		feature_id_t result_k = d.features.size(); // Non-existing feature
-		float result_score = std::numeric_limits<float>::min();
+		float result_score = std::numeric_limits<float>::lowest();
 
 		d.features.keys([&](feature_id_t k) {
-			std::cout << k.unseal() << std::endl;
 			float sum  = 0;
-			ranking_t ranking = create_ranking(k);
 			trainingset.citerate([&](typename MATRIX::const_row_proxy_t const& row) {
 				const object_id_t i = row.row_i;
-				sum += p[t][i] * E(ranking, i);
+				sum += p[t][i] * E_cached[k][i];
 			});
 
 			if (result_score < sum) {
@@ -95,14 +115,12 @@ private:
 
 	float compute_alpha(t_t t)
 	{
-		ranking_t ranking = create_ranking(h[t]);
-
 		float a = 0.0f;
 		float b = 0.0f;
 
 		trainingset.citerate([&](auto const& row) {
 			object_id_t i = row.row_i;
-			float e = E(ranking, i);
+			float e = E_cached[h[t]][i];
 
 			a += p[t][i] * (1 + e);
 			b += p[t][i] * (1 - e);
@@ -130,31 +148,71 @@ public:
 		: T(_T)
 		, d(_d)
 		, trainingset(_trainingset)
+		, x(d.dependencies.size(), d.features.size())
+		//, x_rev(d.features.size(), d.dependencies.size())
+		, E_cached(d.features.size(), d.objects.size())
 		, p(T, d.objects.size())
-		, x(adarank::create_features(d)) // TODO Only consider training set
 		, h(T, d.features.size()) // Initialize with non existing feature
 		, alpha(T)
 	{
-		auto row = p[0];
+		init_features();
+		//init_features_rev();
+
+		d.features.keys([&](feature_id_t k) {
+			std::cout << k.unseal() << std::endl;
+			trainingset.citerate([&](auto const& row) {
+				object_id_t i = row.row_i;
+				E_cached[k][i] = compute_E(create_ranking_weak(i, k), i);
+			});
+		});
+
 		const float m = d.objects.size();
-		for (auto& pij : row) {
-			pij = 1.0f / m;
-		}
+		trainingset.citerate([&](auto&& row) {
+			object_id_t i = row.row_i;
+			p[0][i] = 1.0f / m;
+		});
 
 		t_t::iterate([&](t_t t) {
+			std::cout << "t: " << t.unseal() << std::endl;
 			h[t] = compute_h(t);
 			std::cout << "h[t]: " << h[t].unseal() << std::endl;
 			alpha[t] = compute_alpha(t);
 			std::cout << "alpha[t]: " << alpha[t] << std::endl;
 
+			encapsulated_vector<object_id_t, float> strong_E(d.objects.size());
+			float sum_strong_E = 0.0f;
+			trainingset.citerate([&](auto&& row) {
+				object_id_t i = row.row_i;
+				float sei = std::exp(-1.0f * compute_E(create_ranking_strong(i, t), i));
+				strong_E[i] = sei;
+				sum_strong_E += sei;
+			});
+			std::cout << "sum strong_E: " << sum_strong_E << std::endl;
 
-			std::cout << "t: " << t.unseal() << std::endl;
+			if (t.unseal() >= T) {
+				return;
+			}
+
+			trainingset.citerate([&](auto&& row) {
+				object_id_t i = row.row_i;
+				p[t_t(t.unseal()+1)][i] = strong_E[i] / sum_strong_E;
+			});
 		}, T);
+
 	}
 
 	template<typename ROW>
-	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& /*test_row*/) const
+	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row) const
 	{
+		ranking_t ranking;
+		d.dependencies.keys([&](dependency_id_t dep_id) {
+
+		});
+		/*for (auto kvp : d.dependency_matrix[query_id]) {
+			ranking.emplace_back(std::make_pair(kvp.first, compute_f(t, x[kvp.first])));
+		}
+		return ranking;*/
+
 		//normalize::exec(ranks);
 		return {};
 	}
