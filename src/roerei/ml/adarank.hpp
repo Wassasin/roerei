@@ -5,7 +5,10 @@
 #include <roerei/performance.hpp>
 
 #include <roerei/generic/full_matrix.hpp>
+#include <roerei/generic/encapsulated_array.hpp>
+#include <roerei/generic/encapsulated_vector.hpp>
 #include <roerei/generic/id_t.hpp>
+#include <roerei/generic/set_operations.hpp>
 
 #include <roerei/util/performance.hpp>
 #include <roerei/generic/common.hpp>
@@ -31,17 +34,20 @@ private:
 		ir_feature_id_t(size_t _id) : id_t<ir_feature_id_t>(_id) {}
 	};
 
-	static constexpr size_t ir_feature_size = 1;
+	static constexpr size_t ir_feature_size = 2;
 
 	typedef std::vector<std::pair<dependency_id_t, float>> ranking_t;
+	typedef encapsulated_array<ir_feature_id_t, float, ir_feature_size> feature_vector_t;
 
 private:
 	size_t T;
 	dataset_t const& d;
 	MATRIX const& trainingset;
 
-	sparse_matrix_t<dependency_id_t, ir_feature_id_t, float> x;
-	//sparse_matrix_t<feature_id_t, dependency_id_t, float> x_rev;
+	//sparse_matrix_t<dependency_id_t, object_id_t, feature_vector_t> x;
+
+	sparse_matrix_t<dependency_id_t, feature_id_t, float> document_query_summary;
+	encapsulated_vector<feature_id_t, float> idf;
 
 	full_matrix_t<ir_feature_id_t, object_id_t, float> E_cached;
 	full_matrix_t<t_t, object_id_t, float> p;
@@ -50,52 +56,91 @@ private:
 	encapsulated_vector<t_t, float> alpha;
 
 private:
-	void init_features()
-	{
-		/*auto dependants = dependencies::create_dependants(d);
+	void init_dqs() {
+		auto dependants = dependencies::create_dependants(d);
 		d.dependencies.keys([&](dependency_id_t dep_id) {
 			for (object_id_t obj_id : dependants[dep_id]) {
 				try {
 					for (std::pair<feature_id_t, float> kvp : trainingset[obj_id]) {
-						x[dep_id][kvp.first] += kvp.second;
+						document_query_summary[dep_id][kvp.first] += kvp.second;
 					}
 				} catch (std::out_of_range) {
 					// Do nothing
 				}
 			}
-		});*/
+		});
 	}
 
-	/*void init_features_rev()
+	void init_idf()
 	{
-		x.citerate([&](auto const& row) {
-			dependency_id_t dep_id = row.row_i;
+		encapsulated_vector<feature_id_t, size_t> frequencies(d.features.size());
+		document_query_summary.citerate([&](auto const& row) {
 			for (std::pair<feature_id_t, float> kvp : row) {
-				x_rev[kvp.first][dep_id] = kvp.second;
+				if (kvp.second > 0.0f) {
+					frequencies[kvp.first]++;
+				}
 			}
 		});
-	}*/
+
+		float N = d.dependencies.size();
+		feature_id_t::iterate([&](feature_id_t fid) {
+			idf[fid] = std::log(N / static_cast<float>(frequencies[fid] + 1));
+		}, d.features.size());
+	}
+
+	feature_vector_t compute_feature(object_id_t q_id, dependency_id_t d_id) {
+		auto query = d.feature_matrix[q_id];
+		auto document = document_query_summary[d_id];
+
+		float frequency_sum = 0.0f;
+		float idf_sum = 0.0f;
+
+		set_compute_intersect(
+			document.begin(), document.end(),
+			query.begin(), query.end(),
+			[](auto df, auto qf) { return df.first.unseal() >= qf.first.unseal(); },
+			[&](auto df, auto qf) {
+				frequency_sum += std::log(df.second + 1);
+				idf_sum += std::log(idf[df.first]);
+			}
+		);
+
+		return feature_vector_t{
+			frequency_sum,
+			idf_sum
+		};
+	}
 
 	float compute_E(ranking_t const& ranking, object_id_t test_row_i)
 	{
 		return performance::measure_oocover(d, test_row_i, ranking); // Metric we want to maximize
 	}
 
-	ranking_t create_ranking_weak(object_id_t i, ir_feature_id_t k)
+	ranking_t create_ranking_weak(object_id_t q_id, ir_feature_id_t k)
 	{
 		ranking_t ranking;
-		for (auto&& kvp : d.dependency_matrix[i]) {
-			ranking.emplace_back(std::make_pair(kvp.first, x[kvp.first][k]));
-		}
+		d.dependencies.iterate([&](dependency_id_t d_id) {
+			ranking.emplace_back(std::make_pair(d_id, compute_feature(q_id, d_id)[k]));
+		});
 		return ranking;
 	}
 
-	ranking_t create_ranking_strong(object_id_t query_id, t_t t)
+	template<typename FEATURES>
+	float compute_f(t_t t, FEATURES const& features)
+	{
+		float result = 0.0f;
+		t_t::iterate([&](t_t k) {
+			result += alpha[k] * features[h[k]];
+		}, t.unseal()+1);
+		return result;
+	}
+
+	ranking_t create_ranking_strong(object_id_t q_id, t_t t)
 	{
 		ranking_t ranking;
-		for (auto kvp : d.dependency_matrix[query_id]) {
-			ranking.emplace_back(std::make_pair(kvp.first, compute_f(t, x[kvp.first])));
-		}
+		d.dependencies.iterate([&](dependency_id_t d_id) {
+			ranking.emplace_back(std::make_pair(d_id, compute_f(t, compute_feature(q_id, d_id))));
+		});
 		return ranking;
 	}
 
@@ -136,16 +181,6 @@ private:
 		return 0.5f * std::log(a / b);
 	}
 
-	template<typename FEATURES>
-	float compute_f(t_t t, FEATURES const& features)
-	{
-		float result = 0.0f;
-		t_t::iterate([&](t_t k) {
-			result += alpha[k] * features[h[k]];
-		}, t.unseal()+1);
-		return result;
-	}
-
 public:
 	adarank(
 			size_t _T,
@@ -155,15 +190,15 @@ public:
 		: T(_T)
 		, d(_d)
 		, trainingset(_trainingset)
-		, x(d.dependencies.size(), ir_feature_size)
-		//, x_rev(d.features.size(), d.dependencies.size())
+		, document_query_summary(d.dependencies.size(), d.features.size())
+		, idf(d.features.size())
 		, E_cached(ir_feature_size, d.objects.size())
 		, p(T, d.objects.size())
 		, h(T, ir_feature_size) // Initialize with non existing feature
 		, alpha(T)
 	{
-		init_features();
-		//init_features_rev();
+		init_dqs();
+		init_idf();
 
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
 			std::cout << k.unseal() << std::endl;

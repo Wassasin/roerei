@@ -1,41 +1,31 @@
 #pragma once
 
-#include <vector>
+#include <array>
 
 namespace roerei
 {
 
-template<typename ID, typename T>
-class encapsulated_vector
+template<typename ID, typename T, size_t N>
+class encapsulated_array
 {
 private:
-	std::vector<T> buf;
+	std::array<T, N> buf;
 
 public:
-	encapsulated_vector() = default;
-	encapsulated_vector(encapsulated_vector const&) = default;
-	encapsulated_vector(encapsulated_vector&&) = default;
-	encapsulated_vector(size_t n)
-		: buf(n)
-	{}
-	encapsulated_vector(size_t n, T default_value)
-		: buf(n, default_value)
+	encapsulated_array() = default;
+	encapsulated_array(encapsulated_array const&) = default;
+	encapsulated_array(encapsulated_array&&) = default;
+	encapsulated_array(std::initializer_list<T> xs)
+		: buf(xs)
 	{}
 
-	template<class... Args>
-	void emplace_back(Args&&... args)
-	{
-		buf.emplace_back(args...);
-	}
 
-	void reserve(size_t n)
-	{
-		buf.reserve(n);
-	}
+	encapsulated_array& operator=(encapsulated_array const&) = default;
+	encapsulated_array& operator=(encapsulated_array&&) = default;
 
 	size_t size() const
 	{
-		return buf.size();
+		return N;
 	}
 
 	T& operator[](ID const& id)
