@@ -81,7 +81,7 @@ public:
 				}
 				case ml_type::adarank:
 				{
-					adarank<decltype(feature_matrix)> ml(5, d, feature_matrix);
+					adarank<decltype(feature_matrix)> ml(2, d, feature_matrix);
 					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
 				}
 				case ml_type::ensemble:

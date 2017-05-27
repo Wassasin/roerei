@@ -1,41 +1,34 @@
 #pragma once
 
-#include <vector>
+#include <array>
 
 namespace roerei
 {
 
-template<typename ID, typename T>
-class encapsulated_vector
+template<typename ID, typename T, size_t N>
+class encapsulated_array
 {
 private:
-	std::vector<T> buf;
+	std::array<T, N> buf;
 
 public:
-	encapsulated_vector() = default;
-	encapsulated_vector(encapsulated_vector const&) = default;
-	encapsulated_vector(encapsulated_vector&&) = default;
-	encapsulated_vector(size_t n)
-		: buf(n)
-	{}
-	encapsulated_vector(size_t n, T default_value)
-		: buf(n, default_value)
-	{}
+	encapsulated_array() = default;
+	encapsulated_array(encapsulated_array const&) = default;
+	encapsulated_array(encapsulated_array&&) = default;
 
-	template<class... Args>
-	void emplace_back(Args&&... args)
-	{
-		buf.emplace_back(args...);
-	}
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wmissing-braces"
+	template<typename ...E>
+	encapsulated_array(E&&... e)
+		: buf({std::forward<E>(e)...})
+	{}
+	#pragma clang diagnostic pop
 
-	void reserve(size_t n)
-	{
-		buf.reserve(n);
-	}
+	encapsulated_array& operator=(encapsulated_array const&) = default;
 
 	size_t size() const
 	{
-		return buf.size();
+		return N;
 	}
 
 	T& operator[](ID const& id)

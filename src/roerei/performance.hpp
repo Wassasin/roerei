@@ -165,7 +165,7 @@ public:
 		return auc_sum / static_cast<float>(found_deps.size() * irrelevant_deps.size());
 	}
 
-	static void sort(std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept
+	static void sort(std::vector<std::pair<dependency_id_t, float>>& suggestions) noexcept
 	{
 		std::sort(suggestions.begin(), suggestions.end(), [&](std::pair<dependency_id_t, float> const& x, std::pair<dependency_id_t, float> const& y) {
 			return x.second > y.second;
