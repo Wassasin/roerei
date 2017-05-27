@@ -6,6 +6,9 @@
 namespace roerei
 {
 
+namespace impl
+{
+
 /* natural log on [0x1.f7a5ecp-127, 0x1.fffffep127]. Maximum relative error 9.4529e-5 */
 float fast_log(float a)
 {
@@ -26,6 +29,13 @@ float fast_log(float a)
 	r = fmaf (r, s, f);
 	r = fmaf (i, 0.693147182f, r); // 0x1.62e430p-1 // log(2)
 	return r;
+}
+
+}
+
+float fast_log(float a)
+{
+	return std::log(a);
 }
 
 }

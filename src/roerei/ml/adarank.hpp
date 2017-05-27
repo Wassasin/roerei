@@ -11,9 +11,7 @@
 #include <roerei/generic/id_t.hpp>
 #include <roerei/generic/set_operations.hpp>
 
-#include <roerei/util/performance.hpp>
 #include <roerei/util/fast_log.hpp>
-#include <roerei/util/performance.hpp>
 
 #include <roerei/generic/common.hpp>
 
@@ -47,7 +45,7 @@ private:
 	typedef encapsulated_array<ir_feature_id_t, float, ir_feature_size> feature_vector_t;
 
 private:
-	size_t T;
+	size_t const T;
 	dataset_t const& d;
 	MATRIX const& trainingset;
 

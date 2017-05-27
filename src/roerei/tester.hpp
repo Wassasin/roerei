@@ -289,7 +289,7 @@ public:
 				c.order_async(m,
 					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset, cv::testrow_t const& test_row) noexcept {
 						auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
-						adarank<decltype(trainset_sane)> ml(100, d, trainset_sane);
+						adarank<decltype(trainset_sane)> ml(2, d, trainset_sane);
 						return performance::measure(d, test_row.row_i, ml.predict(test_row));
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
