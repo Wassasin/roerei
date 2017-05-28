@@ -5,6 +5,7 @@
 #include <roerei/generic/split_sparse_matrix.hpp>
 
 #include <algorithm>
+#include <random>
 
 namespace roerei
 {
