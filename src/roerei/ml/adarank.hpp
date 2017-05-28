@@ -277,7 +277,7 @@ public:
 		ranking_t ranking;
 
 		d.dependencies.keys([&](document_id_t d_id) {
-			float f = compute_f(T, compute_features(test_row, d_id));
+			float f = compute_f(T-1, compute_features(test_row, d_id));
 			if (f >= 0.0f) {
 				ranking.emplace_back(std::make_pair(d_id, f));
 			}
