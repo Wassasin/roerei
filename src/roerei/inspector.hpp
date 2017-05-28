@@ -82,7 +82,7 @@ public:
 				case ml_type::adarank:
 				{
 					adarank<decltype(feature_matrix)> ml(2, d, feature_matrix);
-					return performance::measure(d, i, ml.predict(d.feature_matrix[i]));
+					return performance::measure(d, i, ml.predict(d.feature_matrix[i], feature_matrix));
 				}
 				case ml_type::ensemble:
 					throw std::runtime_error("Not implemented ensemble");

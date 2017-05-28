@@ -81,7 +81,7 @@ public:
 	typedef std::function<performance::result_t(trainset_t const&, testrow_t const&)> ml_f_t;
 
 	template<typename ML_F, typename RESULT_F>
-	void order_async(multitask& m, ML_F const& ml_f, RESULT_F const& result_f, dataset_t const& d, bool silent = false) const
+	void order_async(multitask& m, ML_F const& init_f, RESULT_F const& result_f, dataset_t const& d, bool silent = false) const
 	{
 		std::vector<std::packaged_task<void()>> tasks;
 		std::vector<std::future<performance::metrics_t>> future_metrics;
@@ -91,7 +91,7 @@ public:
 			std::promise<performance::metrics_t> p;
 			future_metrics.emplace_back(p.get_future());
 
-			tasks.emplace_back([&d, ml_f, silent, i, train_ps, cv_static_ptr=this->cv_static_ptr, p=std::move(p)]() mutable {
+			tasks.emplace_back([&d, init_f, silent, i, train_ps, cv_static_ptr=this->cv_static_ptr, p=std::move(p)]() mutable {
 				auto const& s = *cv_static_ptr;
 
 				test::performance::init();
@@ -110,8 +110,9 @@ public:
 
 				{
 					performance_scope("citerate")
+					auto&& ml_f = init_f(train_m);
 					test_m.citerate([&](testrow_t const& test_row) {
-						fm += ml_f(train_m, test_row).metrics;
+						fm += ml_f(test_row).metrics;
 					});
 				}
 

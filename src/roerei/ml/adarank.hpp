@@ -217,6 +217,9 @@ private:
 	}
 
 public:
+	adarank(adarank const&) = delete;
+	adarank(adarank&&) = default;
+
 	adarank(
 			size_t _T,
 			dataset_t const& _d,
