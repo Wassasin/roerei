@@ -37,7 +37,7 @@ private:
 	};
 
 public:
-	static constexpr size_t ir_feature_size = 6;
+	static constexpr size_t ir_feature_size = 7;
 
 	typedef object_id_t query_id_t;
 	typedef dependency_id_t document_id_t;
@@ -172,13 +172,36 @@ private:
 			}
 		);
 
+		float bmtwentyfive = 0.0f;
+		{
+			float constexpr kone = 1.5f;
+			float constexpr b = 0.75f;
+
+			float const fraction = kone * (1.0f - b + b * (d_sum / (C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
+
+			for(auto const& kvp : query) {
+				float cwid = 0.0f;
+				try {
+					cwid = document[kvp.first];
+				} catch(std::out_of_range) {}
+
+				bmtwentyfive +=
+						fr.idf[kvp.first] *
+						(
+							(cwid * (kone + 1.0f)) /
+							(cwid + fraction)
+						);
+			}
+		}
+
 		return feature_vector_t(
 			frequency_sum,
 			cwic_div_sum,
 			idf_sum,
 			cwid_frac_sum,
 			cwid_frac_idf_sum,
-			cwid_cwic_sum
+			cwid_cwic_sum,
+			fast_log(bmtwentyfive)
 		);
 	}
 
