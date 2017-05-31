@@ -37,7 +37,7 @@ private:
 	};
 
 public:
-	static constexpr size_t ir_feature_size = 4;
+	static constexpr size_t ir_feature_size = 6;
 
 	typedef object_id_t query_id_t;
 	typedef dependency_id_t document_id_t;
@@ -154,6 +154,8 @@ private:
 		float cwic_div_sum = 0.0f;
 		float idf_sum = 0.0f;
 		float cwid_frac_sum = 0.0f;
+		float cwid_frac_idf_sum = 0.0f;
+		float cwid_cwic_sum = 0.0f;
 
 		set_compute_intersect(
 			document.begin(), document.end(),
@@ -165,6 +167,8 @@ private:
 				cwic_div_sum += fast_log(C_sum / fr.cwic[df.first] + 1.0f);
 				idf_sum += fast_log(fr.idf[df.first]);
 				cwid_frac_sum += fast_log(df.second / d_sum + 1.0f);
+				cwid_frac_idf_sum += fast_log(df.second / d_sum + fr.idf[df.first] + 1.0f);
+				cwid_cwic_sum += fast_log( (df.second * C_sum) / (d_sum * fr.cwic[df.first]) + 1.0f);
 			}
 		);
 
@@ -172,7 +176,9 @@ private:
 			frequency_sum,
 			cwic_div_sum,
 			idf_sum,
-			cwid_frac_sum
+			cwid_frac_sum,
+			cwid_frac_idf_sum,
+			cwid_cwic_sum
 		);
 	}
 
@@ -214,17 +220,27 @@ private:
 		ir_feature_id_t result_k = ir_feature_size; // Non-existing feature
 		float result_score = std::numeric_limits<float>::lowest();
 
+		encapsulated_array<ir_feature_id_t, float, ir_feature_size> scores;
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
 			float sum  = 0;
 			for (query_id_t i : inter.queries) {
 				sum += inter.p[t][i] * inter.E_cached[k][i];
 			}
+			scores[k] = sum;
 
 			if (result_score < sum) {
 				result_score = sum;
 				result_k = k;
 			}
 		}, ir_feature_size);
+
+		std::stringstream sstr;
+		sstr << '{';
+		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
+			sstr << scores[k] << ',';
+		}, ir_feature_size);
+		sstr << '}';
+		std::cerr << sstr.str() << std::endl;
 
 		return result_k;
 	}
