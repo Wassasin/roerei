@@ -298,7 +298,7 @@ public:
 			if(run_adarank) {
 				c.order_async(m,
 					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset) noexcept {
-						adarank<decltype(trainset)> ml(2, d, trainset);
+						adarank<decltype(trainset)> ml(adarank<decltype(trainset)>::ir_feature_size, d, trainset);
 						return [&, gen_trainset_sane_f_ptr, ml=std::move(ml)](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 							return performance::measure(d, test_row.row_i, ml.predict(test_row, trainset_sane));

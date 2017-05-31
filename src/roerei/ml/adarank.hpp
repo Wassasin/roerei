@@ -36,9 +36,9 @@ private:
 		ir_feature_id_t(size_t _id) : id_t<ir_feature_id_t>(_id) {}
 	};
 
-	static constexpr size_t ir_feature_size = 2;
-
 public:
+	static constexpr size_t ir_feature_size = 3;
+
 	typedef object_id_t query_id_t;
 	typedef dependency_id_t document_id_t;
 
@@ -48,6 +48,7 @@ public:
 	struct feature_requirements_t {
 		compact_sparse_matrix_t<document_id_t, feature_id_t, float> document_query_summary;
 		encapsulated_vector<feature_id_t, float> idf;
+		encapsulated_vector<feature_id_t, float> cwic;
 	};
 
 private:
@@ -109,15 +110,28 @@ private:
 		return idf;
 	}
 
+	static encapsulated_vector<feature_id_t, float> create_cwic(dataset_t const& d, decltype(feature_requirements_t::document_query_summary) const& dqs)
+	{
+		encapsulated_vector<feature_id_t, float> cwic(d.features.size());
+		dqs.citerate([&](auto const& row) {
+			for (std::pair<feature_id_t, float> const& kvp : row) {
+				cwic[kvp.first] += kvp.second;
+			}
+		});
+		return cwic;
+	}
+
 public:
 	template<typename MATRIX>
 	static feature_requirements_t create_feature_requirements(dataset_t const& d, MATRIX const& trainingset) {
 		auto dqs = create_dqs(d, trainingset);
 		auto idf = create_idf(d, dqs);
+		auto cwic = create_cwic(d, dqs);
 
 		return {
 			std::move(dqs),
-			std::move(idf)
+			std::move(idf),
+			std::move(cwic)
 		};
 	}
 
@@ -126,7 +140,13 @@ private:
 	feature_vector_t compute_features(feature_requirements_t const& fr, FEATURES const& query, document_id_t d_id) const {
 		auto document = fr.document_query_summary[d_id];
 
+		float C_sum = 0.0f;
+		fr.cwic.iterate([&](feature_id_t, float x) {
+			C_sum += x;
+		});
+
 		float frequency_sum = 0.0f;
+		float cwic_div_sum = 0.0f;
 		float idf_sum = 0.0f;
 
 		set_compute_intersect(
@@ -136,12 +156,14 @@ private:
 			[](auto const& qf) { return qf.first; },
 			[&](auto const& df, auto const& /*qf*/) {
 				frequency_sum += fast_log(1.0f + df.second);
+				cwic_div_sum += fast_log(C_sum / fr.cwic[df.first] + 1.0f);
 				idf_sum += fast_log(fr.idf[df.first]);
 			}
 		);
 
 		return feature_vector_t(
 			frequency_sum,
+			cwic_div_sum,
 			idf_sum
 		);
 	}
