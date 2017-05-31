@@ -37,7 +37,7 @@ private:
 	};
 
 public:
-	static constexpr size_t ir_feature_size = 3;
+	static constexpr size_t ir_feature_size = 4;
 
 	typedef object_id_t query_id_t;
 	typedef dependency_id_t document_id_t;
@@ -145,9 +145,15 @@ private:
 			C_sum += x;
 		});
 
+		float d_sum = 0.0f;
+		for (std::pair<feature_id_t, float> const& kvp : document) {
+			d_sum += kvp.second;
+		}
+
 		float frequency_sum = 0.0f;
 		float cwic_div_sum = 0.0f;
 		float idf_sum = 0.0f;
+		float cwid_frac_sum = 0.0f;
 
 		set_compute_intersect(
 			document.begin(), document.end(),
@@ -158,13 +164,15 @@ private:
 				frequency_sum += fast_log(1.0f + df.second);
 				cwic_div_sum += fast_log(C_sum / fr.cwic[df.first] + 1.0f);
 				idf_sum += fast_log(fr.idf[df.first]);
+				cwid_frac_sum += fast_log(df.second / d_sum + 1.0f);
 			}
 		);
 
 		return feature_vector_t(
 			frequency_sum,
 			cwic_div_sum,
-			idf_sum
+			idf_sum,
+			cwid_frac_sum
 		);
 	}
 
@@ -212,7 +220,6 @@ private:
 				sum += inter.p[t][i] * inter.E_cached[k][i];
 			}
 
-			std::cout << "score " << k.unseal() << " " << sum << std::endl;
 			if (result_score < sum) {
 				result_score = sum;
 				result_k = k;
@@ -290,11 +297,12 @@ public:
 		}
 
 		t_t::iterate([&](t_t t) {
-			std::cout << "t: " << t.unseal() << std::endl;
 			h[t] = compute_h(inter, t);
-			std::cout << "h[t]: " << h[t].unseal() << std::endl;
 			alpha[t] = compute_alpha(inter, t);
-			std::cout << "alpha[t]: " << alpha[t] << std::endl;
+
+			std::cout
+				<< "h[" << t.unseal() << "]: " << h[t].unseal() << '\n'
+				<< "alpha[" << t.unseal() << "]: " << alpha[t] << std::endl;
 
 			if (t.unseal()+1 >= T) {
 				return;
