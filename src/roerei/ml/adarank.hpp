@@ -55,7 +55,7 @@ private:
 	struct intermediaries_t {
 		std::vector<query_id_t> queries;
 		full_matrix_t<query_id_t, document_id_t, feature_vector_t> features;
-		full_matrix_t<ir_feature_id_t, query_id_t, float> E_cached;
+		full_matrix_t<ir_feature_id_t, query_id_t, float> E_weak_cached;
 		full_matrix_t<t_t, query_id_t, float> p;
 	};
 
@@ -197,7 +197,7 @@ private:
 		return result;
 	}
 
-	ranking_t create_ranking_weak(intermediaries_t const& inter, object_id_t q_id, ir_feature_id_t k) const
+	ranking_t create_ranking_weak(intermediaries_t const& inter, query_id_t q_id, ir_feature_id_t k) const
 	{
 		ranking_t ranking;
 		d.dependencies.keys([&](dependency_id_t d_id) {
@@ -206,7 +206,7 @@ private:
 		return ranking;
 	}
 
-	ranking_t create_ranking_strong(intermediaries_t const& inter, object_id_t q_id, t_t t) const
+	ranking_t create_ranking_strong(intermediaries_t const& inter, query_id_t q_id, t_t t) const
 	{
 		ranking_t ranking;
 		d.dependencies.keys([&](dependency_id_t d_id) {
@@ -222,9 +222,20 @@ private:
 
 		encapsulated_array<ir_feature_id_t, float, ir_feature_size> scores;
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
+			bool exists = false;
+			t_t::iterate([&](t_t u) {
+				if (h[u] == k) {
+					exists = true;
+				}
+			}, t.unseal());
+
+			if (exists) {
+				return; // Skip!
+			}
+
 			float sum  = 0;
 			for (query_id_t i : inter.queries) {
-				sum += inter.p[t][i] * inter.E_cached[k][i];
+				sum += inter.p[t][i] * inter.E_weak_cached[k][i];
 			}
 			scores[k] = sum;
 
@@ -251,7 +262,7 @@ private:
 		float b = 0.0f;
 
 		for (query_id_t i : inter.queries) {
-			float e = inter.E_cached[h[t]][i];
+			float e = inter.E_weak_cached[h[t]][i];
 			float pti = inter.p[t][i];
 
 			a += pti * (1 + e);
@@ -303,7 +314,7 @@ public:
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
 			std::cout << k.unseal() << std::endl;
 			for (query_id_t i : inter.queries) {
-				inter.E_cached[k][i] = compute_E(create_ranking_weak(inter, i, k), i);
+				inter.E_weak_cached[k][i] = compute_E(create_ranking_weak(inter, i, k), i);
 			}
 		}, ir_feature_size);
 
