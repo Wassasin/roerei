@@ -311,6 +311,8 @@ public:
 	{
 		auto fr = create_feature_requirements(d, trainingset);
 
+		std::cout << "Requirements computed" << std::endl;
+
 		intermediaries_t inter{
 			std::vector<query_id_t>(),
 			full_matrix_t<query_id_t, document_id_t, feature_vector_t>(d.objects.size(), d.dependencies.size()),
@@ -331,12 +333,15 @@ public:
 				row[d_id] = compute_features(fr, query_row, d_id);
 			});
 
+			std::cout << "Computed features [ " << original_row.row_i.unseal() << ", " << d.dependencies.size() << " ]" << std::endl;
+
+
 			inter.queries.emplace_back(original_row.row_i);
 		});
 
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
-			std::cout << k.unseal() << std::endl;
 			for (query_id_t i : inter.queries) {
+				std::cout << k.unseal() << ' ' << i.unseal() << std::endl;
 				inter.E_weak_cached[k][i] = compute_E(create_ranking_weak(inter, i, k), i);
 			}
 		}, ir_feature_size);
