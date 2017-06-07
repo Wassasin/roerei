@@ -18,6 +18,7 @@ public:
 		auto dependants_trans(dependencies::create_obj_dependants(d));
 		dependants_trans.transitive();
 
+		// new -> old
 		encapsulated_vector<object_id_t, object_id_t> objs_ordered;
 		objs_ordered.reserve(d.objects.size());
 		d.objects.keys([&objs_ordered](object_id_t x) {
@@ -30,8 +31,9 @@ public:
 			std::shuffle(objs_ordered.begin(), objs_ordered.end(), g);
 		}
 
-		std::stable_sort(objs_ordered.begin(), objs_ordered.end(), [&dependants_trans](object_id_t x, object_id_t y) {
-			return dependants_trans[std::make_pair(x, y)];
+		std::stable_sort(objs_ordered.begin(), objs_ordered.end(), [&dependants_trans](object_id_t x, object_id_t y) -> bool {
+			// Nodes with most dependencies at end; i.e. most dependants at front
+			return dependants_trans[std::make_pair(x, y)] > 0;
 		});
 
 		encapsulated_vector<object_id_t, uri_t> objects;
