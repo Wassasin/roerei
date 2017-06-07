@@ -21,6 +21,7 @@ data
 build
 backup
 CMakeLists.txt.user*
+*.autosave
 
 src/preloader/preloader
 src/preloader/tester
