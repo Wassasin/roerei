@@ -2,6 +2,7 @@
 #include <roerei/cli.hpp>
 
 #include <roerei/generator.hpp>
+#include <roerei/sampler.hpp>
 #include <roerei/storage.hpp>
 #include <roerei/inspector.hpp>
 #include <roerei/tester.hpp>
@@ -60,6 +61,11 @@ void cli::exec_generate(cli_options& /*opt*/)
 			auto name = kvp.first+"."+postfix;
 			storage::write_dataset(name, kvp.second);
 			std::cerr << "Written " << name << std::endl;
+
+            auto sample_name = kvp.first+".sample."+postfix;
+            dataset_t d_sample(sampler::sample(kvp.second));
+            storage::write_dataset(sample_name, d_sample);
+            std::cerr << "Written " << sample_name << std::endl;
 		}
 	};
 
