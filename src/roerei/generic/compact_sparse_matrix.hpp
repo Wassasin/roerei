@@ -11,14 +11,14 @@
 #include <vector>
 #include <map>
 
+#define invalid_value (std::numeric_limits<size_t>::max())
+
 namespace roerei
 {
 
 template <typename M, typename N, typename T>
 class compact_sparse_matrix_t
 {
-	static size_t constexpr invalid_value = std::numeric_limits<size_t>::max();
-
 public:
 	typedef M row_key_t;
 	typedef N column_key_t;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-
+#include <iterator>
 #include <vector>
 
 namespace roerei
@@ -71,5 +71,25 @@ void set_smart_intersect(std::vector<T> const& xs, std::vector<T> const& ys, F c
 		set_intersect(xs, ys, f);
 }
 
+namespace impl
+{
+	template<typename XS>
+	size_t get_nonempty_size(XS const& xs, std::random_access_iterator_tag)
+	{
+		return std::distance(xs.begin(), xs.end());
+	}
+
+	template<typename XS, typename T>
+	size_t get_nonempty_size(XS const& xs, T)
+	{
+		return xs.nonempty_size();
+	}
+}
+
+template<typename XS>
+size_t get_nonempty_size(XS const& xs)
+{
+	return impl::get_nonempty_size(xs, typename std::iterator_traits<decltype(xs.begin())>::iterator_category());
+}
 
 }

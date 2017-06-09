@@ -8,7 +8,7 @@ namespace roerei
 
 class sampler {
 public:
-	static dataset_t sample(dataset_t const& original_d, float fragment = 0.001f)
+	static dataset_t sample(dataset_t const& original_d, float fragment = 0.05f)
 	{
 		auto const new_d = posetcons_canonical::consistentize(original_d);
 		size_t const new_length = new_d.objects.size() * fragment;
@@ -37,19 +37,24 @@ public:
 					used_deps.emplace(old_kvp.first);
 				}
 			}
-		}, new_length);
+		}, objects.size());
 
 		// new -> old
 		encapsulated_vector<dependency_id_t, dependency_id_t> dep_map;
+		// old -> new
+		std::map<dependency_id_t, dependency_id_t> dep_rev_map;
 		dep_map.reserve(used_deps.size());
 		for(dependency_id_t old_id : used_deps) {
+			dep_rev_map.emplace(old_id, dependency_id_t(dep_map.size()));
 			dep_map.emplace_back(old_id);
 		}
 
 		dataset_t::dependency_matrix_t dependency_matrix(objects.size(), dep_map.size());
 		dependency_matrix.iterate([&](dataset_t::dependency_matrix_t::row_proxy_t row) {
 			for(auto old_kvp : new_d.dependency_matrix[row.row_i]) {
-				row[dep_map[old_kvp.first]] = old_kvp.second;
+				if (old_kvp.second > 0) {
+					row[dep_rev_map.at(old_kvp.first)] = old_kvp.second;
+				}
 			}
 		});
 

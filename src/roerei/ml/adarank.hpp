@@ -156,43 +156,33 @@ private:
 		float cwid_frac_sum = 0.0f;
 		float cwid_frac_idf_sum = 0.0f;
 		float cwid_cwic_sum = 0.0f;
+		float bmtwentyfive = 0.0f;
 
-		set_compute_intersect(
-			document.begin(), document.end(),
-			query.begin(), query.end(),
+		float constexpr kone = 1.5f;
+		float constexpr b = 0.75f;
+
+		float const fraction = kone * (1.0f - b + b * (d_sum / (C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
+		set_compute_smart_intersect(
+			document.begin(), document.end(), get_nonempty_size(document),
+			query.begin(), query.end(), get_nonempty_size(query),
 			[](auto const& df) { return df.first; },
 			[](auto const& qf) { return qf.first; },
 			[&](auto const& df, auto const& /*qf*/) {
-				frequency_sum += fast_log(1.0f + df.second);
-				cwic_div_sum += fast_log(C_sum / fr.cwic[df.first] + 1.0f);
+				frequency_sum += std::log1p(df.second);
+				cwic_div_sum += std::log1p(C_sum / fr.cwic[df.first]);
 				idf_sum += fast_log(fr.idf[df.first]);
-				cwid_frac_sum += fast_log(df.second / d_sum + 1.0f);
-				cwid_frac_idf_sum += fast_log(df.second / d_sum + fr.idf[df.first] + 1.0f);
-				cwid_cwic_sum += fast_log( (df.second * C_sum) / (d_sum * fr.cwic[df.first]) + 1.0f);
-			}
-		);
-
-		float bmtwentyfive = 0.0f;
-		{
-			float constexpr kone = 1.5f;
-			float constexpr b = 0.75f;
-
-			float const fraction = kone * (1.0f - b + b * (d_sum / (C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
-
-			for(auto const& kvp : query) {
-				float cwid = 0.0f;
-				try {
-					cwid = document[kvp.first];
-				} catch(std::out_of_range) {}
+				cwid_frac_sum += std::log1p(df.second / d_sum);
+				cwid_frac_idf_sum += std::log1p(df.second / d_sum + fr.idf[df.first]);
+				cwid_cwic_sum += std::log1p( (df.second * C_sum) / (d_sum * fr.cwic[df.first]));
 
 				bmtwentyfive +=
-						fr.idf[kvp.first] *
+						fr.idf[df.first] *
 						(
-							(cwid * (kone + 1.0f)) /
-							(cwid + fraction)
+							(df.second * (kone + 1.0f)) /
+							(df.second + fraction)
 						);
 			}
-		}
+		);
 
 		return feature_vector_t(
 			frequency_sum,
@@ -333,15 +323,11 @@ public:
 				row[d_id] = compute_features(fr, query_row, d_id);
 			});
 
-			std::cout << "Computed features [ " << original_row.row_i.unseal() << ", " << d.dependencies.size() << " ]" << std::endl;
-
-
 			inter.queries.emplace_back(original_row.row_i);
 		});
 
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
 			for (query_id_t i : inter.queries) {
-				std::cout << k.unseal() << ' ' << i.unseal() << std::endl;
 				inter.E_weak_cached[k][i] = compute_E(create_ranking_weak(inter, i, k), i);
 			}
 		}, ir_feature_size);
