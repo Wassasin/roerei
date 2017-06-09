@@ -6,4 +6,4 @@
 	url = ssh://git@github.com/nicknick/wubwubcmake
 [submodule "contrib/msgpack-c"]
 	path = contrib/msgpack-c
-	url = ssh://git@github.com/msgpack/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git
