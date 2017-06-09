@@ -119,26 +119,12 @@ public:
 			case ml_type::knn:
 			{
 				size_t skipped = ks.erase(*result.knn_params);
-				if(skipped > 0) {
-					//std::cerr << "Skipping " << result << std::endl;
-				}
 				i += skipped;
 				break;
 			}
 			case ml_type::naive_bayes:
 			{
-				auto it = nbs.find(*result.nb_params);
-				
-				if(it != nbs.end()) {
-//					std::cerr << "Found: " << it->pi << " " << it->sigma << " " << it->tau << std::endl;
-//					std::cerr << "Orig: " << result << std::endl;
-				}
-				
 				size_t skipped = nbs.erase(*result.nb_params);
-				if(skipped > 0) {
-//					std::cerr << "Skipping " << result << std::endl;
-//					std::cerr << std::endl;
-				}
 
 				if(skipped > 1) {
 					std::cerr << "Double" << std::endl;
