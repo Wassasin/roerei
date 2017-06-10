@@ -11,8 +11,6 @@
 #include <roerei/generic/id_t.hpp>
 #include <roerei/generic/set_operations.hpp>
 
-#include <roerei/util/fast_log.hpp>
-
 #include <roerei/generic/common.hpp>
 
 #include <algorithm>
@@ -204,7 +202,7 @@ private:
 			cwid_frac_sum,
 			cwid_frac_idf_sum,
 			cwid_cwic_sum,
-			fast_log(bmtwentyfive)
+			std::log(bmtwentyfive)
 		);
 	}
 
@@ -295,7 +293,7 @@ private:
 			b += pti * (1 - e);
 		}
 
-		return 0.5f * fast_log(a / b);
+		return 0.5f * std::log(a / b);
 	}
 
 public:
