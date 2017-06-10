@@ -34,6 +34,16 @@ struct nb_params_t
   }
 };
 
+struct adarank_params_t
+{
+	size_t T;
+
+	bool operator<(adarank_params_t const rhs) const
+	{
+	  return T < rhs.T;
+	}
+};
+
 
 struct cv_result_t
 {
@@ -42,6 +52,7 @@ struct cv_result_t
   ml_type ml;
   boost::optional<knn_params_t> knn_params;
   boost::optional<nb_params_t> nb_params;
+  boost::optional<adarank_params_t> adarank_params;
   size_t n, k;
   performance::metrics_t metrics;
 };
@@ -57,7 +68,9 @@ inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
   case ml_type::knn_adaptive:
   case ml_type::omniscient:
   case ml_type::ensemble:
+	break;
   case ml_type::adarank:
+	os << "T=" << rhs.adarank_params->T;
     break;
   case ml_type::naive_bayes:
     os << rhs.nb_params->pi << " " << rhs.nb_params->sigma << " " << rhs.nb_params->tau << " ";
@@ -81,12 +94,18 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
+	roerei::adarank_params_t,
+	(size_t, T)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
     roerei::cv_result_t,
     (std::string, corpus)
     (roerei::posetcons_type, strat)
     (roerei::ml_type, ml)
     (boost::optional<roerei::knn_params_t>, knn_params)
     (boost::optional<roerei::nb_params_t>, nb_params)
+	(boost::optional<roerei::adarank_params_t>, adarank_params)
     (size_t, n)
     (size_t, k)
     (roerei::performance::metrics_t, metrics)

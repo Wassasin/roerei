@@ -36,10 +36,11 @@ public:
 
 		std::set<knn_params_t> ks;
 		std::set<nb_params_t> nbs;
+		std::set<adarank_params_t> as;
+
 		bool run_knn_adaptive = false;
 		bool run_omniscient = false;
 		bool run_ensemble = false;
-		bool run_adarank = false;
 
 		switch(method)
 		{
@@ -96,7 +97,9 @@ public:
 			run_ensemble = true;
 			break;
 		case ml_type::adarank:
-			run_adarank = true;
+			for (size_t i = adarank::ir_feature_size; i > 0; --i) {
+				as.emplace(adarank_params_t{i});
+			}
 			break;
 		}
 
@@ -143,7 +146,16 @@ public:
 				run_ensemble = false;
 				break;
 			case ml_type::adarank:
-				run_adarank = false;
+			{
+				size_t skipped = as.erase(*result.adarank_params);
+
+				if(skipped > 1) {
+					std::cerr << "Double" << std::endl;
+				}
+
+				i += skipped;
+				break;
+			}
 			}
 		});
 
@@ -179,7 +191,7 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::knn, knn_params, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, strat, ml_type::knn, knn_params, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
@@ -196,7 +208,7 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::knn_adaptive, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, strat, ml_type::knn_adaptive, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
@@ -212,7 +224,7 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::omniscient, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, strat, ml_type::omniscient, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
@@ -249,13 +261,12 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::ensemble, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, strat, ml_type::ensemble, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
 			}
 
-			std::cout << nbs.size() << std::endl;
 			for(nb_params_t const& nb_params : nbs)
 			{
 				if(!nb_data)
@@ -275,23 +286,24 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::naive_bayes, boost::none, nb_params, cv_n, cv_k, total_metrics});
+						yield_f({corpus, strat, ml_type::naive_bayes, boost::none, nb_params, boost::none, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);
 			}
 
-			if(run_adarank) {
+			for(adarank_params_t const& adarank_params : as)
+			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset) noexcept {
-						adarank<decltype(trainset)> ml(adarank<decltype(trainset)>::ir_feature_size, d, trainset);
+					[&d, gen_trainset_sane_f_ptr, adarank_params](cv::trainset_t const& trainset) noexcept {
+						adarank ml(adarank_params.T, d, trainset);
 						return [&, gen_trainset_sane_f_ptr, ml=std::move(ml)](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 							return performance::measure(d, test_row.row_i, ml.predict(test_row, trainset_sane));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::adarank, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, strat, ml_type::adarank, boost::none, boost::none, adarank_params, cv_n, cv_k, total_metrics});
 					},
 					d, silent
 				);

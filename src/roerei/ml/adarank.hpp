@@ -20,7 +20,6 @@
 namespace roerei
 {
 
-template<typename ORIG_MATRIX>
 class adarank
 {
 private:
@@ -300,6 +299,7 @@ public:
 	adarank(adarank const&) = delete;
 	adarank(adarank&&) = default;
 
+	template<typename ORIG_MATRIX>
 	adarank(
 			size_t _T,
 			dataset_t const& _d,
