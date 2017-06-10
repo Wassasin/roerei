@@ -6,12 +6,12 @@
 
 #include <roerei/generic/compact_sparse_matrix.hpp>
 #include <roerei/generic/full_matrix.hpp>
-#include <roerei/generic/jit_matrix.hpp>
-
 #include <roerei/generic/encapsulated_array.hpp>
 #include <roerei/generic/encapsulated_vector.hpp>
 #include <roerei/generic/id_t.hpp>
 #include <roerei/generic/set_operations.hpp>
+
+#include <roerei/util/fast_log.hpp>
 
 #include <roerei/generic/common.hpp>
 
@@ -54,7 +54,7 @@ public:
 private:
 	struct intermediaries_t {
 		std::vector<query_id_t> queries;
-		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features;
+		full_matrix_t<query_id_t, document_id_t, feature_vector_t> features;
 		full_matrix_t<ir_feature_id_t, query_id_t, float> E_weak_cached;
 		full_matrix_t<t_t, query_id_t, float> p;
 	};
@@ -170,7 +170,7 @@ private:
 			[&](auto const& df, auto const& /*qf*/) {
 				frequency_sum += std::log1p(df.second);
 				cwic_div_sum += std::log1p(C_sum / fr.cwic[df.first]);
-				idf_sum += std::log(fr.idf[df.first]);
+				idf_sum += fast_log(fr.idf[df.first]);
 				cwid_frac_sum += std::log1p(df.second / d_sum);
 				cwid_frac_idf_sum += std::log1p(df.second / d_sum + fr.idf[df.first]);
 				cwid_cwic_sum += std::log1p( (df.second * C_sum) / (d_sum * fr.cwic[df.first]));
@@ -191,7 +191,7 @@ private:
 			cwid_frac_sum,
 			cwid_frac_idf_sum,
 			cwid_cwic_sum,
-			std::log(bmtwentyfive)
+			fast_log(bmtwentyfive)
 		);
 	}
 
@@ -213,18 +213,18 @@ private:
 	ranking_t create_ranking_weak(intermediaries_t const& inter, query_id_t q_id, ir_feature_id_t k) const
 	{
 		ranking_t ranking;
-		for(auto const& kvp : inter.features[q_id]) {
-			ranking.emplace_back(std::make_pair(kvp.first, kvp.second[k]));
-		}
+		d.dependencies.keys([&](dependency_id_t d_id) {
+			ranking.emplace_back(std::make_pair(d_id, inter.features[q_id][d_id][k]));
+		});
 		return ranking;
 	}
 
 	ranking_t create_ranking_strong(intermediaries_t const& inter, query_id_t q_id, t_t t) const
 	{
 		ranking_t ranking;
-		for(auto const& kvp : inter.features[q_id]) {
-			ranking.emplace_back(std::make_pair(kvp.first, compute_f(t, kvp.second)));
-		};
+		d.dependencies.keys([&](dependency_id_t d_id) {
+			ranking.emplace_back(std::make_pair(d_id, compute_f(t, inter.features[q_id][d_id])));
+		});
 		return ranking;
 	}
 
@@ -282,7 +282,7 @@ private:
 			b += pti * (1 - e);
 		}
 
-		return 0.5f * std::log(a / b);
+		return 0.5f * fast_log(a / b);
 	}
 
 public:
@@ -303,43 +303,16 @@ public:
 
 		std::cout << "Requirements computed" << std::endl;
 
-		compact_sparse_matrix_t<object_id_t, feature_id_t, uint8_t> compact_trainingset(trainingset);
-		auto test_f = [&compact_trainingset, &fr](query_id_t q_id, document_id_t d_id) {
-			auto const& query_row = compact_trainingset[q_id];
-			auto const& document_row = fr.document_query_summary[d_id];
-
-			return set_compute_does_intersect(
-				query_row.begin(),
-				query_row.end(),
-				document_row.begin(),
-				document_row.end(),
-				[](auto kvp) { return kvp.first; },
-				[](auto kvp) { return kvp.first; }
-			);
-		};
-		auto generate_f = [&compact_trainingset, &fr, this](query_id_t q_id, document_id_t d_id) -> feature_vector_t {
-			return compute_features(fr, compact_trainingset[q_id], d_id);
-		};
-
-		jit_matrix_t<query_id_t, document_id_t, feature_vector_t, decltype(test_f), decltype(generate_f)> jit(
-			d.objects.size(),
-			d.dependencies.size(),
-			std::move(test_f),
-			std::move(generate_f)
-		);
-
-		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features(jit);
-
 		intermediaries_t inter{
 			std::vector<query_id_t>(),
-			std::move(jit),
+			full_matrix_t<query_id_t, document_id_t, feature_vector_t>(d.objects.size(), d.dependencies.size()),
 			full_matrix_t<ir_feature_id_t, query_id_t, float>(ir_feature_size, d.objects.size()),
 			full_matrix_t<t_t, query_id_t, float>(T, d.objects.size())
 		};
 
-		//std::vector<std::pair<feature_id_t, float>> query_row;
-		compact_trainingset.citerate([&](auto const& original_row) {
-			/*query_row.clear();
+		std::vector<std::pair<feature_id_t, float>> query_row;
+		trainingset.citerate([&](auto const& original_row) {
+			query_row.clear();
 
 			for (auto const& kvp : original_row) {
 				query_row.emplace_back(kvp);
@@ -347,11 +320,8 @@ public:
 
 			auto&& row = inter.features[original_row.row_i];
 			d.dependencies.keys([&](document_id_t d_id) {
-				auto&& features_opt = compute_features(fr, query_row, d_id);
-				if (features_opt) {
-					row[d_id] = std::move(*features_opt);
-				}
-			});*/
+				row[d_id] = compute_features(fr, query_row, d_id);
+			});
 
 			inter.queries.emplace_back(original_row.row_i);
 		});
