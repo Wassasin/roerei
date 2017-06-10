@@ -113,12 +113,16 @@ void cli::exec_diff(cli_options& opt)
 
 void cli::exec_measure(cli_options& opt)
 {
+    multitask m;
+
 	for(auto&& corpus : opt.corpii)
 		for(auto&& strat : opt.strats)
 			for(auto&& method : opt.methods)
 			{
-				tester::exec(corpus, strat, method, opt.jobs, opt.silent);
+                tester::order(m, corpus, strat, method, opt.silent);
 			}
+
+    m.run(opt.jobs, true); // Blocking
 }
 
 void cli::exec_export(cli_options& opt)

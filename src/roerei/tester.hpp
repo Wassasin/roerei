@@ -30,7 +30,7 @@ private:
 	tester() = delete;
 
 public:
-	inline static void exec(std::string const& corpus, posetcons_type strat, ml_type method, size_t jobs, bool silent=false, uint_fast32_t seed = 1337)
+	inline static void order(multitask& m, std::string const& corpus, posetcons_type strat, ml_type method, bool silent=false, uint_fast32_t seed = 1337)
 	{
 		size_t const cv_n = 10, cv_k = 1;
 
@@ -163,10 +163,11 @@ public:
 		std::cerr << "Read results" << std::endl;
 
 		auto const d_orig(storage::read_dataset(corpus));
-		auto const d(posetcons_canonical::consistentize(d_orig, seed));
+		auto const d_ptr(std::make_shared<dataset_t>(posetcons_canonical::consistentize(d_orig, seed)));
+		auto const& d = *d_ptr;
 		cv const c(d, cv_n, cv_k, seed);
 
-		std::mutex os_mutex;
+		static std::mutex os_mutex;
 		auto yield_f([&](cv_result_t const& result) {
 			std::lock_guard<std::mutex> lock(os_mutex);
 			storage::write_result(result);
@@ -175,19 +176,17 @@ public:
 
 		std::cerr << "Scheduling..." << std::endl;
 
-		multitask m;
-
 		auto schedule_f([&](auto gen_trainset_sane_f) {
 			auto gen_trainset_sane_f_ptr(std::make_shared<decltype(gen_trainset_sane_f)>(std::move(gen_trainset_sane_f)));
 
 			for(knn_params_t knn_params : ks)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr, knn_params](cv::trainset_t const& trainset) {
+					[d_ptr, gen_trainset_sane_f_ptr, knn_params](cv::trainset_t const& trainset) {
 						return [&, gen_trainset_sane_f_ptr, knn_params](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
-							knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, d);
-							return performance::measure(d, test_row.row_i, ml.predict(test_row));
+							knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, *d_ptr);
+							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
@@ -200,11 +199,11 @@ public:
 			if(run_knn_adaptive)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset) {
+					[d_ptr, gen_trainset_sane_f_ptr](cv::trainset_t const& trainset) {
 						return [&, gen_trainset_sane_f_ptr](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
-							knn_adaptive<decltype(trainset_sane)> ml(trainset_sane, d);
-							return performance::measure(d, test_row.row_i, ml.predict(test_row));
+							knn_adaptive<decltype(trainset_sane)> ml(trainset_sane, *d_ptr);
+							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
@@ -217,10 +216,10 @@ public:
 			if(run_omniscient)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr](cv::trainset_t const&) {
+					[d_ptr, gen_trainset_sane_f_ptr](cv::trainset_t const&) {
 						return [&, gen_trainset_sane_f_ptr](cv::testrow_t const& test_row) {
-							omniscient ml(d);
-							return performance::measure(d, test_row.row_i, ml.predict(test_row));
+							omniscient ml(*d_ptr);
+							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
@@ -237,19 +236,19 @@ public:
 					nb_data = std::make_shared<nb_preload_data_t>(d);
 
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr, nb_data](cv::trainset_t const& trainset) {
+					[d_ptr, gen_trainset_sane_f_ptr, nb_data](cv::trainset_t const& trainset) {
 						return [&, gen_trainset_sane_f_ptr, nb_data](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
-							ensemble<cv::testrow_t> e_ml(d);
+							ensemble<cv::testrow_t> e_ml(*d_ptr);
 
-							knn_adaptive<decltype(trainset_sane)> knn_ml(trainset_sane, d);
+							knn_adaptive<decltype(trainset_sane)> knn_ml(trainset_sane, *d_ptr);
 							e_ml.add_predictor([&knn_ml](auto row) {
 								return knn_ml.predict(row);
 							}, 0.5f);
 
 							naive_bayes<decltype(trainset_sane)> nb_ml(
 								10, -15, 0,
-								d,
+								*d_ptr,
 								*nb_data,
 								trainset_sane
 							);
@@ -257,7 +256,7 @@ public:
 								return nb_ml.predict(row, test_row_id); // TODO remove the use of test_row_id, when time allows
 							}, 0.5f);
 
-							return performance::measure(d, test_row.row_i, e_ml.predict(test_row));
+							return performance::measure(*d_ptr, test_row.row_i, e_ml.predict(test_row));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
@@ -273,16 +272,16 @@ public:
 					nb_data = std::make_shared<nb_preload_data_t>(d);
 
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr, nb_data, nb_params](cv::trainset_t const& trainset) {
+					[d_ptr, gen_trainset_sane_f_ptr, nb_data, nb_params](cv::trainset_t const& trainset) {
 						return [&, gen_trainset_sane_f_ptr](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
 							naive_bayes<decltype(trainset_sane)> ml(
 								nb_params.pi, nb_params.sigma, nb_params.tau,
-								d,
+								*d_ptr,
 								*nb_data,
 								trainset_sane
 							);
-							return performance::measure(d, test_row.row_i, ml.predict(test_row, test_row.row_i));
+							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row, test_row.row_i));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
@@ -295,11 +294,11 @@ public:
 			for(adarank_params_t const& adarank_params : as)
 			{
 				c.order_async(m,
-					[&d, gen_trainset_sane_f_ptr, adarank_params](cv::trainset_t const& trainset) noexcept {
-						adarank ml(adarank_params.T, d, trainset);
+					[d_ptr, gen_trainset_sane_f_ptr, adarank_params](cv::trainset_t const& trainset) noexcept {
+						adarank ml(adarank_params.T, *d_ptr, trainset);
 						return [&, gen_trainset_sane_f_ptr, ml=std::move(ml)](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
-							return performance::measure(d, test_row.row_i, ml.predict(test_row, trainset_sane));
+							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row, trainset_sane));
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
@@ -338,9 +337,6 @@ public:
 		}
 
 		std::cerr << "Scheduled" << std::endl;
-
-		m.run(jobs, true); // Blocking
-		std::cerr << "Finished" << std::endl;
 	}
 };
 

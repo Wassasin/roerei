@@ -83,6 +83,8 @@ namespace roerei
 
 		void run(size_t n = 1, bool blocking = true)
 		{
+			std::cerr << "Starting " << jobsets.size() << " jobsets" << std::endl;
+
 			std::vector<std::thread> threads;
 			threads.reserve(n);
 			for(size_t i = 0; i < n; ++i)
