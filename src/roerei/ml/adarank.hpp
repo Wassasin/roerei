@@ -49,6 +49,9 @@ public:
 		compact_sparse_matrix_t<document_id_t, feature_id_t, float> document_query_summary;
 		encapsulated_vector<feature_id_t, float> idf;
 		encapsulated_vector<feature_id_t, float> cwic;
+
+		encapsulated_vector<document_id_t, float> d_sums;
+		float C_sum;
 	};
 
 private:
@@ -128,10 +131,28 @@ public:
 		auto idf = create_idf(d, dqs);
 		auto cwic = create_cwic(d, dqs);
 
+		float C_sum = 0.0f;
+		cwic.iterate([&](feature_id_t, float x) {
+			C_sum += x;
+		});
+
+		encapsulated_vector<document_id_t, float> d_sums;
+		d_sums.reserve(d.dependencies.size());
+		d.dependencies.keys([&](document_id_t d_id) {
+			auto const& document(dqs[d_id]);
+			float d_sum = 0.0f;
+			for (auto const& kvp : document) {
+				d_sum += kvp.second;
+			}
+			d_sums.emplace_back(d_sum);
+		});
+
 		return {
 			std::move(dqs),
 			std::move(idf),
-			std::move(cwic)
+			std::move(cwic),
+			std::move(d_sums),
+			C_sum,
 		};
 	}
 
@@ -140,15 +161,7 @@ private:
 	feature_vector_t compute_features(feature_requirements_t const& fr, FEATURES const& query, document_id_t d_id) const {
 		auto document = fr.document_query_summary[d_id];
 
-		float C_sum = 0.0f;
-		fr.cwic.iterate([&](feature_id_t, float x) {
-			C_sum += x;
-		});
-
-		float d_sum = 0.0f;
-		for (std::pair<feature_id_t, float> const& kvp : document) {
-			d_sum += kvp.second;
-		}
+		float d_sum = fr.d_sums[d_id];
 
 		float frequency_sum = 0.0f;
 		float cwic_div_sum = 0.0f;
@@ -161,7 +174,7 @@ private:
 		float constexpr kone = 1.5f;
 		float constexpr b = 0.75f;
 
-		float const fraction = kone * (1.0f - b + b * (d_sum / (C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
+		float const fraction = kone * (1.0f - b + b * (d_sum / (fr.C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
 		set_compute_smart_intersect(
 			document.begin(), document.end(), get_nonempty_size(document),
 			query.begin(), query.end(), get_nonempty_size(query),
@@ -169,11 +182,11 @@ private:
 			[](auto const& qf) { return qf.first; },
 			[&](auto const& df, auto const& /*qf*/) {
 				frequency_sum += std::log1p(df.second);
-				cwic_div_sum += std::log1p(C_sum / fr.cwic[df.first]);
-				idf_sum += fast_log(fr.idf[df.first]);
+				cwic_div_sum += std::log1p(fr.C_sum / fr.cwic[df.first]);
+				idf_sum += std::log(fr.idf[df.first]);
 				cwid_frac_sum += std::log1p(df.second / d_sum);
 				cwid_frac_idf_sum += std::log1p(df.second / d_sum + fr.idf[df.first]);
-				cwid_cwic_sum += std::log1p( (df.second * C_sum) / (d_sum * fr.cwic[df.first]));
+				cwid_cwic_sum += std::log1p( (df.second * fr.C_sum) / (d_sum * fr.cwic[df.first]));
 
 				bmtwentyfive +=
 						fr.idf[df.first] *
