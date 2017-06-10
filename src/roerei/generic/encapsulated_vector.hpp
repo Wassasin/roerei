@@ -53,6 +53,13 @@ public:
 		ID::iterate(f, this->size());
 	}
 
+	template<typename F> void iterate(F const& f)
+	{
+		ID::iterate([&](ID it) {
+			f(it, buf[it.unseal()]);
+		} , this->size());
+	}
+
 	template<typename F> void iterate(F const& f) const
 	{
 		ID::iterate([&](ID it) {
