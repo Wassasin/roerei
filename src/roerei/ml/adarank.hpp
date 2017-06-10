@@ -50,14 +50,12 @@ public:
 		compact_sparse_matrix_t<document_id_t, feature_id_t, float> document_query_summary;
 		encapsulated_vector<feature_id_t, float> idf;
 		encapsulated_vector<feature_id_t, float> cwic;
-
-		encapsulated_vector<document_id_t, float> d_sums;
-		float C_sum;
 	};
 
 private:
 	struct intermediaries_t {
 		std::vector<query_id_t> queries;
+		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features;
 		full_matrix_t<ir_feature_id_t, query_id_t, float> E_weak_cached;
 		full_matrix_t<t_t, query_id_t, float> p;
 	};
@@ -65,7 +63,6 @@ private:
 private:
 	size_t const T;
 	dataset_t const& d;
-	compact_sparse_matrix_t<object_id_t, feature_id_t, uint8_t> trainingset;
 
 	encapsulated_vector<t_t, ir_feature_id_t> h;
 	encapsulated_vector<t_t, float> alpha;
@@ -132,37 +129,27 @@ public:
 		auto idf = create_idf(d, dqs);
 		auto cwic = create_cwic(d, dqs);
 
-		float C_sum = 0.0f;
-		cwic.iterate([&](feature_id_t, float x) {
-			C_sum += x;
-		});
-
-		encapsulated_vector<document_id_t, float> d_sums;
-		d_sums.reserve(d.dependencies.size());
-		d.dependencies.keys([&](document_id_t d_id) {
-			auto const& document(dqs[d_id]);
-			float d_sum = 0.0f;
-			for (auto const& kvp : document) {
-				d_sum += kvp.second;
-			}
-			d_sums.emplace_back(d_sum);
-		});
-
 		return {
 			std::move(dqs),
 			std::move(idf),
-			std::move(cwic),
-			std::move(d_sums),
-			C_sum,
+			std::move(cwic)
 		};
 	}
 
 private:
 	template<typename FEATURES>
-	boost::optional<feature_vector_t> compute_features(feature_requirements_t const& fr, FEATURES const& query, document_id_t d_id) const {
+	feature_vector_t compute_features(feature_requirements_t const& fr, FEATURES const& query, document_id_t d_id) const {
 		auto document = fr.document_query_summary[d_id];
 
-		float d_sum = fr.d_sums[d_id];
+		float C_sum = 0.0f;
+		fr.cwic.iterate([&](feature_id_t, float x) {
+			C_sum += x;
+		});
+
+		float d_sum = 0.0f;
+		for (std::pair<feature_id_t, float> const& kvp : document) {
+			d_sum += kvp.second;
+		}
 
 		float frequency_sum = 0.0f;
 		float cwic_div_sum = 0.0f;
@@ -175,23 +162,19 @@ private:
 		float constexpr kone = 1.5f;
 		float constexpr b = 0.75f;
 
-		float const fraction = kone * (1.0f - b + b * (d_sum / (fr.C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
-
-		bool intersected = false;
+		float const fraction = kone * (1.0f - b + b * (d_sum / (C_sum / static_cast<float>(fr.document_query_summary.size_m()))));
 		set_compute_smart_intersect(
 			document.begin(), document.end(), get_nonempty_size(document),
 			query.begin(), query.end(), get_nonempty_size(query),
 			[](auto const& df) { return df.first; },
 			[](auto const& qf) { return qf.first; },
 			[&](auto const& df, auto const& /*qf*/) {
-				intersected = true;
-
 				frequency_sum += std::log1p(df.second);
-				cwic_div_sum += std::log1p(fr.C_sum / fr.cwic[df.first]);
+				cwic_div_sum += std::log1p(C_sum / fr.cwic[df.first]);
 				idf_sum += std::log(fr.idf[df.first]);
 				cwid_frac_sum += std::log1p(df.second / d_sum);
 				cwid_frac_idf_sum += std::log1p(df.second / d_sum + fr.idf[df.first]);
-				cwid_cwic_sum += std::log1p( (df.second * fr.C_sum) / (d_sum * fr.cwic[df.first]));
+				cwid_cwic_sum += std::log1p( (df.second * C_sum) / (d_sum * fr.cwic[df.first]));
 
 				bmtwentyfive +=
 						fr.idf[df.first] *
@@ -201,10 +184,6 @@ private:
 						);
 			}
 		);
-
-		if (!intersected) {
-			return boost::none;
-		}
 
 		return feature_vector_t(
 			frequency_sum,
@@ -232,30 +211,21 @@ private:
 		return result;
 	}
 
-	/*
-	ranking_t create_ranking_weak(feature_requirements_t const& fr, query_id_t q_id, ir_feature_id_t k) const
+	ranking_t create_ranking_weak(intermediaries_t const& inter, query_id_t q_id, ir_feature_id_t k) const
 	{
 		ranking_t ranking;
-		d.dependencies.keys([&](document_id_t d_id) {
-			compute_features(fr, trainingset[q_id], d_id);
+		for(auto const& kvp : inter.features[q_id]) {
 			ranking.emplace_back(std::make_pair(kvp.first, kvp.second[k]));
-		});
+		}
 		return ranking;
 	}
-	*/
 
-	ranking_t create_ranking_strong(feature_requirements_t const& fr, query_id_t q_id, t_t t) const
+	ranking_t create_ranking_strong(intermediaries_t const& inter, query_id_t q_id, t_t t) const
 	{
 		ranking_t ranking;
-		d.dependencies.keys([&](document_id_t d_id) {
-			auto features_opt = compute_features(fr, trainingset[q_id], d_id);
-
-			if (!features_opt) {
-				return;
-			}
-
-			ranking.emplace_back(std::make_pair(d_id, compute_f(t, *features_opt)));
-		});
+		for(auto const& kvp : inter.features[q_id]) {
+			ranking.emplace_back(std::make_pair(kvp.first, compute_f(t, kvp.second)));
+		};
 		return ranking;
 	}
 
@@ -323,46 +293,107 @@ public:
 	adarank(
 			size_t _T,
 			dataset_t const& _d,
-			ORIG_MATRIX const& _trainingset
+			ORIG_MATRIX const& trainingset
 			)
 		: T(_T)
 		, d(_d)
-		, trainingset(_trainingset)
 		, h(T, ir_feature_size) // Initialize with non existing feature
 		, alpha(T)
 	{
 		auto fr = create_feature_requirements(d, trainingset);
 
+		std::cout << "Requirements computed" << std::endl;
+
+		compact_sparse_matrix_t<object_id_t, feature_id_t, uint8_t> compact_trainingset(trainingset);
+		std::cout << "Compact trainingset created" << std::endl;
+
+		/*auto test_f = [&compact_trainingset, &fr](query_id_t q_id, document_id_t d_id) {
+			try {
+				auto const& query_row = compact_trainingset[q_id];
+				auto const& document_row = fr.document_query_summary[d_id];
+
+				return set_compute_does_intersect(
+					query_row.begin(),
+					query_row.end(),
+					document_row.begin(),
+					document_row.end(),
+					[](auto kvp) { return kvp.first; },
+					[](auto kvp) { return kvp.first; }
+				);
+			} catch (std::out_of_range) {
+				return false;
+			}
+		};*/
+
+		sparse_unit_matrix_t<query_id_t, document_id_t> feature_existance(d.objects.size(), d.dependencies.size());
+		compact_trainingset.citerate([&](auto const& query_row) {
+			d.dependencies.keys([&](document_id_t d_id) {
+				auto const& document_row = fr.document_query_summary[d_id];
+
+				if (set_compute_does_intersect(
+						query_row.begin(),
+						query_row.end(),
+						document_row.begin(),
+						document_row.end(),
+						[](auto kvp) { return kvp.first; },
+						[](auto kvp) { return kvp.first; }
+					)) {
+					feature_existance.set(std::make_pair(query_row.row_i, d_id));
+				}
+			});
+		});
+		std::cout << "Existance instantiated" << std::endl;
+
+		auto generate_f = [&compact_trainingset, &fr, this](query_id_t q_id, document_id_t d_id) -> feature_vector_t {
+			return compute_features(fr, compact_trainingset[q_id], d_id);
+		};
+
+		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features(feature_existance, generate_f);
+
+		/*std::cout << "Lambda's' created" << std::endl;
+
+		jit_matrix_t<query_id_t, document_id_t, feature_vector_t, decltype(test_f), decltype(generate_f)> jit(
+			d.objects.size(),
+			d.dependencies.size(),
+			std::move(test_f),
+			std::move(generate_f)
+		);
+
+		std::cout << "Jit created" << std::endl;
+		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features(jit);
+		std::cout << "Jit converted" << std::endl;*/
+
 		intermediaries_t inter{
 			std::vector<query_id_t>(),
+			std::move(features),
 			full_matrix_t<ir_feature_id_t, query_id_t, float>(ir_feature_size, d.objects.size()),
 			full_matrix_t<t_t, query_id_t, float>(T, d.objects.size())
 		};
 
-		trainingset.citerate([&](auto const& original_row) {
+		//std::vector<std::pair<feature_id_t, float>> query_row;
+		compact_trainingset.citerate([&](auto const& original_row) {
+			/*query_row.clear();
+
+			for (auto const& kvp : original_row) {
+				query_row.emplace_back(kvp);
+			}
+
+			auto&& row = inter.features[original_row.row_i];
+			d.dependencies.keys([&](document_id_t d_id) {
+				auto&& features_opt = compute_features(fr, query_row, d_id);
+				if (features_opt) {
+					row[d_id] = std::move(*features_opt);
+				}
+			});*/
+
 			inter.queries.emplace_back(original_row.row_i);
 		});
 
-		for (query_id_t i : inter.queries) {
-			encapsulated_vector<ir_feature_id_t, ranking_t> rankings(ir_feature_size);
-			d.dependencies.keys([&](document_id_t d_id) {
-				auto features_opt = compute_features(fr, trainingset[i], d_id);
-
-				if (!features_opt) {
-					return;
-				}
-
-				auto& features = *features_opt;
-
-				rankings.iterate([&](ir_feature_id_t k, ranking_t& ranking) {
-					ranking.emplace_back(std::make_pair(d_id, features[k]));
-				});
-			});
-
-			ir_feature_id_t::iterate([&](ir_feature_id_t k) {
-				inter.E_weak_cached[k][i] = compute_E(rankings[k], i);
-			}, ir_feature_size);
-		}
+		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
+			for (query_id_t i : inter.queries) {
+				inter.E_weak_cached[k][i] = compute_E(create_ranking_weak(inter, i, k), i);
+			}
+		}, ir_feature_size);
 
 		const float m = inter.queries.size();
 		for (query_id_t i : inter.queries) {
@@ -384,7 +415,7 @@ public:
 			encapsulated_vector<object_id_t, float> strong_E(d.objects.size());
 			float sum_strong_E = 0.0f;
 			for (query_id_t i : inter.queries) {
-				float sei = std::exp(-1.0f * compute_E(create_ranking_strong(fr, i, t), i));
+				float sei = std::exp(-1.0f * compute_E(create_ranking_strong(inter, i, t), i));
 				strong_E[i] = sei;
 				sum_strong_E += sei;
 			}
@@ -397,20 +428,14 @@ public:
 	}
 
 	template<typename ROW, typename TRAININGSET>
-	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row, TRAININGSET const& current_trainingset) const
+	std::vector<std::pair<dependency_id_t, float>> predict(ROW const& test_row, TRAININGSET const& trainingset) const
 	{
-		feature_requirements_t fr(create_feature_requirements(d, current_trainingset));
+		feature_requirements_t fr(create_feature_requirements(d, trainingset));
 
 		ranking_t ranking;
 
 		d.dependencies.keys([&](document_id_t d_id) {
-			auto features_opt = compute_features(fr, test_row, d_id);
-
-			if (!features_opt) {
-				return;
-			}
-
-			float f = compute_f(T-1, *features_opt);
+			float f = compute_f(T-1, compute_features(fr, test_row, d_id));
 			if (f >= 0.0f) {
 				ranking.emplace_back(std::make_pair(d_id, f));
 			}
