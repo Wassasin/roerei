@@ -71,6 +71,15 @@ public:
 		return n;
 	}
 
+	template<typename F>
+	void citerate(F const& f) const
+	{
+		for(size_t i = 0; i < m; ++i)
+		{
+			f(std::make_pair(M(i), data[i]));
+		}
+	}
+
 	void transitive()
 	{
 		assert(m == n);

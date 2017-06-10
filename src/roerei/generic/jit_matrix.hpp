@@ -38,7 +38,6 @@ public:
 
 		std::pair<N, T> operator*() const
 		{
-			std::cout << row_i.unseal() << ' ' << col_i << std::endl;
 			return std::make_pair<N, T>(col_i, parent.generate_f(row_i, N(col_i)));
 		}
 
@@ -47,8 +46,6 @@ public:
 			do {
 				col_i++;
 			} while (col_i < parent.n && !parent.test_f(row_i, N(col_i)));
-
-			std::cout << "Stopped at " << col_i;
 
 			return *this;
 		}

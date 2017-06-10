@@ -5,8 +5,9 @@
 #include <roerei/performance.hpp>
 
 #include <roerei/generic/compact_sparse_matrix.hpp>
+#include <roerei/generic/sparse_unit_matrix.hpp>
 #include <roerei/generic/full_matrix.hpp>
-#include <roerei/generic/jit_matrix.hpp>
+//#include <roerei/generic/jit_matrix.hpp>
 
 #include <roerei/generic/encapsulated_array.hpp>
 #include <roerei/generic/encapsulated_vector.hpp>
@@ -304,22 +305,52 @@ public:
 		std::cout << "Requirements computed" << std::endl;
 
 		compact_sparse_matrix_t<object_id_t, feature_id_t, uint8_t> compact_trainingset(trainingset);
-		auto test_f = [&compact_trainingset, &fr](query_id_t q_id, document_id_t d_id) {
-			auto const& query_row = compact_trainingset[q_id];
-			auto const& document_row = fr.document_query_summary[d_id];
+		std::cout << "Compact trainingset created" << std::endl;
 
-			return set_compute_does_intersect(
-				query_row.begin(),
-				query_row.end(),
-				document_row.begin(),
-				document_row.end(),
-				[](auto kvp) { return kvp.first; },
-				[](auto kvp) { return kvp.first; }
-			);
-		};
+		/*auto test_f = [&compact_trainingset, &fr](query_id_t q_id, document_id_t d_id) {
+			try {
+				auto const& query_row = compact_trainingset[q_id];
+				auto const& document_row = fr.document_query_summary[d_id];
+
+				return set_compute_does_intersect(
+					query_row.begin(),
+					query_row.end(),
+					document_row.begin(),
+					document_row.end(),
+					[](auto kvp) { return kvp.first; },
+					[](auto kvp) { return kvp.first; }
+				);
+			} catch (std::out_of_range) {
+				return false;
+			}
+		};*/
+
+		sparse_unit_matrix_t<query_id_t, document_id_t> feature_existance(d.objects.size(), d.dependencies.size());
+		compact_trainingset.citerate([&](auto const& query_row) {
+			d.dependencies.keys([&](document_id_t d_id) {
+				auto const& document_row = fr.document_query_summary[d_id];
+
+				if (set_compute_does_intersect(
+						query_row.begin(),
+						query_row.end(),
+						document_row.begin(),
+						document_row.end(),
+						[](auto kvp) { return kvp.first; },
+						[](auto kvp) { return kvp.first; }
+					)) {
+					feature_existance.set(std::make_pair(query_row.row_i, d_id));
+				}
+			});
+		});
+		std::cout << "Existance instantiated" << std::endl;
+
 		auto generate_f = [&compact_trainingset, &fr, this](query_id_t q_id, document_id_t d_id) -> feature_vector_t {
 			return compute_features(fr, compact_trainingset[q_id], d_id);
 		};
+
+		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features(feature_existance, generate_f);
+
+		/*std::cout << "Lambda's' created" << std::endl;
 
 		jit_matrix_t<query_id_t, document_id_t, feature_vector_t, decltype(test_f), decltype(generate_f)> jit(
 			d.objects.size(),
@@ -328,11 +359,13 @@ public:
 			std::move(generate_f)
 		);
 
+		std::cout << "Jit created" << std::endl;
 		compact_sparse_matrix_t<query_id_t, document_id_t, feature_vector_t> features(jit);
+		std::cout << "Jit converted" << std::endl;*/
 
 		intermediaries_t inter{
 			std::vector<query_id_t>(),
-			std::move(jit),
+			std::move(features),
 			full_matrix_t<ir_feature_id_t, query_id_t, float>(ir_feature_size, d.objects.size()),
 			full_matrix_t<t_t, query_id_t, float>(T, d.objects.size())
 		};

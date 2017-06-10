@@ -1,7 +1,6 @@
 #pragma once
 
-#include <roerei/generic/sliced_sparse_matrix.hpp>
-#include <roerei/generic/sparse_matrix.hpp>
+#include <roerei/generic/sparse_unit_matrix.hpp>
 #include <roerei/generic/encapsulated_vector.hpp>
 
 #include <roerei/generic/common.hpp>
@@ -124,6 +123,7 @@ public:
 		, rows()
 	{
 		rows.reserve(mat.size_m());
+		std::cout << "Reserved" << std::endl;
 
 		size_t nonempty_elements = 0;
 		size_t i = 0;
@@ -138,8 +138,12 @@ public:
 			++i;
 		});
 
+		std::cout << "Counted rows" << std::endl;
+
 		for(; i < m; ++i)
 			rows.emplace_back();
+
+		std::cout << "Initialized rows" << std::endl;
 
 		assert(rows.size() == m);
 
@@ -147,6 +151,58 @@ public:
 		mat.citerate([&](typename MATRIX::const_row_proxy_t const& xs) {
 			buf.insert(buf.end(), xs.begin(), xs.end());
 		});
+
+		float fill_ratio = static_cast<float>(buf.size()) / static_cast<float>(m*n);
+
+		std::cout << "Rows count: " << rows.size() << std::endl;
+		std::cout << "Buffer size: " << buf.size() << std::endl;
+		std::cout << "Fill ratio: " << fill_ratio << std::endl;
+	}
+
+	template<typename F>
+	compact_sparse_matrix_t(sparse_unit_matrix_t<M, N> const& existence, F&& f)
+		: m(existence.size_m())
+		, n(existence.size_n())
+		, buf()
+		, rows()
+	{
+		rows.reserve(existence.size_m());
+		std::cout << "Reserved" << std::endl;
+
+		size_t nonempty_elements = 0;
+		size_t i = 0;
+		existence.citerate([&](std::pair<M, std::set<N>> const& kvp) {
+			for(; i < kvp.first.unseal(); ++i)
+				rows.emplace_back();
+
+			size_t size = kvp.second.size();
+			rows.emplace_back(nonempty_elements, size);
+			nonempty_elements += size;
+
+			++i;
+		});
+
+		std::cout << "Counted rows" << std::endl;
+
+		for(; i < m; ++i)
+			rows.emplace_back();
+
+		std::cout << "Initialized rows" << std::endl;
+
+		assert(rows.size() == m);
+
+		buf.reserve(nonempty_elements);
+		existence.citerate([&](std::pair<M, std::set<N>> const& kvp) {
+			for (N y_id : kvp.second) {
+				buf.emplace_back(std::make_pair(y_id, f(kvp.first, y_id)));
+			}
+		});
+
+		float fill_ratio = static_cast<float>(buf.size()) / static_cast<float>(m*n);
+
+		std::cout << "Rows count: " << rows.size() << std::endl;
+		std::cout << "Buffer size: " << buf.size() << std::endl;
+		std::cout << "Fill ratio: " << fill_ratio << std::endl;
 	}
 
 	row_proxy_t operator[](M i)
