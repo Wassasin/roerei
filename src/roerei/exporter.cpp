@@ -102,6 +102,57 @@ namespace roerei
 			}
 		}
 	}
+
+    void export_adarank(
+        std::string const& dataset,
+        std::string const& source_path,
+        std::string const& output_path
+    )
+    {
+        std::vector<cv_result_t> results;
+        storage::read_result([&](cv_result_t const& result) {
+            if(result.ml == ml_type::adarank && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+                results.emplace_back(result);
+            }
+        }, source_path);
+
+        std::sort(results.begin(), results.end(), [](cv_result_t const& x, cv_result_t const& y) {
+            return *x.adarank_params < *y.adarank_params;
+        });
+
+        {
+            std::ofstream os(output_path+"/adarank-"+make_prefix(dataset)+".tex");
+            latex_tabular t(os);
+
+            for(cv_result_t const& row : results) {
+                t.write_row({
+                    std::to_string(row.adarank_params->T),
+                    round_print(row.metrics.oocover, 3),
+                    round_print(row.metrics.ooprecision, 3),
+                    round_print(row.metrics.recall, 3),
+                    round_print(row.metrics.rank, 1),
+                    round_print(row.metrics.auc, 3),
+                    round_print(row.metrics.volume, 3)
+                });
+            }
+        }
+
+        {
+            std::ofstream os(output_path+"/adarank-"+make_prefix(dataset)+".dat");
+            data_dump dd(os);
+            for(cv_result_t const& row : results) {
+                dd.write_row({
+                    std::to_string(row.adarank_params->T),
+                    round_print(row.metrics.oocover, 3),
+                    round_print(row.metrics.ooprecision, 3),
+                    round_print(row.metrics.recall, 3),
+                    round_print(row.metrics.rank, 1),
+                    round_print(row.metrics.auc, 3),
+                    round_print(row.metrics.volume, 3)
+                });
+            }
+        }
+    }
 	
 	void export_nb(
 		std::string const& dataset,
@@ -208,6 +259,8 @@ namespace roerei
       return os << "\\ensemble";
     case ml_type::naive_bayes:
       return os << "\\nb $\\pi=" << rhs.nb_params->pi << "$ $\\sigma=" << rhs.nb_params->sigma << "$ $\\tau=" << rhs.nb_params->tau << "$";
+    case ml_type::adarank:
+      return os << "\\adarank T=" << rhs.adarank_params->T;
     }
   }
 
@@ -294,6 +347,8 @@ namespace roerei
 		export_nb("Coq.frequency", source_path, output_path);
 		export_nb("Coq.depth", source_path, output_path);
 		export_nb("CoRN.frequency", source_path, output_path);
+
+        export_adarank("Coq.frequency", source_path, output_path);
 
 		export_best("Coq.frequency", source_path, output_path);
 	}
