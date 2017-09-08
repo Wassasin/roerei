@@ -172,37 +172,57 @@ public:
 		});
 	}
 
-	static float measure_oocover(dataset_t const& d, object_id_t test_row_i, std::vector<std::pair<dependency_id_t, float>> suggestions) noexcept
+	struct oocover_buffer_t {
+		std::vector<dependency_id_t> required_deps, suggested_deps, oosuggested_deps, oofound_deps;
+
+		oocover_buffer_t(dataset_t const& d)
+		: required_deps()
+		, suggested_deps()
+		, oosuggested_deps()
+		, oofound_deps()
+		{
+			required_deps.reserve(d.dependencies.size());
+			suggested_deps.reserve(d.dependencies.size());
+			oosuggested_deps.reserve(100);
+			oofound_deps.reserve(100);
+		}
+	};
+
+	static float measure_oocover(dataset_t const& d, object_id_t test_row_i, std::vector<std::pair<dependency_id_t, float>> suggestions, oocover_buffer_t& buffer) noexcept
 	{
 		performance::sort(suggestions);
 
-		std::vector<dependency_id_t> required_deps, suggested_deps, oosuggested_deps, oofound_deps;
+		buffer.required_deps.clear();
+		buffer.suggested_deps.clear();
+		buffer.oosuggested_deps.clear();
+		buffer.oofound_deps.clear();
+
 		for(auto const& kvp : d.dependency_matrix[test_row_i])
-			required_deps.emplace_back(kvp.first);
+		buffer.required_deps.emplace_back(kvp.first);
 
 		for(size_t j = 0; j < suggestions.size(); ++j)
-			suggested_deps.emplace_back(suggestions[j].first);
+		buffer.suggested_deps.emplace_back(suggestions[j].first);
 
-		if(suggested_deps.size() > 100)
+		if(buffer.suggested_deps.size() > 100)
 		{
-			oosuggested_deps.insert(oosuggested_deps.end(), suggested_deps.begin(), suggested_deps.begin()+100);
-			std::sort(suggested_deps.begin(), suggested_deps.end()); // After copy
-			std::sort(oosuggested_deps.begin(), oosuggested_deps.end());
+			buffer.oosuggested_deps.insert(buffer.oosuggested_deps.end(), buffer.suggested_deps.begin(), buffer.suggested_deps.begin()+100);
+			std::sort(buffer.suggested_deps.begin(), buffer.suggested_deps.end()); // After copy
+			std::sort(buffer.oosuggested_deps.begin(), buffer.oosuggested_deps.end());
 		}
 		else
 		{
-			std::sort(suggested_deps.begin(), suggested_deps.end()); // Before copy
-			oosuggested_deps = suggested_deps;
+			std::sort(buffer.suggested_deps.begin(), buffer.suggested_deps.end()); // Before copy
+			buffer.oosuggested_deps = buffer.suggested_deps;
 		}
 
 		std::set_intersection(
-			required_deps.begin(), required_deps.end(),
-			oosuggested_deps.begin(), oosuggested_deps.end(),
-			std::inserter(oofound_deps, oofound_deps.begin())
+			buffer.required_deps.begin(), buffer.required_deps.end(),
+			buffer.oosuggested_deps.begin(), buffer.oosuggested_deps.end(),
+			std::inserter(buffer.oofound_deps, buffer.oofound_deps.begin())
 		);
 
-		float c_required = required_deps.size();
-		float c_oofound = oofound_deps.size();
+		float c_required = buffer.required_deps.size();
+		float c_oofound = buffer.oofound_deps.size();
 
 		float oocover = c_oofound/c_required;
 

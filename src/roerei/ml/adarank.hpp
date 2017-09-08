@@ -205,9 +205,9 @@ private:
 		);
 	}
 
-	float compute_E(ranking_t const& ranking, object_id_t test_row_i) const
+	float compute_E(ranking_t const& ranking, object_id_t test_row_i, performance::oocover_buffer_t& buffer) const
 	{
-		return performance::measure_oocover(d, test_row_i, ranking); // Metric we want to maximize
+		return performance::measure_oocover(d, test_row_i, ranking, buffer); // Metric we want to maximize
 	}
 
 	template<typename FEATURES>
@@ -220,22 +220,20 @@ private:
 		return result;
 	}
 
-	ranking_t create_ranking_weak(intermediaries_t const& inter, query_id_t q_id, ir_feature_id_t k) const
+	void create_ranking_weak(intermediaries_t const& inter, query_id_t q_id, ir_feature_id_t k, ranking_t& ranking) const
 	{
-		ranking_t ranking;
+		ranking.clear();
 		d.dependencies.keys([&](dependency_id_t d_id) {
 			ranking.emplace_back(std::make_pair(d_id, inter.features[q_id][d_id][k]));
 		});
-		return ranking;
 	}
 
-	ranking_t create_ranking_strong(intermediaries_t const& inter, query_id_t q_id, t_t t) const
+	void create_ranking_strong(intermediaries_t const& inter, query_id_t q_id, t_t t, ranking_t& ranking) const
 	{
-		ranking_t ranking;
+		ranking.clear();
 		d.dependencies.keys([&](dependency_id_t d_id) {
 			ranking.emplace_back(std::make_pair(d_id, compute_f(t, inter.features[q_id][d_id])));
 		});
-		return ranking;
 	}
 
 	ir_feature_id_t compute_h(intermediaries_t const& inter, t_t t) const
@@ -337,9 +335,14 @@ public:
 			inter.queries.emplace_back(original_row.row_i);
 		});
 
+		performance::oocover_buffer_t oocover_buffer(d);
+		ranking_t ranking_buffer;
+		ranking_buffer.reserve(d.dependencies.size());
+
 		ir_feature_id_t::iterate([&](ir_feature_id_t k) {
 			for (query_id_t i : inter.queries) {
-				inter.E_weak_cached[k][i] = compute_E(create_ranking_weak(inter, i, k), i);
+				create_ranking_weak(inter, i, k, ranking_buffer);
+				inter.E_weak_cached[k][i] = compute_E(ranking_buffer, i, oocover_buffer);
 			}
 		}, ir_feature_size);
 
@@ -363,7 +366,8 @@ public:
 			encapsulated_vector<object_id_t, float> strong_E(d.objects.size());
 			float sum_strong_E = 0.0f;
 			for (query_id_t i : inter.queries) {
-				float sei = std::exp(-1.0f * compute_E(create_ranking_strong(inter, i, t), i));
+				create_ranking_strong(inter, i, t, ranking_buffer);
+				float sei = std::exp(-1.0f * compute_E(ranking_buffer, i, oocover_buffer));
 				strong_E[i] = sei;
 				sum_strong_E += sei;
 			}
