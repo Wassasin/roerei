@@ -284,10 +284,8 @@ namespace roerei
 
     std::ofstream os(output_path+"/best-"+make_prefix(dataset)+".tex");
     latex_tabular t(os);
-    
-    for(auto const& kvp : results) {
-      auto const& row = kvp.second;
 
+		auto emit_f = [&](auto const& row) {
       std::stringstream ss;
       describe_ml(ss, row);
       t.write_row({
@@ -299,7 +297,16 @@ namespace roerei
         round_print(row.metrics.auc, 3),
         round_print(row.metrics.volume, 3)
       });
-    }
+		};
+
+		for(ml_type mlt : {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::adarank, ml_type::ensemble, ml_type::omniscient}) {
+			auto it = results.find(mlt);
+			if (it == results.end()) {
+				throw std::runtime_error(std::string("Could not find ") + to_string(mlt) + " for " + dataset);
+			}
+
+			emit_f(it->second);
+		}
   }
 
   void export_counts(std::string const& output_path)
@@ -328,7 +335,7 @@ namespace roerei
 
 	void exporter::exec(std::string const& source_path, std::string const& output_path)
 	{
-        export_counts(output_path);
+		export_counts(output_path);
 
 		export_knn("Coq.flat", source_path, output_path);
 		export_knn("Coq.depth", source_path, output_path);
@@ -348,8 +355,11 @@ namespace roerei
 		export_nb("Coq.depth", source_path, output_path);
 		export_nb("CoRN.frequency", source_path, output_path);
 
-        export_adarank("Coq.frequency", source_path, output_path);
+		export_adarank("Coq.frequency", source_path, output_path);
 
 		export_best("Coq.frequency", source_path, output_path);
+		export_best("CoRN.frequency", source_path, output_path);
+		export_best("MathClasses.frequency", source_path, output_path);
+		export_best("mathcomp.frequency", source_path, output_path);
 	}
 }
