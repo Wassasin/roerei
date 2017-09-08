@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <future>
+#include <sstream>
 
 namespace roerei
 {
@@ -9,10 +10,13 @@ namespace roerei
 	{
 		class jobset_t
 		{
+			static size_t jobset_count;
+
 			std::vector<std::packaged_task<void()>> tasks;
 			std::packaged_task<void()> continuation;
 
 			std::unique_ptr<std::mutex> mutex;
+			size_t jobset_ident;
 			size_t tasks_i;
 			size_t tasks_done;
 
@@ -29,6 +33,7 @@ namespace roerei
 				: tasks(std::move(_tasks))
 				, continuation(std::move(_continuation))
 				, mutex(new std::mutex())
+				, jobset_ident(jobset_count++)
 				, tasks_i(0)
 				, tasks_done(0)
 			{}
@@ -46,7 +51,21 @@ namespace roerei
 
 				auto& t = tasks[i];
 				auto future = t.get_future();
+
+				{
+					std::stringstream ss;
+					ss << "Started #" << jobset_ident << "-" << i << " (out of " << tasks.size() << ")";
+					std::cerr << ss.str() << std::endl;
+				}
+
 				t(); // Execute packaged task
+
+				{
+					std::stringstream ss;
+					ss << "Finished #" << jobset_ident << "-" << i << " (out of " << tasks.size() << ")";
+					std::cerr << ss.str() << std::endl;
+				}
+
 				future.get(); // Yield exception
 
 				{
@@ -55,7 +74,20 @@ namespace roerei
 						return !all_started();
 				}
 
+				{
+					std::stringstream ss;
+					ss << "Starting continuation #" << jobset_ident;
+					std::cerr << ss.str() << std::endl;
+				}
+
 				continuation(); // Execute continuation
+
+				{
+					std::stringstream ss;
+					ss << "Finished continuation #" << jobset_ident;
+					std::cerr << ss.str() << std::endl;
+				}
+
 				return false;
 			}
 		};
