@@ -5,7 +5,7 @@ find_package(Threads)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS system program_options regex chrono date_time filesystem REQUIRED)
 
-add_executable(roerei main.cpp cli_read.cpp cli_exec.cpp storage.cpp exporter.cpp)
+add_executable(roerei main.cpp cli_read.cpp cli_exec.cpp storage.cpp exporter.cpp structure_exporter.cpp)
 target_link_libraries(roerei
 	${Boost_LIBRARIES}
 	${msgpack_LIBRARIES}

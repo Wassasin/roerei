@@ -6,6 +6,8 @@
 #include <roerei/export/latex_tabular.hpp>
 #include <roerei/export/data_dump.hpp>
 
+#include <roerei/structure_exporter.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -154,6 +156,14 @@ namespace roerei
         }
     }
 	
+	template<typename F>
+	void select_best(boost::optional<cv_result_t>& result, cv_result_t const& current, F&& f)
+	{
+		if (!result || f(*result) < f(current)) {
+			result = current;
+		}
+	}
+
 	void export_nb(
 		std::string const& dataset,
 		std::string const& source_path,
@@ -178,42 +188,62 @@ namespace roerei
 
 		{
 			std::set<std::pair<float, float>> range_pi_tau;
-			for(float pi = 0; pi < 40; pi+=4) {
-				for(float tau = -20; tau < 20; tau+=4) {
+			for(float pi = 0; pi <= 60; pi+=4) {
+				for(float tau = -20; tau <= 20; tau+=4) {
 					range_pi_tau.emplace(pi, tau);
 				}
 			}
 
-			std::ofstream os(output_path+"/nb-"+make_prefix(dataset)+"-pi-tau.dat");
-			data_dump dd(os);
-			for(cv_result_t const& row : results) {
-				if(row.nb_params->sigma != -15) {
-					continue;
+			boost::optional<cv_result_t> best_result;
+
+			{
+				std::ofstream os(output_path+"/nb-"+make_prefix(dataset)+"-pi-tau.dat");
+				data_dump dd(os);
+				for(cv_result_t const& row : results) {
+					if(row.nb_params->sigma != -15) {
+						continue;
+					}
+					if(range_pi_tau.erase(std::make_pair(row.nb_params->pi, row.nb_params->tau)) == 0) {
+						continue;
+					}
+					dd.write_row({
+						round_print(row.nb_params->pi, 0),
+						round_print(row.nb_params->tau, 0),
+						round_print(row.metrics.oocover, 3),
+						round_print(row.metrics.ooprecision, 3),
+						round_print(row.metrics.recall, 3),
+						round_print(row.metrics.rank, 1),
+						round_print(row.metrics.auc, 3),
+						round_print(row.metrics.volume, 3)
+					});
+
+					select_best(best_result, row, [](cv_result_t r) { return r.metrics.oocover; });
 				}
-				if(range_pi_tau.erase(std::make_pair(row.nb_params->pi, row.nb_params->tau)) == 0) {
-					continue;
-				}
+			}
+
+			if (best_result) {
+				auto const& row = *best_result;
+				std::ofstream os(output_path+"/nb-"+make_prefix(dataset)+"-pi-tau-best-oocover.dat");
+				data_dump dd(os);
 				dd.write_row({
 					round_print(row.nb_params->pi, 0),
 					round_print(row.nb_params->tau, 0),
-					round_print(row.metrics.oocover, 3),
-					round_print(row.metrics.ooprecision, 3),
-					round_print(row.metrics.recall, 3),
-					round_print(row.metrics.rank, 1),
-					round_print(row.metrics.auc, 3),
-					round_print(row.metrics.volume, 3)
+					round_print(row.metrics.oocover, 3)
 				});
 			}
 
 			if(range_pi_tau.size() > 0) {
 				std::cerr << "nb pi_tau for " << dataset << " is missing " << range_pi_tau.size() << " elements" << std::endl;
+				for (auto kvp : range_pi_tau) {
+					std::cerr << "\tpi " << kvp.first << ", tau " << kvp.second << std::endl;
+				}
 			}
 		}
 		
 		{
 			std::set<std::pair<float, float>> range_pi_sigma;
-			for(float pi = 0; pi < 40; pi+=4) {
-				for(float sigma = -20; sigma < 20; sigma+=4) {
+			for(float pi = 0; pi <= 60; pi+=4) {
+				for(float sigma = -20; sigma <= 20; sigma+=4) {
 					range_pi_sigma.emplace(pi, sigma);
 				}
 			}
@@ -241,6 +271,9 @@ namespace roerei
 
 			if(range_pi_sigma.size() > 0) {
 				std::cerr << "nb pi_sigma for " << dataset << " is missing " << range_pi_sigma.size() << " elements" << std::endl;
+				for (auto kvp : range_pi_sigma) {
+					std::cerr << "\tpi " << kvp.first << ", sigma " << kvp.second << std::endl;
+				}
 			}
 		}
 	}
@@ -361,5 +394,7 @@ namespace roerei
 		export_best("CoRN.frequency", source_path, output_path);
 		export_best("MathClasses.frequency", source_path, output_path);
 		export_best("mathcomp.frequency", source_path, output_path);
+
+		structure_exporter::exec(source_path, output_path);
 	}
 }
