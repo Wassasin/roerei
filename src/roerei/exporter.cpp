@@ -395,6 +395,6 @@ namespace roerei
 		export_best("MathClasses.frequency", source_path, output_path);
 		export_best("mathcomp.frequency", source_path, output_path);
 
-		structure_exporter::exec(source_path, output_path);
+		structure_exporter::exec(output_path);
 	}
 }
