@@ -72,6 +72,18 @@ struct serialize_value<std::vector<T>, S>
 	}
 };
 
+template<typename T, typename S>
+struct serialize_value<std::set<T>, S>
+{
+	static inline void exec(S& s, std::string const& name, std::set<T> const& xs)
+	{
+		const std::string element_name = name + "_e";
+		s.write_array(name, xs.size());
+		for(T const& x : xs)
+			serialize_value<T, S>::exec(s, element_name, x);
+	}
+};
+
 template<typename T, typename U, typename S>
 struct serialize_value<std::pair<T, U>, S>
 {

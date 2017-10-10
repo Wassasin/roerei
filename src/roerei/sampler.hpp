@@ -15,11 +15,15 @@ public:
 
 		auto const new_set = posetcons_canonical::exec(new_d.feature_matrix, new_d.feature_matrix[object_id_t(new_length)]);
 
+		// Reconstruct dataset with re-ordered id's
 		encapsulated_vector<object_id_t, uri_t> objects;
 		objects.reserve(new_length);
+
 		object_id_t::iterate([&](object_id_t i) {
 			objects.emplace_back(new_d.objects[i]);
 		}, new_length);
+
+		std::set<object_id_t> prior_objects(new_d.prior_objects);
 
 		encapsulated_vector<feature_id_t, uri_t> features(new_d.features);
 
@@ -69,7 +73,8 @@ public:
 			std::move(features),
 			std::move(dependencies),
 			std::move(feature_matrix),
-			std::move(dependency_matrix)
+			std::move(dependency_matrix),
+			std::move(prior_objects)
 		);
 	}
 };

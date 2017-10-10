@@ -116,6 +116,22 @@ struct deserialize_value<std::vector<T>, D>
 };
 
 template<typename T, typename D>
+struct deserialize_value<std::set<T>, D>
+{
+	static inline std::set<T> exec(D& s, const std::string& name)
+	{
+		const std::string element_name = name + "_e";
+		const std::size_t n = s.read_array(name);
+
+		std::set<T> xs;
+		for(std::size_t i = 0; i < n; ++i)
+			xs.emplace(std::move(deserialize<T>(s, element_name)));
+
+		return xs;
+	}
+};
+
+template<typename T, typename D>
 struct deserialize_value<boost::optional<T>, D>
 {
 	static inline boost::optional<T> exec(D& s, const std::string name)

@@ -10,6 +10,7 @@
 #include <boost/fusion/include/adapt_struct.hpp>
 
 #include <vector>
+#include <set>
 
 namespace roerei
 {
@@ -26,6 +27,8 @@ struct dataset_t
 	feature_matrix_t feature_matrix;
 	dependency_matrix_t dependency_matrix;
 
+	std::set<object_id_t> prior_objects;
+
 public:
 	dataset_t(dataset_t&&) = default;
 	dataset_t(dataset_t const&) = delete;
@@ -34,7 +37,8 @@ public:
 			std::remove_const<decltype(features)>::type&& _features,
 			std::remove_const<decltype(dependencies)>::type&& _dependencies,
 			feature_matrix_t&& _feature_matrix,
-			dependency_matrix_t&& _dependency_matrix
+			dependency_matrix_t&& _dependency_matrix,
+			std::remove_const<decltype(prior_objects)>::type&& _prior_objects
 	);
 
 	template<typename CONTAINER>
@@ -101,6 +105,7 @@ dataset_t::dataset_t(CONTAINER&& _objects, CONTAINER&& _features, CONTAINER&& _d
 	, dependencies(detail::construct_move_elements<dependency_id_t>(_dependencies))
 	, feature_matrix(objects.size(), features.size())
 	, dependency_matrix(objects.size(), dependencies.size())
+	, prior_objects()
 {}
 
 inline dataset_t::dataset_t(
@@ -108,13 +113,15 @@ inline dataset_t::dataset_t(
 		std::remove_const<decltype(features)>::type&& _features,
 		std::remove_const<decltype(dependencies)>::type&& _dependencies,
 		feature_matrix_t&& _feature_matrix,
-		dependency_matrix_t&& _dependency_matrix
+		dependency_matrix_t&& _dependency_matrix,
+		std::remove_const<decltype(prior_objects)>::type&& _prior_objects
 )
 	: objects(std::move(_objects))
 	, features(std::move(_features))
 	, dependencies(std::move(_dependencies))
 	, feature_matrix(std::move(_feature_matrix))
 	, dependency_matrix(std::move(_dependency_matrix))
+	, prior_objects(std::move(_prior_objects))
 {}
 
 }
@@ -126,4 +133,5 @@ BOOST_FUSION_ADAPT_STRUCT(
 		(decltype(roerei::dataset_t::dependencies), dependencies)
 		(roerei::dataset_t::feature_matrix_t, feature_matrix)
 		(roerei::dataset_t::dependency_matrix_t, dependency_matrix)
+		(decltype(roerei::dataset_t::prior_objects), prior_objects)
 )

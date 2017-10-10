@@ -58,13 +58,21 @@ public:
 				row[old_kvp.first] = old_kvp.second;
 		});
 
+		std::set<object_id_t> prior_objects;
+		objs_ordered.iterate([&](object_id_t new_id, object_id_t old_id) {
+			if (d.prior_objects.find(old_id) != d.prior_objects.end()) {
+				prior_objects.emplace(new_id);
+			}
+		});
+
 		// Construct new dataset
 		return dataset_t(
 			std::move(objects),
 			std::move(features),
 			std::move(dependencies),
 			std::move(feature_matrix),
-			std::move(dependency_matrix)
+			std::move(dependency_matrix),
+			std::move(prior_objects)
 		);
 	}
 

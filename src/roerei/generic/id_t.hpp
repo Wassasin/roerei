@@ -60,4 +60,35 @@ struct dependency_id_t : public id_t<dependency_id_t>
 	dependency_id_t(size_t _id) : id_t(_id) {}
 };
 
+namespace detail
+{
+
+template<typename T, typename S>
+struct serialize_value;
+
+template<typename S>
+struct serialize_value<object_id_t, S>
+{
+	static inline void exec(S& s, std::string const& name, object_id_t const& id)
+	{
+		s.write(name, id.unseal());
+	}
+};
+
+template<typename T, typename D>
+struct deserialize_value;
+
+template<typename D>
+struct deserialize_value<object_id_t, D>
+{
+	static inline object_id_t exec(D& s, const std::string& name)
+	{
+		size_t i;
+		s.read(name, i);
+		return object_id_t(i);
+	}
+};
+
+}
+
 }
