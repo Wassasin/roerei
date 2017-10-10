@@ -22,6 +22,14 @@ namespace roerei
 class cv
 {
 private:
+	struct partition_object_id_t : public id_t<partition_object_id_t> {
+		partition_object_id_t(size_t id)
+		: id_t<partition_object_id_t>(id)
+		{
+			//
+		}
+	};
+
 	template<typename F>
 	static void _combs_helper(size_t const n, size_t const k, F const& yield, size_t offset, std::vector<size_t>& buf)
 	{
@@ -50,7 +58,8 @@ private:
 	struct static_t
 	{
 		std::vector<size_t> partitions;
-		std::vector<size_t> partition_subdivision;
+		encapsulated_vector<partition_object_id_t, size_t> partition_subdivision;
+		encapsulated_vector<partition_object_id_t, object_id_t> partition_map;
 		compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t> feature_matrix;
 	};
 
@@ -68,10 +77,27 @@ public:
 		std::vector<size_t> partitions(n);
 		std::iota(partitions.begin(), partitions.end(), 0);
 
+		size_t new_size = d.objects.size() - d.prior_objects.size();
+		decltype(static_t::partition_map) partition_map;
+		partition_map.reserve(new_size);
+		object_id_t::iterate([&](object_id_t id) {
+			if (d.prior_objects.find(id) != d.prior_objects.end()) {
+				return;
+			}
+			partition_map.emplace_back(id);
+		}, d.objects.size());
+
+		decltype(static_t::partition_subdivision) partition_subdivision;
+		partition_subdivision.reserve(new_size);
+		for (size_t partition : partition::generate_bare(new_size, n, seed_opt)) {
+			partition_subdivision.emplace_back(partition);
+		}
+
 		/* Prepackage static cross-validation data */
 		cv_static_ptr = std::make_shared<static_t>(static_t{
 			std::move(partitions),
-			partition::generate_bare(d.objects.size(), n, seed_opt),
+			std::move(partition_subdivision),
+			std::move(partition_map),
 			d.feature_matrix
 		});
 	}
@@ -97,8 +123,12 @@ public:
 				test::performance::init();
 
 				sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
-				d.objects.keys([&](object_id_t j) {
-					if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j.unseal()]))
+				for(object_id_t j : d.prior_objects) {
+					train_m_tmp.add_key(j);
+				}
+
+				s.partition_map.iterate([&](partition_object_id_t j_partition, object_id_t j) {
+					if(std::binary_search(train_ps.begin(), train_ps.end(), s.partition_subdivision[j_partition]))
 						train_m_tmp.add_key(j);
 					else
 						test_m_tmp.add_key(j);
