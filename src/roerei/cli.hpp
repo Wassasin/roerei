@@ -15,6 +15,7 @@ private:
 	static void exec_report(cli_options& opt);
 	static void exec_export(cli_options& opt);
 	static void exec_diff(cli_options& opt);
+	static void exec_upgrade(cli_options& opt);
 
 public:
 	cli() = delete;

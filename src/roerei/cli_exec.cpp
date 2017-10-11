@@ -33,6 +33,8 @@ int cli::exec(int argc, char** argv)
 		exec_export(opt);
 	else if(opt.action == "diff")
 		exec_diff(opt);
+	else if(opt.action == "upgrade")
+		exec_upgrade(opt);
 	else if(opt.action == "legacy-export")
 	{
 		auto const d(storage::read_dataset("CoRN-legacy"));
@@ -140,6 +142,11 @@ void cli::exec_export(cli_options& opt)
 	}
 	
 	exporter::exec(source_path, output_path);
+}
+
+void cli::exec_upgrade(cli_options&)
+{
+	//
 }
 
 }

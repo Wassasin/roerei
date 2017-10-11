@@ -67,6 +67,7 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 				<< "  report [results]         report on all results [in file 'results']" << std::endl
 				<< "  diff <c1> <c2>           show the difference between two corpii" << std::endl
 				<< "  export [results] <dest>  dump all results [from file 'results-path'] into predefined format for thesis in directory <path>" << std::endl
+				<< "  upgrade									 upgrade non-prior results dataset to newest version" << std::endl
 				<< "  legacy-export            export dataset in the legacy format" << std::endl
 				<< "  legacy-import            import dataset in the legacy format" << std::endl
 				<< std::endl
