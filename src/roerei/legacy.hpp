@@ -181,7 +181,7 @@ public:
 			[](auto) {},
 			[&result](auto f) {
 				for(std::pair<uri_t, summary_t>&& kvp : result)
-					f(std::move(kvp.second));
+					f(std::move(kvp.second), false);
 			},
 			generator::variant_e::frequency
 		));

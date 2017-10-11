@@ -67,9 +67,9 @@ private:
 
 	struct phase1
 	{
-		std::set<uri_t> objects, term_uris, type_uris;
+		std::set<uri_t> objects, prior_objects, term_uris, type_uris;
 
-		void add(summary_t&& s, std::map<uri_t, uri_t> const& mapping)
+		void add(summary_t&& s, bool prior, std::map<uri_t, uri_t> const& mapping)
 		{
 			if(s.type_uris.empty())
 			{
@@ -98,18 +98,24 @@ private:
 					added_something = true;
 				}
 
-				if(added_something)
+				if(added_something) {
+					if (prior) {
+						prior_objects.emplace(s.uri);
+					}
+
 					objects.emplace(std::move(s.uri));
+				}
 			}
 		}
 	};
 
 	struct phase2
 	{
-		std::set<uri_t> objects, term_uris, type_uris, dependencies;
+		std::set<uri_t> objects, prior_objects, term_uris, type_uris, dependencies;
 
 		phase2(phase1&& rhs)
 			: objects(std::move(rhs.objects))
+			, prior_objects(std::move(rhs.prior_objects))
 			, term_uris(std::move(rhs.term_uris))
 			, type_uris(std::move(rhs.type_uris))
 			, dependencies()
@@ -139,17 +145,19 @@ private:
 				}
 
 			// Remove objects without any dependency
-			if(remove_object)
+			if(remove_object) {
 				objects.erase(s.uri);
+				prior_objects.erase(s.uri);
+			}
 		}
 	};
 
 	struct phase3
 	{
 		dataset_t d;
-		std::map<std::string, object_id_t> objects_map;
-		std::map<std::string, feature_id_t> type_uris_map;
-		std::map<std::string, dependency_id_t> dependency_map;
+		std::map<uri_t, object_id_t> objects_map;
+		std::map<uri_t, feature_id_t> type_uris_map;
+		std::map<uri_t, dependency_id_t> dependency_map;
 
 		phase3(phase2&& rhs)
 			: d(std::move(rhs.objects), std::move(rhs.type_uris), std::move(rhs.dependencies))
@@ -157,6 +165,9 @@ private:
 			, type_uris_map(create_map(d.features))
 			, dependency_map(create_map(d.dependencies))
 		{
+			for (uri_t po : rhs.prior_objects) {
+				d.prior_objects.emplace(objects_map.at(po));
+			}
 			std::cout << "Loaded maps" << std::endl;
 		}
 
@@ -214,19 +225,22 @@ public:
 			mapping.emplace(std::make_pair(std::move(m.src), std::move(m.dest)));
 		});
 
+		// List all objects, terms and types; filters using blacklists; mark prior objects
 		std::map<std::string, phase1> p1;
-		read_summary_f([&](summary_t&& s) {
-			p1[s.corpus].add(std::move(s), mapping);
+		read_summary_f([&](summary_t&& s, bool prior) {
+			p1[s.corpus].add(std::move(s), prior, mapping);
 		});
 
+		// Determine dependencies
 		std::map<std::string, phase2> p2;
 		for(auto&& kvp : p1)
 			p2.emplace(std::move(kvp)); // Non-trivial move-constructor
 
-		read_summary_f([&](summary_t&& s) {
+		read_summary_f([&](summary_t&& s, bool /*prior*/) {
 			p2.find(s.corpus)->second.add(std::move(s), mapping);
 		});
 
+		// Instance feature and dependency matrices
 		std::map<std::string, phase3> p3;
 		for(auto&& kvp : p2)
 		{
@@ -241,17 +255,17 @@ public:
 
 		switch(variant) {
 		case variant_e::frequency:
-			read_summary_f([&](summary_t&& s) {
+			read_summary_f([&](summary_t&& s, bool /*prior*/) {
 				p3.find(s.corpus)->second.add(std::move(s), mapping, [](summary_t::occurance_t const& occ) { return occ.freq; });
 			});
 			break;
 		case variant_e::depth:
-			read_summary_f([&](summary_t&& s) {
+			read_summary_f([&](summary_t&& s, bool /*prior*/) {
 				p3.find(s.corpus)->second.add(std::move(s), mapping, [](summary_t::occurance_t const& occ) { return occ.depth; });
 			});
 			break;
 		case variant_e::flat:
-			read_summary_f([&](summary_t&& s) {
+			read_summary_f([&](summary_t&& s, bool /*prior*/) {
 				p3.find(s.corpus)->second.add(std::move(s), mapping, [](summary_t::occurance_t const& occ) { return occ.freq == 1 ? 1 : 0; });
 			});
 			break;
@@ -270,7 +284,25 @@ public:
 	{
 		return construct(
 			[](auto f) { storage::read_mapping(f); },
-			[](auto f) { storage::read_summaries(f); },
+			[](auto f) {
+				storage::read_summaries([&](summary_t&& s) {
+					auto rebrand_corpus = [](std::string const& new_corpus, summary_t t) -> summary_t { // Make a copy
+						t.corpus = new_corpus;
+						return t;
+					};
+
+					if (s.corpus == "Coq") {
+						f(rebrand_corpus("ch2o", s), true);
+						f(rebrand_corpus("CoRN", s), true);
+						f(rebrand_corpus("MathClasses", s), true);
+						f(rebrand_corpus("mathcomp", s), true);
+					} else if(s.corpus == "MathClasses") {
+						f(rebrand_corpus("CoRN", s), true);
+					}
+
+					f(std::move(s), false);
+				});
+			},
 			variant
 		);
 	}
