@@ -29,6 +29,7 @@ public:
 	void read(const std::string& key, uint64_t& x);
 	void read(const std::string& key, std::string& x);
 	void read(const std::string& key, float& x);
+	void read(const std::string& key, bool& x);
 
 	void feed(const std::string& str);
 
@@ -250,6 +251,15 @@ inline void msgpack_deserializer::read(const std::string& key, float& x)
 		read_key(key);
 		const msgpack::object& obj = read(msgpack::type::FLOAT);
 		x = obj.via.f64;
+	});
+}
+
+inline void msgpack_deserializer::read(const std::string& key, bool& x)
+{
+	autorollbackonfailure(stack, [&]() {
+		read_key(key);
+		const msgpack::object& obj = read(msgpack::type::BOOLEAN);
+		x = obj.via.boolean;
 	});
 }
 

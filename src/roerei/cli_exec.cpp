@@ -115,16 +115,17 @@ void cli::exec_diff(cli_options& opt)
 
 void cli::exec_measure(cli_options& opt)
 {
-    multitask m;
+	multitask m;
 
-	for(auto&& corpus : opt.corpii)
-		for(auto&& strat : opt.strats)
-			for(auto&& method : opt.methods)
-			{
-                tester::order(m, corpus, strat, method, opt.silent);
+	for(auto&& corpus : opt.corpii) {
+		for(auto&& strat : opt.strats) {
+			for(auto&& method : opt.methods) {
+				tester::order(m, corpus, strat, method, opt.prior, opt.silent);
 			}
+		}
+	}
 
-    m.run(opt.jobs, true); // Blocking
+	m.run(opt.jobs, true); // Blocking
 }
 
 void cli::exec_export(cli_options& opt)
@@ -144,9 +145,26 @@ void cli::exec_export(cli_options& opt)
 	exporter::exec(source_path, output_path);
 }
 
-void cli::exec_upgrade(cli_options&)
+void cli::exec_upgrade(cli_options& opt)
 {
-	//
+	if (opt.args.size() != 1) {
+		throw std::runtime_error("Incorrect number of arguments for upgrade");
+	}
+
+	storage::read_v1_result([&opt](cv_result_v1_t const& r) {
+		cv_result_t result({
+			r.corpus,
+			opt.prior,
+			r.strat,
+			r.ml,
+			r.knn_params,
+			r.nb_params,
+			r.adarank_params,
+			r.n, r.k,
+			r.metrics
+		});
+		storage::write_result(result);
+	}, opt.args[0]);
 }
 
 }

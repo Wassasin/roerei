@@ -107,7 +107,7 @@ public:
 	typedef std::function<performance::result_t(trainset_t const&, testrow_t const&)> ml_f_t;
 
 	template<typename ML_F, typename RESULT_F>
-	void order_async(multitask& m, ML_F const& init_f, RESULT_F const& result_f, dataset_t const& d, bool silent = false) const
+	void order_async(multitask& m, ML_F const& init_f, RESULT_F const& result_f, dataset_t const& d, bool prior = true, bool silent = false) const
 	{
 		std::vector<std::packaged_task<void()>> tasks;
 		std::vector<std::future<performance::metrics_t>> future_metrics;
@@ -117,14 +117,16 @@ public:
 			std::promise<performance::metrics_t> p;
 			future_metrics.emplace_back(p.get_future());
 
-			tasks.emplace_back([&d, init_f, silent, i, train_ps, cv_static_ptr=this->cv_static_ptr, p=std::move(p)]() mutable {
+			tasks.emplace_back([&d, init_f, prior, silent, i, train_ps, cv_static_ptr=this->cv_static_ptr, p=std::move(p)]() mutable {
 				auto const& s = *cv_static_ptr;
 
 				test::performance::init();
 
 				sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
-				for(object_id_t j : d.prior_objects) {
-					train_m_tmp.add_key(j);
+				if (prior) {
+					for(object_id_t j : d.prior_objects) {
+						train_m_tmp.add_key(j);
+					}
 				}
 
 				s.partition_map.iterate([&](partition_object_id_t j_partition, object_id_t j) {

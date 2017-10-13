@@ -22,6 +22,8 @@ public:
 	static void read_result(std::function<void(cv_result_t)> const& f, std::string const& results_path = "./data/results.msgpack");
 	static void write_result(cv_result_t const& r);
 
+	static void read_v1_result(std::function<void(cv_result_v1_t)> const& f, std::string const& results_path);
+
 	static dataset_t read_dataset(std::string const& corpus);
 	static void write_dataset(std::string const& corpus, dataset_t const& d);
 

@@ -213,7 +213,7 @@ void storage::read_result(std::function<void(cv_result_t)> const& f, std::string
 	{
 		while(true)
 		{
-			f(deserialize<cv_result_t>(d, "cv_result"));
+			f(deserialize<cv_result_t>(d, "cv_result_v2"));
 		}
 	} catch(eob_error)
 	{
@@ -224,13 +224,33 @@ void storage::read_result(std::function<void(cv_result_t)> const& f, std::string
 void storage::write_result(cv_result_t const& result)
 {
 	msgpack_serializer s;
-	serialize(s, "cv_result", result);
+	serialize(s, "cv_result_v2", result);
 
 	std::ofstream os("./data/results.msgpack", std::ios::app | std::ios::out | std::ios::binary);
 	s.dump([&os](const char* buf, size_t len) {
 		os.write(buf, len);
 		os.flush();
 	});
+}
+
+void storage::read_v1_result(std::function<void(cv_result_v1_t)> const& f, std::string const& results_path)
+{
+	if(!boost::filesystem::exists(results_path))
+	return; // Do nothing
+
+	msgpack_deserializer d;
+	d.feed(detail::read_to_string(results_path));
+
+	try
+	{
+		while(true)
+		{
+			f(deserialize<cv_result_v1_t>(d, "cv_result"));
+		}
+	} catch(eob_error)
+	{
+		// Done!
+	}
 }
 
 void storage::write_legacy_dataset(std::string const& path, dataset_t const& d)

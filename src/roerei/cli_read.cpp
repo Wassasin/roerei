@@ -18,6 +18,7 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 	o_general.add_options()
 			("help,h", "display this message")
 			("silent,s", "do not print progress")
+			("no-prior,P", "do not use prior datasets, if applicable")
 			("corpii,c", boost::program_options::value(&corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
 			("methods,m", boost::program_options::value(&methods), "select which methods to use, possibly comma separated (default: all)")
 			("strats,r", boost::program_options::value(&strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
@@ -67,7 +68,7 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 				<< "  report [results]         report on all results [in file 'results']" << std::endl
 				<< "  diff <c1> <c2>           show the difference between two corpii" << std::endl
 				<< "  export [results] <dest>  dump all results [from file 'results-path'] into predefined format for thesis in directory <path>" << std::endl
-				<< "  upgrade									 upgrade non-prior results dataset to newest version" << std::endl
+				<< "  upgrade <src>						 upgrade non-prior results dataset to newest version" << std::endl
 				<< "  legacy-export            export dataset in the legacy format" << std::endl
 				<< "  legacy-import            import dataset in the legacy format" << std::endl
 				<< std::endl
@@ -76,8 +77,13 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	if(vm.count("silent"))
+	if (vm.count("silent")) {
 		opt.silent = true;
+	}
+
+	if (vm.count("no-prior")) {
+		opt.prior = false;
+	}
 
 	if(!vm.count("action"))
 	{

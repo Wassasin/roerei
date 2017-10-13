@@ -20,6 +20,7 @@ struct cli_options
 	std::vector<posetcons_type> strats;
 	boost::optional<std::string> filter;
 	bool silent = false;
+	bool prior = true;
 	size_t jobs = 1;
 };
 

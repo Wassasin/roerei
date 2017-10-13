@@ -22,6 +22,7 @@ public:
 	void write(const std::string& key, const uint64_t x);
 	void write(const std::string& key, const std::string& x);
 	void write(const std::string& key, const float x);
+	void write(const std::string& key, const bool x);
 
 	virtual void dump(std::function<void(const char*, size_t)> f);
 	virtual void clear();
@@ -136,6 +137,16 @@ inline void msgpack_serializer::write(const std::string& key, const float x)
 {
 	add_node(type_t::non_container, key, 0);
 	pk.pack_float(x);
+}
+
+inline void msgpack_serializer::write(const std::string& key, const bool x)
+{
+	add_node(type_t::non_container, key, 0);
+	if (x) {
+		pk.pack_true();
+	} else {
+		pk.pack_false();
+	}
 }
 
 inline void msgpack_serializer::dump(std::function<void(const char*, size_t)> f)

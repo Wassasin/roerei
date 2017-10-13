@@ -30,7 +30,7 @@ private:
 	tester() = delete;
 
 public:
-	inline static void order(multitask& m, std::string const& corpus, posetcons_type strat, ml_type method, bool silent=false, uint_fast32_t seed = 1337)
+	inline static void order(multitask& m, std::string const& corpus, posetcons_type strat, ml_type method, bool prior=true, bool silent=false, uint_fast32_t seed = 1337)
 	{
 		size_t const cv_n = 10, cv_k = 1;
 
@@ -109,6 +109,9 @@ public:
 				return;
 
 			if(result.strat != strat)
+				return;
+
+			if(result.prior != prior)
 				return;
 
 			if(cv_n != result.n)
@@ -190,9 +193,9 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::knn, knn_params, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, prior, strat, ml_type::knn, knn_params, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
-					d, silent
+					d, prior, silent
 				);
 			}
 
@@ -207,9 +210,9 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::knn_adaptive, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, prior, strat, ml_type::knn_adaptive, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
-					d, silent
+					d, prior, silent
 				);
 			}
 
@@ -223,9 +226,9 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::omniscient, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, prior, strat, ml_type::omniscient, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
-					d, silent
+					d, prior, silent
 				);
 			}
 
@@ -260,9 +263,9 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::ensemble, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, prior, strat, ml_type::ensemble, boost::none, boost::none, boost::none, cv_n, cv_k, total_metrics});
 					},
-					d, silent
+					d, prior, silent
 				);
 			}
 
@@ -285,9 +288,9 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::naive_bayes, boost::none, nb_params, boost::none, cv_n, cv_k, total_metrics});
+						yield_f({corpus, prior, strat, ml_type::naive_bayes, boost::none, nb_params, boost::none, cv_n, cv_k, total_metrics});
 					},
-					d, silent
+					d, prior, silent
 				);
 			}
 
@@ -302,9 +305,9 @@ public:
 						};
 					},
 					[=](performance::metrics_t const& total_metrics) noexcept {
-						yield_f({corpus, strat, ml_type::adarank, boost::none, boost::none, adarank_params, cv_n, cv_k, total_metrics});
+						yield_f({corpus, prior, strat, ml_type::adarank, boost::none, boost::none, adarank_params, cv_n, cv_k, total_metrics});
 					},
-					d, silent
+					d, prior, silent
 				);
 			}
 		});

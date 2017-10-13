@@ -45,7 +45,7 @@ struct adarank_params_t
 };
 
 
-struct cv_result_t
+struct cv_result_v1_t
 {
   std::string corpus;
   posetcons_type strat;
@@ -56,6 +56,21 @@ struct cv_result_t
   size_t n, k;
   performance::metrics_t metrics;
 };
+
+struct cv_result_v2_t
+{
+  std::string corpus;
+  bool prior;
+  posetcons_type strat;
+  ml_type ml;
+  boost::optional<knn_params_t> knn_params;
+  boost::optional<nb_params_t> nb_params;
+  boost::optional<adarank_params_t> adarank_params;
+  size_t n, k;
+  performance::metrics_t metrics;
+};
+
+typedef cv_result_v2_t cv_result_t;
 
 inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 {
@@ -99,14 +114,28 @@ BOOST_FUSION_ADAPT_STRUCT(
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
-    roerei::cv_result_t,
-    (std::string, corpus)
-    (roerei::posetcons_type, strat)
-    (roerei::ml_type, ml)
-    (boost::optional<roerei::knn_params_t>, knn_params)
-    (boost::optional<roerei::nb_params_t>, nb_params)
-	(boost::optional<roerei::adarank_params_t>, adarank_params)
-    (size_t, n)
-    (size_t, k)
-    (roerei::performance::metrics_t, metrics)
+  roerei::cv_result_v1_t,
+  (std::string, corpus)
+  (roerei::posetcons_type, strat)
+  (roerei::ml_type, ml)
+  (boost::optional<roerei::knn_params_t>, knn_params)
+  (boost::optional<roerei::nb_params_t>, nb_params)
+  (boost::optional<roerei::adarank_params_t>, adarank_params)
+  (size_t, n)
+  (size_t, k)
+  (roerei::performance::metrics_t, metrics)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+  roerei::cv_result_t,
+  (std::string, corpus)
+  (bool, prior)
+  (roerei::posetcons_type, strat)
+  (roerei::ml_type, ml)
+  (boost::optional<roerei::knn_params_t>, knn_params)
+  (boost::optional<roerei::nb_params_t>, nb_params)
+  (boost::optional<roerei::adarank_params_t>, adarank_params)
+  (size_t, n)
+  (size_t, k)
+  (roerei::performance::metrics_t, metrics)
 )
