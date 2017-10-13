@@ -62,7 +62,7 @@ namespace roerei
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.ml == ml_type::knn && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+			if(result.prior && result.ml == ml_type::knn && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -113,7 +113,7 @@ namespace roerei
     {
         std::vector<cv_result_t> results;
         storage::read_result([&](cv_result_t const& result) {
-            if(result.ml == ml_type::adarank && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+            if(result.prior && result.ml == ml_type::adarank && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
                 results.emplace_back(result);
             }
         }, source_path);
@@ -172,7 +172,7 @@ namespace roerei
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.ml == ml_type::naive_bayes && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+			if(result.prior && result.ml == ml_type::naive_bayes && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -305,7 +305,7 @@ namespace roerei
   {
     std::map<ml_type, cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+			if(result.prior && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
         auto it = results.find(result.ml);
         if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
           return;
@@ -340,7 +340,59 @@ namespace roerei
 
 			emit_f(it->second);
 		}
-  }
+	}
+
+	void export_prior(
+		std::string const& dataset,
+		std::string const& source_path,
+		std::string const& output_path
+	)
+	{
+		auto find_overwrite_f = [](std::map<ml_type, cv_result_t>& results, cv_result_t const& result) {
+			auto it = results.find(result.ml);
+			if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
+				return;
+			}
+
+			results[result.ml] = result;
+		};
+
+		std::map<ml_type, cv_result_t> prior_results, nonprior_results;
+		storage::read_result([&](cv_result_t const& result) {
+			if(result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+        if (result.prior) {
+					find_overwrite_f(prior_results, result);
+				} else {
+					find_overwrite_f(nonprior_results, result);
+				}
+			}
+		}, source_path);
+
+    std::ofstream os(output_path+"/prior-vs-nonprior-"+make_prefix(dataset)+".tex");
+    latex_tabular t(os);
+
+		auto emit_f = [&](auto const& prior, auto const& nonprior) {
+      std::stringstream ss;
+      describe_ml(ss, prior);
+      t.write_row({
+        ss.str(),
+        round_print(prior.metrics.oocover, 3),
+				round_print(prior.metrics.auc, 3),
+				round_print(nonprior.metrics.oocover, 3),
+				round_print(nonprior.metrics.auc, 3),
+      });
+		};
+
+		for(ml_type mlt : {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::adarank, ml_type::ensemble, ml_type::omniscient}) {
+			auto prior_it = prior_results.find(mlt);
+			auto nonprior_it = nonprior_results.find(mlt);
+			if (prior_it == prior_results.end() || nonprior_it == nonprior_results.end()) {
+				throw std::runtime_error(std::string("Could not find ") + to_string(mlt) + " for " + dataset);
+			}
+
+			emit_f(prior_it->second, nonprior_it->second);
+		}
+	}
 
   void export_counts(std::string const& output_path)
   {
@@ -370,27 +422,23 @@ namespace roerei
 	{
 		export_counts(output_path);
 
-		export_knn("Coq.flat", source_path, output_path);
-		export_knn("Coq.depth", source_path, output_path);
-		export_knn("Coq.frequency", source_path, output_path);
+		export_prior("CoRN.frequency", source_path, output_path);
+
+		export_knn("CoRN.flat", source_path, output_path);
+		export_knn("CoRN.depth", source_path, output_path);
+		export_knn("CoRN.frequency", source_path, output_path);
 		
 		export_knn("ch2o.frequency", source_path, output_path);
 		export_knn("CoRN.frequency", source_path, output_path);
 		export_knn("MathClasses.frequency", source_path, output_path);
 		export_knn("mathcomp.frequency", source_path, output_path);
 
-		export_knn("ch2o.depth", source_path, output_path);
-		export_knn("CoRN.depth", source_path, output_path);
-		export_knn("MathClasses.depth", source_path, output_path);
-		export_knn("mathcomp.depth", source_path, output_path);
-		
-		export_nb("Coq.frequency", source_path, output_path);
-		export_nb("Coq.depth", source_path, output_path);
+		export_knn("CoRN.frequency", source_path, output_path);
 		export_nb("CoRN.frequency", source_path, output_path);
-
-		export_adarank("Coq.frequency", source_path, output_path);
+		export_adarank("CoRN.frequency", source_path, output_path);
 
 		export_best("Coq.frequency", source_path, output_path);
+		export_best("ch2o.frequency", source_path, output_path);
 		export_best("CoRN.frequency", source_path, output_path);
 		export_best("MathClasses.frequency", source_path, output_path);
 		export_best("mathcomp.frequency", source_path, output_path);

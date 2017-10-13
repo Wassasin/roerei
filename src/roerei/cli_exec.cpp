@@ -183,9 +183,13 @@ void cli::exec_upgrade(cli_options& opt)
 		}
 	});
 
-	for (cv_result_t const& result : results) {
-		std::cout << "Wrote " << result << std::endl;
-		storage::write_result(result);
+	if (results.empty()) {
+			std::cout << "Note: no entries written" << std::endl;
+	} else {
+		for (cv_result_t const& result : results) {
+			std::cout << "Wrote " << result << std::endl;
+			storage::write_result(result);
+		}
 	}
 }
 
