@@ -163,6 +163,7 @@ void cli::exec_upgrade(cli_options& opt)
 			r.n, r.k,
 			r.metrics
 		});
+		std::cout << "Wrote " << result << std::endl;
 		storage::write_result(result);
 	}, opt.args[0]);
 }

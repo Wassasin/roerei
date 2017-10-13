@@ -74,7 +74,12 @@ typedef cv_result_v2_t cv_result_t;
 
 inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 {
-  os << rhs.corpus << ": [" << rhs.strat << "] " << rhs.ml << " ";
+  os << rhs.corpus;
+  if (!rhs.prior) {
+    os << " (without prior)";
+  }
+
+  os << ": [" << rhs.strat << "] " << rhs.ml << " ";
   switch(rhs.ml)
   {
   case ml_type::knn:
