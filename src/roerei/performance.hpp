@@ -60,6 +60,13 @@ public:
 			, n(_n)
 		{}
 
+		inline bool operator==(metrics_t const& rhs) const
+		{
+			return
+				std::tie(oocover, cover, ooprecision, recall, rank, auc, volume, n) ==
+				std::tie(rhs.oocover, rhs.cover, rhs.ooprecision, rhs.recall, rhs.rank, rhs.auc, rhs.volume, rhs.n);
+		}
+
 		metrics_t operator+(metrics_t const& rhs) const
 		{
 			if(n == 0)

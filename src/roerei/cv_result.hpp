@@ -13,6 +13,11 @@ struct knn_params_t
 {
   size_t k;
 
+  bool operator==(knn_params_t const rhs) const
+  {
+    return k == rhs.k;
+  }
+
   bool operator<(knn_params_t const rhs) const
   {
     return k < rhs.k;
@@ -37,6 +42,11 @@ struct nb_params_t
 struct adarank_params_t
 {
 	size_t T;
+
+  bool operator==(adarank_params_t const rhs) const
+  {
+    return T == rhs.T;
+  }
 
 	bool operator<(adarank_params_t const rhs) const
 	{
@@ -71,6 +81,19 @@ struct cv_result_v2_t
 };
 
 typedef cv_result_v2_t cv_result_t;
+
+inline bool operator==(cv_result_t const& lhs, cv_result_t const& rhs)
+{
+  return
+    std::tie(lhs.corpus, lhs.prior, lhs.strat, lhs.ml, lhs.knn_params, lhs.nb_params, lhs.adarank_params, lhs.n, lhs.k, lhs.metrics) ==
+    std::tie(rhs.corpus, rhs.prior, rhs.strat, rhs.ml, rhs.knn_params, rhs.nb_params, rhs.adarank_params, rhs.n, rhs.k, rhs.metrics);
+}
+
+inline bool result_same_base(cv_result_t const& lhs, cv_result_t const& rhs) {
+  return
+  std::tie(lhs.corpus, lhs.prior, lhs.strat, lhs.ml, lhs.knn_params, lhs.nb_params, lhs.adarank_params, lhs.n, lhs.k) ==
+  std::tie(rhs.corpus, rhs.prior, rhs.strat, rhs.ml, rhs.knn_params, rhs.nb_params, rhs.adarank_params, rhs.n, rhs.k);
+}
 
 inline std::ostream& operator<<(std::ostream& os, cv_result_t const& rhs)
 {

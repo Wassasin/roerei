@@ -151,8 +151,10 @@ void cli::exec_upgrade(cli_options& opt)
 		throw std::runtime_error("Incorrect number of arguments for upgrade");
 	}
 
-	storage::read_v1_result([&opt](cv_result_v1_t const& r) {
-		cv_result_t result({
+	std::vector<cv_result_t> results;
+
+	storage::read_v1_result([&opt, &results](cv_result_v1_t const& r) {
+		results.emplace_back((cv_result_t){
 			r.corpus,
 			opt.prior,
 			r.strat,
@@ -163,9 +165,28 @@ void cli::exec_upgrade(cli_options& opt)
 			r.n, r.k,
 			r.metrics
 		});
+	}, opt.args[0]);
+
+	storage::read_result([&opt, &results](cv_result_t const& r) {
+		for (auto it = results.begin(); it != results.end(); ++it) {
+			auto const& new_r = *it;
+			if (result_same_base(r, new_r)) {
+				if (r == new_r) {
+					std::cout << "Duplicate " << new_r << std::endl;
+				} else {
+					std::cout << "WARNING: Incompatible " << new_r << std::endl;
+				}
+
+				results.erase(it);
+				break;
+			}
+		}
+	});
+
+	for (cv_result_t const& result : results) {
 		std::cout << "Wrote " << result << std::endl;
 		storage::write_result(result);
-	}, opt.args[0]);
+	}
 }
 
 }

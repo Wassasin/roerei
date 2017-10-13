@@ -104,7 +104,7 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 		boost::algorithm::split(opt.corpii, corpii, boost::algorithm::is_any_of(","));
 
 	if(!vm.count("methods") || methods == "all")
-		opt.methods = {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::omniscient, ml_type::ensemble};
+		opt.methods = {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::omniscient, ml_type::ensemble, ml_type::adarank};
 	else
 	{
 		std::vector<std::string> methods_arr;
