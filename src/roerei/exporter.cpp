@@ -42,7 +42,7 @@ namespace roerei
 		return ss.str();
 	}
 
-	inline static std::string make_prefix(std::string const& dataset)
+  inline static std::string make_prefix(std::string const& dataset, posetcons_type const p)
 	{
 		std::string result(dataset);
 		std::transform(result.begin(), result.end(), result.begin(), [](const int c) {
@@ -51,18 +51,19 @@ namespace roerei
 			}
 			return ::tolower(c);
 		});
-		return result;
+    return result + '-' + to_string(p);
 	}
 
 	void export_knn(
 		std::string const& dataset,
 		std::string const& source_path,
-		std::string const& output_path
+    std::string const& output_path,
+    posetcons_type const p = posetcons_type::pessimistic
 	)
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.prior && result.ml == ml_type::knn && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+      if(result.prior && result.ml == ml_type::knn && result.strat == p && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -72,7 +73,7 @@ namespace roerei
 		});
 
 		{
-			std::ofstream os(output_path+"/knn-"+make_prefix(dataset)+".tex");
+      std::ofstream os(output_path+"/knn-"+make_prefix(dataset, p)+".tex");
 			latex_tabular t(os);
 			
 			for(cv_result_t const& row : results) {
@@ -89,7 +90,7 @@ namespace roerei
 		}
 		
 		{
-			std::ofstream os(output_path+"/knn-"+make_prefix(dataset)+".dat");
+      std::ofstream os(output_path+"/knn-"+make_prefix(dataset, p)+".dat");
 			data_dump dd(os);
 			for(cv_result_t const& row : results) {
 				dd.write_row({
@@ -105,15 +106,16 @@ namespace roerei
 		}
 	}
 
-    void export_adarank(
-        std::string const& dataset,
-        std::string const& source_path,
-        std::string const& output_path
+  void export_adarank(
+      std::string const& dataset,
+      std::string const& source_path,
+      std::string const& output_path,
+      posetcons_type const p = posetcons_type::pessimistic
     )
     {
         std::vector<cv_result_t> results;
         storage::read_result([&](cv_result_t const& result) {
-            if(result.prior && result.ml == ml_type::adarank && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+            if(result.prior && result.ml == ml_type::adarank && result.strat == p && result.corpus == dataset) {
                 results.emplace_back(result);
             }
         }, source_path);
@@ -123,7 +125,7 @@ namespace roerei
         });
 
         {
-            std::ofstream os(output_path+"/adarank-"+make_prefix(dataset)+".tex");
+            std::ofstream os(output_path+"/adarank-"+make_prefix(dataset, p)+".tex");
             latex_tabular t(os);
 
             for(cv_result_t const& row : results) {
@@ -140,7 +142,7 @@ namespace roerei
         }
 
         {
-            std::ofstream os(output_path+"/adarank-"+make_prefix(dataset)+".dat");
+            std::ofstream os(output_path+"/adarank-"+make_prefix(dataset, p)+".dat");
             data_dump dd(os);
             for(cv_result_t const& row : results) {
                 dd.write_row({
@@ -167,12 +169,13 @@ namespace roerei
 	void export_nb(
 		std::string const& dataset,
 		std::string const& source_path,
-		std::string const& output_path
+    std::string const& output_path,
+    posetcons_type const p = posetcons_type::pessimistic
 	)
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.prior && result.ml == ml_type::naive_bayes && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+      if(result.prior && result.ml == ml_type::naive_bayes && result.strat == p && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -188,17 +191,16 @@ namespace roerei
 
 		{
 			std::set<std::pair<float, float>> range_pi_tau;
-			for(float pi = 0; pi <= 60; pi+=4) {
-				for(float tau = -20; tau <= 20; tau+=4) {
+      for(float pi = 0; pi <= 80; pi+=8) {
+        for(float tau = -20; tau <= 20; tau+=2) {
 					range_pi_tau.emplace(pi, tau);
 				}
 			}
 
-			boost::optional<cv_result_t> best_result;
-
 			{
-				std::ofstream os(output_path+"/nb-"+make_prefix(dataset)+"-pi-tau.dat");
+        std::ofstream os(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-tau.dat");
 				data_dump dd(os);
+        boost::optional<cv_result_t> best_result;
 				for(cv_result_t const& row : results) {
 					if(row.nb_params->sigma != -15) {
 						continue;
@@ -219,17 +221,17 @@ namespace roerei
 
 					select_best(best_result, row, [](cv_result_t r) { return r.metrics.oocover; });
 				}
-			}
 
-			if (best_result) {
-				auto const& row = *best_result;
-				std::ofstream os(output_path+"/nb-"+make_prefix(dataset)+"-pi-tau-best-oocover.dat");
-				data_dump dd(os);
-				dd.write_row({
-					round_print(row.nb_params->pi, 0),
-					round_print(row.nb_params->tau, 0),
-					round_print(row.metrics.oocover, 3)
-				});
+        if (best_result) {
+          auto const& row = *best_result;
+          std::ofstream osbest(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-tau-best-oocover.dat");
+          data_dump ddbest(osbest);
+          ddbest.write_row({
+            round_print(row.nb_params->pi, 0),
+            round_print(row.nb_params->tau, 0),
+            round_print(row.metrics.oocover, 3)
+          });
+        }
 			}
 
 			if(range_pi_tau.size() > 0) {
@@ -242,14 +244,15 @@ namespace roerei
 		
 		{
 			std::set<std::pair<float, float>> range_pi_sigma;
-			for(float pi = 0; pi <= 60; pi+=4) {
-				for(float sigma = -20; sigma <= 20; sigma+=4) {
+      for(float pi = 0; pi <= 80; pi+=8) {
+        for(float sigma = -20; sigma <= 20; sigma+=2) {
 					range_pi_sigma.emplace(pi, sigma);
 				}
 			}
 
-			std::ofstream os(output_path+"/nb-"+make_prefix(dataset)+"-pi-sigma.dat");
+      std::ofstream os(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-sigma.dat");
 			data_dump dd(os);
+      boost::optional<cv_result_t> best_result;
 			for(cv_result_t const& row : results) {
 				if(row.nb_params->tau != 0) {
 					continue;
@@ -268,6 +271,17 @@ namespace roerei
 					round_print(row.metrics.volume, 3)
 				});
 			}
+
+      if (best_result) {
+        auto const& rowbest = *best_result;
+        std::ofstream osbest(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-sigma-best-oocover.dat");
+        data_dump ddbest(osbest);
+        ddbest.write_row({
+          round_print(rowbest.nb_params->pi, 0),
+          round_print(rowbest.nb_params->sigma, 0),
+          round_print(rowbest.metrics.oocover, 3)
+        });
+      }
 
 			if(range_pi_sigma.size() > 0) {
 				std::cerr << "nb pi_sigma for " << dataset << " is missing " << range_pi_sigma.size() << " elements" << std::endl;
@@ -300,12 +314,13 @@ namespace roerei
   void export_best(
       std::string const& dataset,
       std::string const& source_path,
-      std::string const& output_path
+      std::string const& output_path,
+      posetcons_type const p = posetcons_type::pessimistic
   )
   {
     std::map<ml_type, cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.prior && result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+      if(result.prior && result.strat == p && result.corpus == dataset) {
         auto it = results.find(result.ml);
         if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
           return;
@@ -315,7 +330,7 @@ namespace roerei
 			}
 		}, source_path);
 
-    std::ofstream os(output_path+"/best-"+make_prefix(dataset)+".tex");
+    std::ofstream os(output_path+"/best-"+make_prefix(dataset, p)+".tex");
     latex_tabular t(os);
 
 		auto emit_f = [&](auto const& row) {
@@ -345,7 +360,8 @@ namespace roerei
 	void export_prior(
 		std::string const& dataset,
 		std::string const& source_path,
-		std::string const& output_path
+    std::string const& output_path,
+    posetcons_type const p = posetcons_type::pessimistic
 	)
 	{
 		auto find_overwrite_f = [](std::map<ml_type, cv_result_t>& results, cv_result_t const& result) {
@@ -359,7 +375,7 @@ namespace roerei
 
 		std::map<ml_type, cv_result_t> prior_results, nonprior_results;
 		storage::read_result([&](cv_result_t const& result) {
-			if(result.strat == posetcons_type::pessimistic && result.corpus == dataset) {
+      if(result.strat == p && result.corpus == dataset) {
         if (result.prior) {
 					find_overwrite_f(prior_results, result);
 				} else {
@@ -368,19 +384,42 @@ namespace roerei
 			}
 		}, source_path);
 
-    std::ofstream os(output_path+"/prior-vs-nonprior-"+make_prefix(dataset)+".tex");
+    std::ofstream os(output_path+"/prior-vs-nonprior-"+make_prefix(dataset, p)+".tex");
     latex_tabular t(os);
 
 		auto emit_f = [&](auto const& prior, auto const& nonprior) {
-      std::stringstream ss;
-      describe_ml(ss, prior);
-      t.write_row({
-        ss.str(),
-        round_print(prior.metrics.oocover, 3),
-				round_print(prior.metrics.auc, 3),
-				round_print(nonprior.metrics.oocover, 3),
-				round_print(nonprior.metrics.auc, 3),
-      });
+      {
+        std::stringstream ss;
+        describe_ml(ss, prior);
+        t.write_row({ss.str(), std::string("prior"),
+          round_print(prior.metrics.oocover, 3),
+          round_print(prior.metrics.auc, 3)
+        });
+      }
+
+      {
+        float oocover_ratio = 1.0f - prior.metrics.oocover / nonprior.metrics.oocover;
+        float auc_ratio = 1.0f - prior.metrics.auc / nonprior.metrics.auc;
+
+        std::string oocover_color = oocover_ratio >= 0.0f ? "green" : "red";
+        std::string auc_color = auc_ratio >= 0.0f ? "green" : "red";
+
+        std::stringstream ss;
+        cv_result_t nonprior_faux = nonprior;
+        nonprior_faux.prior = true;
+        if (!result_same_base(prior, nonprior_faux)) {
+          describe_ml(ss, nonprior);
+        }
+
+        auto round_print_sign = [&](float x, float n) {
+          return (x < 0.0f ? std::string("") : std::string("+")) + round_print(x, n);
+        };
+
+        t.write_row({ss.str(), std::string("without"),
+          round_print(nonprior.metrics.oocover, 3) + " ({\\color{" + oocover_color + "}" + round_print_sign(oocover_ratio * 100.0f, 1) + "\\%})",
+          round_print(nonprior.metrics.auc, 3) + " ({\\color{" + auc_color + "}" + round_print_sign(auc_ratio * 100.0f, 1) + "\\%})"
+        });
+      }
 		};
 
 		for(ml_type mlt : {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::adarank, ml_type::ensemble, ml_type::omniscient}) {
@@ -422,21 +461,33 @@ namespace roerei
 	{
 		export_counts(output_path);
 
+    // Prior vs non-prior
 		export_prior("CoRN.frequency", source_path, output_path);
 
+    // Flat vs depth vs frequency
 		export_knn("CoRN.flat", source_path, output_path);
 		export_knn("CoRN.depth", source_path, output_path);
 		export_knn("CoRN.frequency", source_path, output_path);
 		
-		export_knn("ch2o.frequency", source_path, output_path);
-		export_knn("CoRN.frequency", source_path, output_path);
+    // Strategy: pessimistic, canonical, optimistic
+    // Duplicate export_knn("CoRN.frequency", source_path, output_path, posetcons_type::pessimistic);
+    export_knn("CoRN.frequency", source_path, output_path, posetcons_type::optimistic);
+    export_knn("CoRN.frequency", source_path, output_path, posetcons_type::canonical);
+
+    // Methods: KNN for each corpora (in K)
+    export_knn("CoRN.frequency", source_path, output_path);
+    export_knn("Coq.frequency", source_path, output_path);
+    export_knn("ch2o.frequency", source_path, output_path);
 		export_knn("MathClasses.frequency", source_path, output_path);
 		export_knn("mathcomp.frequency", source_path, output_path);
 
-		export_knn("CoRN.frequency", source_path, output_path);
+    // Methods: NB (in pi & sigma)
 		export_nb("CoRN.frequency", source_path, output_path);
+
+    // Methods: Adarank (in T)
 		export_adarank("CoRN.frequency", source_path, output_path);
 
+    // Corpora: for each method
 		export_best("Coq.frequency", source_path, output_path);
 		export_best("ch2o.frequency", source_path, output_path);
 		export_best("CoRN.frequency", source_path, output_path);

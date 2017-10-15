@@ -242,8 +242,6 @@ namespace roerei {
         continue;
       }
 
-      std::cout << kvp.second << std::endl;
-
       os << "\"";
       print_subgroup(os, kvp.first.first);
       os << "\" -- \"";
