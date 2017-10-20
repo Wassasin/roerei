@@ -69,14 +69,14 @@ public:
 			for(size_t tau = 0; tau < 20; ++tau)
 				nbs.emplace(nb_params_t({10, -15, (float)tau}));*/
 
-			for(float pi = 0; pi <= 80; pi+=8) {
+			for(float pi = 0; pi <= 160; pi+=8) {
 				for(float tau = -20; tau <= 20; tau+=2) {
 					float sigma = -15;
 					nbs.emplace(nb_params_t({pi, sigma, tau}));
 				}
 			}
 			
-			for(float pi = 0; pi <= 80; pi+=8) {
+			for(float pi = 0; pi <= 160; pi+=8) {
 				for(float sigma = -20; sigma <= 20; sigma+=2)
 				{
 					float tau = 0;
