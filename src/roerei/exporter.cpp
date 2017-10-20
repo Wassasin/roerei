@@ -473,7 +473,7 @@ namespace roerei
 			}
 		}, source_path);
 
-		auto emit_row_f = [&](ml_type ml, std::string const& ml_str, float oocover, float auc) {
+		auto emit_row_f = [&](ml_type ml, std::string const& ml_str, float oocover, float auc, float show_theirs = true) {
 			float oocover_ratio = (results[ml].metrics.oocover - oocover) / oocover;
 			float auc_ratio = (results[ml].metrics.auc - auc) / auc;
 
@@ -484,12 +484,15 @@ namespace roerei
 				return (x < 0.0f ? std::string("") : std::string("+")) + round_print(x, n);
 			};
 
+			std::string oocover_str = show_theirs ? round_print(oocover, 3) : "-";
+			std::string auc_str = show_theirs ? round_print(auc, 3) : "-";
+
 			t.write_row({
 				std::string("\\") + ml_str,
-				round_print(oocover, 3),
+				oocover_str,
 				round_print(results[ml].metrics.oocover, 3),
 				std::string("({\\color{") + oocover_color + "}" + round_print_sign(oocover_ratio * 100.0f, 1) + "\\%})",
-				round_print(auc, 3),
+				auc_str,
 				round_print(results[ml].metrics.auc, 3),
 				std::string("({\\color{") + auc_color + "}" + round_print_sign(auc_ratio * 100.0f, 1) + "\\%})"
 			});
@@ -498,6 +501,7 @@ namespace roerei
 		emit_row_f(ml_type::knn_adaptive, "knnadaptive", 0.723, 0.834);
 		emit_row_f(ml_type::naive_bayes, "nb", 0.726, 0.836);
 		emit_row_f(ml_type::ensemble, "ensemble", 0.749, 0.849);
+		emit_row_f(ml_type::adarank, "adarank", 0.749, 0.849, false);
 	}
 
 	void exporter::exec(std::string const& source_path, std::string const& output_path)
