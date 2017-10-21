@@ -58,12 +58,13 @@ namespace roerei
 		std::string const& dataset,
 		std::string const& source_path,
     std::string const& output_path,
-    posetcons_type const p = posetcons_type::pessimistic
+		posetcons_type const p = posetcons_type::pessimistic,
+		bool const prior = true
 	)
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-      if(result.prior && result.ml == ml_type::knn && result.strat == p && result.corpus == dataset) {
+      if(result.prior == prior && result.ml == ml_type::knn && result.strat == p && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -71,26 +72,11 @@ namespace roerei
 		std::sort(results.begin(), results.end(), [](cv_result_t const& x, cv_result_t const& y) {
 			return *x.knn_params < *y.knn_params;
 		});
+		
+		std::string prior_str = prior ? "" : "nonprior-";
 
 		{
-      std::ofstream os(output_path+"/knn-"+make_prefix(dataset, p)+".tex");
-			latex_tabular t(os);
-			
-			for(cv_result_t const& row : results) {
-				t.write_row({
-					std::to_string(row.knn_params->k),
-					round_print(row.metrics.oocover, 3),
-					round_print(row.metrics.ooprecision, 3),
-					round_print(row.metrics.recall, 3),
-					round_print(row.metrics.rank, 1),
-					round_print(row.metrics.auc, 3),
-					round_print(row.metrics.volume, 3)
-				});
-			}
-		}
-		
-		{
-      std::ofstream os(output_path+"/knn-"+make_prefix(dataset, p)+".dat");
+      std::ofstream os(output_path+"/knn-"+prior_str+make_prefix(dataset, p)+".dat");
 			data_dump dd(os);
 			for(cv_result_t const& row : results) {
 				dd.write_row({
@@ -359,7 +345,7 @@ namespace roerei
 		std::string const& dataset,
 		std::string const& source_path,
     std::string const& output_path,
-    posetcons_type const p = posetcons_type::pessimistic
+		posetcons_type const p = posetcons_type::pessimistic
 	)
 	{
 		auto find_overwrite_f = [](std::map<ml_type, cv_result_t>& results, cv_result_t const& result) {
@@ -463,7 +449,7 @@ namespace roerei
 
 		std::map<ml_type, cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-      if(result.prior && result.strat == posetcons_type::pessimistic && result.corpus == "CoRN.frequency") {
+      if(result.prior && result.strat == posetcons_type::canonical && result.corpus == "CoRN.frequency") {
         auto it = results.find(result.ml);
         if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
           return;
@@ -510,6 +496,7 @@ namespace roerei
 
     // Prior vs non-prior
 		export_prior("CoRN.frequency", source_path, output_path);
+		export_knn("CoRN.frequency", source_path, output_path, posetcons_type::pessimistic, false);
 
     // Flat vs depth vs frequency
 		export_knn("CoRN.flat", source_path, output_path);
