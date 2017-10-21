@@ -519,7 +519,11 @@ namespace roerei
 		export_nb("CoRN.frequency", source_path, output_path);
 
     // Methods: Adarank (in T)
+    export_adarank("Coq.frequency", source_path, output_path);
+    export_adarank("ch2o.frequency", source_path, output_path);
 		export_adarank("CoRN.frequency", source_path, output_path);
+    export_adarank("MathClasses.frequency", source_path, output_path);
+    export_adarank("mathcomp.frequency", source_path, output_path);
 
     // Corpora: for each method
 		export_best("Coq.frequency", source_path, output_path);
