@@ -191,7 +191,7 @@ namespace roerei
 
 		{
 			std::set<std::pair<float, float>> range_pi_tau;
-      for(float pi = 0; pi <= 80; pi+=8) {
+      for(float pi = 0; pi <= 160; pi+=8) {
         for(float tau = -20; tau <= 20; tau+=2) {
 					range_pi_tau.emplace(pi, tau);
 				}
@@ -223,15 +223,13 @@ namespace roerei
 				}
 
         if (best_result) {
-          auto const& row = *best_result;
-          std::ofstream osbest(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-tau-best-oocover.dat");
-          data_dump ddbest(osbest);
-          ddbest.write_row({
-            round_print(row.nb_params->pi, 0),
-            round_print(row.nb_params->tau, 0),
-            round_print(row.metrics.oocover, 3)
-          });
-        }
+					auto const& rowbest = *best_result;
+					std::ofstream osbest(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-tau-best-oocover.tex");
+					osbest << "\\node[draw, circle, very thick, fill=white, inner sep=1.5pt] (P) at ("
+						<< round_print(rowbest.nb_params->pi, 0) << ","
+						<< round_print(rowbest.nb_params->tau, 0) << ") {};";
+						osbest.flush();
+				}
 			}
 
 			if(range_pi_tau.size() > 0) {
@@ -244,7 +242,7 @@ namespace roerei
 		
 		{
 			std::set<std::pair<float, float>> range_pi_sigma;
-      for(float pi = 0; pi <= 80; pi+=8) {
+      for(float pi = 0; pi <= 160; pi+=8) {
         for(float sigma = -20; sigma <= 20; sigma+=2) {
 					range_pi_sigma.emplace(pi, sigma);
 				}
@@ -270,17 +268,17 @@ namespace roerei
 					round_print(row.metrics.auc, 3),
 					round_print(row.metrics.volume, 3)
 				});
+
+				select_best(best_result, row, [](cv_result_t r) { return r.metrics.oocover; });
 			}
 
       if (best_result) {
         auto const& rowbest = *best_result;
-        std::ofstream osbest(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-sigma-best-oocover.dat");
-        data_dump ddbest(osbest);
-        ddbest.write_row({
-          round_print(rowbest.nb_params->pi, 0),
-          round_print(rowbest.nb_params->sigma, 0),
-          round_print(rowbest.metrics.oocover, 3)
-        });
+				std::ofstream osbest(output_path+"/nb-"+make_prefix(dataset, p)+"-pi-sigma-best-oocover.tex");
+				osbest << "\\node[draw, circle, very thick, fill=white, inner sep=1.5pt] (P) at ("
+					<< round_print(rowbest.nb_params->pi, 0) << ","
+					<< round_print(rowbest.nb_params->sigma, 0) << ") {};";
+					osbest.flush();
       }
 
 			if(range_pi_sigma.size() > 0) {
@@ -375,7 +373,7 @@ namespace roerei
 
 		std::map<ml_type, cv_result_t> prior_results, nonprior_results;
 		storage::read_result([&](cv_result_t const& result) {
-      if(result.strat == p && result.corpus == dataset) {
+      if(result.strat == p && result.corpus == dataset && result.ml != ml_type::omniscient) {
         if (result.prior) {
 					find_overwrite_f(prior_results, result);
 				} else {
@@ -422,7 +420,7 @@ namespace roerei
       }
 		};
 
-		for(ml_type mlt : {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::adarank, ml_type::ensemble, ml_type::omniscient}) {
+		for(ml_type mlt : {ml_type::knn, ml_type::knn_adaptive, ml_type::naive_bayes, ml_type::adarank, ml_type::ensemble}) {
 			auto prior_it = prior_results.find(mlt);
 			auto nonprior_it = nonprior_results.find(mlt);
 			if (prior_it == prior_results.end() || nonprior_it == nonprior_results.end()) {
@@ -438,24 +436,73 @@ namespace roerei
       std::ofstream os(output_path+"/counts.tex");
       latex_tabular t(os);
 
-      auto corpii = {
-          "Coq.frequency",
-          "ch2o.frequency",
-          "CoRN.frequency",
-          "MathClasses.frequency",
-          "mathcomp.frequency"
-      };
+			auto process_f = [&](std::initializer_list<std::string>&& list) {
+				std::vector<std::string> corpus(list);
+				dataset_t d(storage::read_dataset(corpus[0]));
+				t.write_row({
+							std::string("\\") + corpus[1],
+							corpus[2],
+							corpus[3],
+							round_print(d.objects.size(), 0),
+							round_print(d.features.size(), 0),
+							round_print(d.dependencies.size(), 0),
+				});
+			};
 
-      for(std::string const corpus : corpii) {
-          dataset_t d(storage::read_dataset(corpus));
-          t.write_row({
-                corpus,
-                round_print(d.objects.size(), 0),
-                round_print(d.features.size(), 0),
-                round_print(d.dependencies.size(), 0),
-          });
-      }
-  }
+      process_f({"Coq.frequency", "coq", "b705cf0", "april 2015"});
+      process_f({"ch2o.frequency", "formalin", "64d98fa", "november 2015"});
+			process_f({"MathClasses.frequency", "mathclasses", "751e63b", "june 2016"});
+			process_f({"CoRN.frequency", "corn", "4860de7", "september 2009"});
+      process_f({"mathcomp.frequency", "mathcomp", "9e81c8f", "december 2015"});
+	}
+	
+	void export_relative_kaliszyk(std::string const& source_path, std::string const& output_path)
+	{
+		std::ofstream os(output_path+"/relative.tex");
+		latex_tabular t(os);
+
+		std::map<ml_type, cv_result_t> results;
+		storage::read_result([&](cv_result_t const& result) {
+      if(result.prior && result.strat == posetcons_type::pessimistic && result.corpus == "CoRN.frequency") {
+        auto it = results.find(result.ml);
+        if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
+          return;
+        } 
+
+        results[result.ml] = result;
+			}
+		}, source_path);
+
+		auto emit_row_f = [&](ml_type ml, std::string const& ml_str, float oocover, float auc, float show_theirs = true) {
+			float oocover_ratio = (results[ml].metrics.oocover - oocover) / oocover;
+			float auc_ratio = (results[ml].metrics.auc - auc) / auc;
+
+			std::string oocover_color = oocover_ratio >= 0.0f ? "green" : "red";
+			std::string auc_color = auc_ratio >= 0.0f ? "green" : "red";
+
+			auto round_print_sign = [&](float x, float n) {
+				return (x < 0.0f ? std::string("") : std::string("+")) + round_print(x, n);
+			};
+
+			std::string oocover_str = show_theirs ? round_print(oocover, 3) : "-";
+			std::string auc_str = show_theirs ? round_print(auc, 3) : "-";
+
+			t.write_row({
+				std::string("\\") + ml_str,
+				oocover_str,
+				round_print(results[ml].metrics.oocover, 3),
+				std::string("({\\color{") + oocover_color + "}" + round_print_sign(oocover_ratio * 100.0f, 1) + "\\%})",
+				auc_str,
+				round_print(results[ml].metrics.auc, 3),
+				std::string("({\\color{") + auc_color + "}" + round_print_sign(auc_ratio * 100.0f, 1) + "\\%})"
+			});
+		};
+
+		emit_row_f(ml_type::knn_adaptive, "knnadaptive", 0.723, 0.834);
+		emit_row_f(ml_type::naive_bayes, "nb", 0.726, 0.836);
+		emit_row_f(ml_type::ensemble, "ensemble", 0.749, 0.849);
+		emit_row_f(ml_type::adarank, "adarank", 0.749, 0.849, false);
+	}
 
 	void exporter::exec(std::string const& source_path, std::string const& output_path)
 	{
@@ -497,6 +544,8 @@ namespace roerei
 		export_best("CoRN.frequency", source_path, output_path);
 		export_best("MathClasses.frequency", source_path, output_path);
 		export_best("mathcomp.frequency", source_path, output_path);
+
+		export_relative_kaliszyk(source_path, output_path);
 
 		structure_exporter::exec(output_path);
 	}
