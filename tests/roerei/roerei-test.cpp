@@ -266,6 +266,7 @@ START_TEST(test_topological_sort)
   m.topological_sort([&xs](roerei::object_id_t x) {
     xs.emplace_back(x);
   });
+  std::reverse(xs.begin(), xs.end());
 
   auto comp_f = [&](roerei::object_id_t i, roerei::object_id_t j) {
     //std::cout << i << ' ' << j << " - " << (int)m[std::make_pair(i, j)] << std::endl;

@@ -48,6 +48,20 @@ class sparse_unit_matrix_t
 		return false;
 	}
 
+	template<typename F>
+	void topological_sort_visit(M const m, std::set<M>& marked, F const& f) const
+	{
+		if (marked.find(m) != marked.end()) {
+			return;
+		}
+
+		for(M const n : data[m]) {
+			topological_sort_visit(n, marked, f);
+		}
+		marked.emplace(m);
+		f(m);
+	}
+
 public:
 	sparse_unit_matrix_t(sparse_unit_matrix_t&&) = default;
 	//sparse_unit_matrix_t(sparse_unit_matrix_t&) = delete;
@@ -130,51 +144,23 @@ public:
 	}
 
 	/**
-	 * Implementation of Kahn's algorithm
+	 * Implementation of Depth First Topological Sort
 	 * Emits order of elements via f
 	 */
 	template<typename F>
 	void topological_sort(F const& f) const
 	{
-		auto matrix = *this;
-
-		auto find_nodes_without_incoming_f = [&]() {
-			std::set<M> s;
-			M::iterate([&s](M i) {
-				s.emplace(i);
-			}, matrix.size_m());
-
-			// Erase all nodes with incoming edges
-			M::iterate([&s, &matrix](M i) {
-				for(M j : matrix.data[i]) {
-					s.erase(j);
+		std::set<M> marked;
+		while(marked.size() != size_m()) { // While there are unmarked nodes
+			size_t i = 0;
+			for(auto m : marked) {
+				if (m == i) {
+					++i;
+					continue;
 				}
-			}, matrix.size_m());
-			return s;
-		};
-
-		std::set<M> s(find_nodes_without_incoming_f());
-		while (!s.empty()) {
-			auto it = s.begin();
-			M n = *it;
-			s.erase(it);
-
-			f(n);
-			std::set<M> e = data[n]; // Make copy
-			matrix.data[n].clear();
-
-			std::set<M> ss(find_nodes_without_incoming_f());
-			std::set_intersection(
-				e.begin(), e.end(),
-				ss.begin(), ss.end(),
-				std::inserter(s, s.end())
-			);
+			}
+			topological_sort_visit(i, marked, f);
 		}
-
-		// If not empty then we were not operating on a DAG
-		M::iterate([&matrix](M i) {
-			assert(matrix.data[i].empty());
-		}, matrix.size_m());
 	}
 };
 

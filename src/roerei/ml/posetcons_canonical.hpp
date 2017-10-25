@@ -28,6 +28,7 @@ public:
 		dependants.topological_sort([&](object_id_t i) {
 			objs_ordered.emplace_back(i);
 		});
+		std::reverse(objs_ordered.begin(), objs_ordered.end());
 
 		for(size_t x = 0; x < d.objects.size(); ++x) {
 			for(size_t y = x+1; y < d.objects.size(); ++y) {
