@@ -51,7 +51,7 @@ class sparse_unit_matrix_t
 public:
 	sparse_unit_matrix_t(sparse_unit_matrix_t&&) = default;
 	//sparse_unit_matrix_t(sparse_unit_matrix_t&) = delete;
-	sparse_unit_matrix_t(sparse_unit_matrix_t&) = default;
+	sparse_unit_matrix_t(sparse_unit_matrix_t const&) = default;
 
 	sparse_unit_matrix_t(size_t const _m, size_t const _n)
 		: m(_m)
@@ -142,12 +142,14 @@ public:
 			std::set<M> s;
 			M::iterate([&s](M i) {
 				s.emplace(i);
-			});
+			}, matrix.size_m());
 
 			// Erase all nodes with incoming edges
-			M::iterate([&s](M i) {
-				s.erase(matrix.data[i].begin(), matrix.data[i].end());
-			});
+			M::iterate([&s, &matrix](M i) {
+				for(M j : matrix.data[i]) {
+					s.erase(j);
+				}
+			}, matrix.size_m());
 			return s;
 		};
 
@@ -165,14 +167,14 @@ public:
 			std::set_intersection(
 				e.begin(), e.end(),
 				ss.begin(), ss.end(),
-				std::inserter(s)
+				std::inserter(s, s.end())
 			);
 		}
 
 		// If not empty then we were not operating on a DAG
 		M::iterate([&matrix](M i) {
 			assert(matrix.data[i].empty());
-		});
+		}, matrix.size_m());
 	}
 };
 

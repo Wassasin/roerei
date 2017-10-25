@@ -258,39 +258,21 @@ START_TEST(test_topological_sort)
 
   m.transitive();
 
-  /*for(size_t i = 0; i < m.size_m(); ++i) {
-    m.set(std::make_pair(i, i), false);
-  }*/
-
   for(size_t i = 0; i < m.size_m(); ++i) {
-    for(size_t j = 0; j < m.size_m(); ++j) {
-      std::cout << (int)m[std::make_pair(i, j)] << ' ';
-    }
-    std::cout << std::endl;
+    m.set(std::make_pair(i, i), false);
   }
 
-  std::vector<size_t> xs(m.size_m());
-  std::iota(xs.begin(), xs.end(), 0);
-  std::reverse(xs.begin(), xs.end());
+  std::vector<roerei::object_id_t> xs;
+  m.topological_sort([&xs](roerei::object_id_t x) {
+    xs.emplace_back(x);
+  });
 
-  auto comp_f = [&](size_t i, size_t j) {
-    std::cout << i << ' ' << j << " - " << (int)m[std::make_pair(i, j)] << std::endl;
+  auto comp_f = [&](roerei::object_id_t i, roerei::object_id_t j) {
+    //std::cout << i << ' ' << j << " - " << (int)m[std::make_pair(i, j)] << std::endl;
     return m[std::make_pair(i, j)];
   };
 
-  std::cout << std::endl;
-  std::stable_sort(xs.begin(), xs.end(), comp_f);
-
   ck_assert(std::is_sorted(xs.begin(), xs.end(), comp_f));
-
-  std::cout << std::endl;
-
-  for(auto x : xs) {
-    std::cout << x << ' ';
-  }
-
-  std::cout << std::endl;
-  std::cout << std::endl;
 
   for(size_t x = 0; x < m.size_m(); ++x) {
     for(size_t y = x+1; y < m.size_m(); ++y) {

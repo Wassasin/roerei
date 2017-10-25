@@ -18,28 +18,16 @@ public:
 		auto dependants(dependencies::create_obj_dependants(d));
 		dependants.transitive();
 
-		// new -> old
-		encapsulated_vector<object_id_t, object_id_t> objs_ordered;
-		objs_ordered.reserve(d.objects.size());
-		d.objects.keys([&objs_ordered](object_id_t x) {
-			objs_ordered.emplace_back(x);
-		});
-
-		if(seed) /* Seed for the linearization of dependants_trans */
-		{
-			std::mt19937 g(*seed);
-			std::shuffle(objs_ordered.begin(), objs_ordered.end(), g);
-		}
-
 		for(size_t i = 0; i < d.objects.size(); ++i) {
 			dependants.set(std::make_pair(i, i), false); // Remove axioms
 		}
 
-		auto comp_f = [&dependants](object_id_t x, object_id_t y) -> bool {
-			return dependants[std::make_pair(x, y)];
-		};
-
-		std::stable_sort(objs_ordered.begin(), objs_ordered.end(), comp_f);
+		// new -> old
+		encapsulated_vector<object_id_t, object_id_t> objs_ordered;
+		objs_ordered.reserve(d.objects.size());
+		dependants.topological_sort([&](object_id_t i) {
+			objs_ordered.emplace_back(i);
+		});
 
 		for(size_t x = 0; x < d.objects.size(); ++x) {
 			for(size_t y = x+1; y < d.objects.size(); ++y) {
@@ -72,7 +60,7 @@ public:
 
 		for(size_t x = 0; x < d.objects.size(); ++x) {
 			for(size_t y = x+1; y < d.objects.size(); ++y) {
-				if (comp_f(objs_ordered[y], objs_ordered[x])) { // Inverse should never be true
+				if (dependants[std::make_pair(objs_ordered[y], objs_ordered[x])]) { // Inverse should never be true
 					std::cerr << "mystery " << x << " " << y << "(" << objs_ordered[x].unseal() << " " << objs_ordered[y].unseal() << ")" << std::endl;
 				}
 			}
