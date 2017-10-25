@@ -21,6 +21,9 @@ namespace roerei
 
 class cv
 {
+public:
+	static const size_t default_n = 10;
+	static const size_t default_k = 1;
 private:
 	struct partition_object_id_t : public id_t<partition_object_id_t> {
 		partition_object_id_t(size_t id)
@@ -117,13 +120,18 @@ public:
 			std::promise<performance::metrics_t> p;
 			future_metrics.emplace_back(p.get_future());
 
-			tasks.emplace_back([&d, init_f, prior, silent, i, train_ps, cv_static_ptr=this->cv_static_ptr, p=std::move(p)]() mutable {
+			tasks.emplace_back([&d, init_f, prior, silent, i, train_ps, cv_static_ptr=this->cv_static_ptr, p=std::move(p), n=n]() mutable {
 				auto const& s = *cv_static_ptr;
 
 				test::performance::init();
 
 				sliced_sparse_matrix_t<decltype(s.feature_matrix) const> train_m_tmp(s.feature_matrix, false), test_m_tmp(s.feature_matrix, false);
-				if (prior) {
+				if (n == 1) {
+					// HACK; implements a faux non-cv mode
+					object_id_t::iterate([&](object_id_t j) {
+						train_m_tmp.add_key(j);
+					}, d.objects.size());
+				} else if (prior) {
 					for(object_id_t j : d.prior_objects) {
 						train_m_tmp.add_key(j);
 					}
@@ -137,6 +145,21 @@ public:
 				});
 
 				compact_sparse_matrix_t<object_id_t, feature_id_t, dataset_t::value_t> const train_m(train_m_tmp), test_m(test_m_tmp);
+				std::cerr << "prior " << d.prior_objects.size() << std::endl;
+				{
+					size_t c = 0;
+					train_m.citerate([&c](auto) {
+						c++;
+					});
+					std::cerr << "train_m_tmp " << c << std::endl;
+				}
+				{
+					size_t c = 0;
+					test_m.citerate([&c](auto) {
+						c++;
+					});
+					std::cerr << "test_m_tmp " << c << std::endl;
+				}
 
 				performance::metrics_t fm;
 

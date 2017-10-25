@@ -15,8 +15,8 @@ class posetcons_canonical
 public:
 	static dataset_t consistentize(dataset_t const& d, boost::optional<uint64_t> seed = boost::none)
 	{
-		auto dependants_trans(dependencies::create_obj_dependants(d));
-		dependants_trans.transitive();
+		auto dependants(dependencies::create_obj_dependants(d));
+		dependants.transitive();
 
 		// new -> old
 		encapsulated_vector<object_id_t, object_id_t> objs_ordered;
@@ -31,10 +31,52 @@ public:
 			std::shuffle(objs_ordered.begin(), objs_ordered.end(), g);
 		}
 
-		std::stable_sort(objs_ordered.begin(), objs_ordered.end(), [&dependants_trans](object_id_t x, object_id_t y) -> bool {
-			// Nodes with most dependencies at end; i.e. most dependants at front
-			return dependants_trans[std::make_pair(x, y)] > 0;
-		});
+		for(size_t i = 0; i < d.objects.size(); ++i) {
+			dependants.set(std::make_pair(i, i), false); // Remove axioms
+		}
+
+		auto comp_f = [&dependants](object_id_t x, object_id_t y) -> bool {
+			return dependants[std::make_pair(x, y)];
+		};
+
+		std::stable_sort(objs_ordered.begin(), objs_ordered.end(), comp_f);
+
+		for(size_t x = 0; x < d.objects.size(); ++x) {
+			for(size_t y = x+1; y < d.objects.size(); ++y) {
+				if (dependants[std::make_pair(x, y)] && dependants[std::make_pair(y, x)]) { // Should never be reflexive
+					std::cerr << "reflexive " << x << " " << y << "(" << objs_ordered[x].unseal() << " " << objs_ordered[y].unseal() << ")" << std::endl;
+					//std::exit(1);
+				}
+			}
+		}
+
+		/*for(size_t x = 0; x < d.objects.size(); ++x) {
+			if (dependants[x] != dependants_double[x]) {
+				std::cerr << "relation is not transitive" << std::endl;
+				std::exit(1);
+			}
+		}*/
+
+		boost::optional<object_id_t> object_opt;
+		if (dependants.find_cyclic([&](object_id_t i) {
+			std::cerr << " <- " << i.unseal() << " " << d.objects[i];
+			object_opt = i;
+		})) {
+			std::cerr << std::endl;
+			for(auto const& kvp : d.dependency_matrix[*object_opt]) {
+				std::cerr << kvp.second << "*" << kvp.first.unseal() << " " << d.dependencies[kvp.first] << std::endl;
+			}
+			std::cerr << "CYCLIC DETECTED" << std::endl;
+			std::exit(1);
+		}
+
+		/*for(size_t x = 0; x < d.objects.size(); ++x) {
+			for(size_t y = x+1; y < d.objects.size(); ++y) {
+				if (comp_f(objs_ordered[y], objs_ordered[x])) { // Inverse should never be true
+					std::cerr << "mystery " << x << " " << y << "(" << objs_ordered[x].unseal() << " " << objs_ordered[y].unseal() << ")" << std::endl;
+				}
+			}
+		}*/
 
 		encapsulated_vector<object_id_t, uri_t> objects;
 		objects.reserve(d.objects.size());
@@ -79,6 +121,7 @@ public:
 	template<typename TRAINSET, typename TESTROW>
 	static split_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
 	{
+		std::cout << "i " << test_row.row_i.unseal() << std::endl;
 		return split_sparse_matrix_t<TRAINSET>(train_m, test_row.row_i);
 	}
 };

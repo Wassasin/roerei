@@ -1,14 +1,17 @@
-#include <initializer_list> // force libstdc++ to include its config
-#undef _GLIBCXX_HAVE_GETS // correct broken config
+#include <roerei/cpp14_fix.hpp>
 
 #include <roerei/generic/sparse_matrix.hpp>
 #include <roerei/generic/sliced_sparse_matrix.hpp>
 #include <roerei/generic/compact_sparse_matrix.hpp>
+#include <roerei/generic/sparse_unit_matrix.hpp>
 
 #include <roerei/generic/id_t.hpp>
 
 #include <cstdlib>
 #include <memory>
+#include <random>
+#include <iostream>
+#include <algorithm>
 
 #include <check.h>
 
@@ -132,6 +135,63 @@ START_TEST(test_compact_matrix_iter_eq) // Preserve values after init with iter 
 }
 END_TEST
 
+START_TEST(test_sparse_unit_matrix_transitive)
+{
+  roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(4, 4);
+  m.set(std::make_pair(0, 1));
+  m.set(std::make_pair(0, 2));
+  m.set(std::make_pair(1, 2));
+  m.set(std::make_pair(2, 0));
+  m.set(std::make_pair(2, 3));
+  m.set(std::make_pair(3, 3));
+
+  m.transitive();
+
+  for(size_t x = 0; x < 3; ++x) {
+      for(size_t y = 0; y < 4; ++y) {
+      ck_assert(m[std::make_pair(x, y)]);
+    }
+  }
+
+  for(size_t y = 0; y < 3; ++y) {
+    ck_assert(!m[std::make_pair(3, y)]);
+  }
+
+  ck_assert(m[std::make_pair(3, 3)]);
+}
+END_TEST
+
+START_TEST(test_sparse_unit_matrix_non_cyclic)
+{
+  roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(5, 5);
+  m.set(std::make_pair(0, 1));
+  m.set(std::make_pair(0, 2));
+  m.set(std::make_pair(2, 1));
+  m.set(std::make_pair(1, 3));
+  m.set(std::make_pair(3, 4));
+  m.set(std::make_pair(2, 4));
+
+  m.transitive();
+
+  for(size_t i = 0; i < 5; ++i) {
+    m.set(std::make_pair(i, i), false);
+  }
+
+  ck_assert(!m.find_cyclic([](auto) {}));
+
+  std::vector<size_t> xs(5);
+  std::iota(xs.begin(), xs.end(), 0);
+  std::reverse(xs.begin(), xs.end());
+
+  std::stable_sort(xs.begin(), xs.end(), [&](size_t i, size_t j) {
+    return m[std::make_pair(i, j)];
+  });
+
+  std::vector<size_t> ys({0, 2, 1, 3, 4});
+  ck_assert(xs == ys);
+}
+END_TEST
+
 Suite* roerei_suite(void)
 {
 	Suite* s = suite_create("roerei");
@@ -141,6 +201,8 @@ Suite* roerei_suite(void)
 	tcase_add_test(tc_core, test_matrix_iter_eq);
 	tcase_add_test(tc_core, test_sliced_matrix_iter_eq);
 	tcase_add_test(tc_core, test_compact_matrix_iter_eq);
+  tcase_add_test(tc_core, test_sparse_unit_matrix_transitive);
+  tcase_add_test(tc_core, test_sparse_unit_matrix_non_cyclic);
 
 	suite_add_tcase(s, tc_core);
 

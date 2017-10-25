@@ -21,6 +21,7 @@ struct cli_options
 	boost::optional<std::string> filter;
 	bool silent = false;
 	bool prior = true;
+	bool cv = true;
 	size_t jobs = 1;
 };
 

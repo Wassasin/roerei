@@ -15,22 +15,43 @@ class sparse_unit_matrix_t
 	const size_t m, n;
 	encapsulated_vector<M, std::set<N>> data;
 
-	void transitive_helper(M i, std::set<M>& visited)
+	void transitive_helper(M s, M v, sparse_unit_matrix_t<M, M>& tc) const
 	{
-		if(!visited.emplace(i).second)
-			return;
+		tc.set(std::make_pair(s, v));
 
-		std::set<M> const old_row = data[i]; // Copy
-		for(M j : old_row)
-		{
-			transitive_helper(j, visited);
-			data[i].insert(data[j].begin(), data[j].end());
+		for(M i : data[v]) {
+			if (!tc[std::make_pair(s, i)]) {
+				transitive_helper(s, i, tc);
+			}
 		}
+	}
+
+	template<typename F>
+	bool dfs(M needle, M x, std::set<M>& visited, F const& f) const
+	{
+		if(!visited.emplace(x).second) {
+			return false;
+		}
+
+		for(M y : data[x]) {
+			if (y == needle) {
+				f(y);
+				return true;
+			}
+
+			if (dfs(needle, y, visited, f)) {
+				f(y);
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 public:
 	sparse_unit_matrix_t(sparse_unit_matrix_t&&) = default;
-	sparse_unit_matrix_t(sparse_unit_matrix_t&) = delete;
+	//sparse_unit_matrix_t(sparse_unit_matrix_t&) = delete;
+	sparse_unit_matrix_t(sparse_unit_matrix_t&) = default;
 
 	sparse_unit_matrix_t(size_t const _m, size_t const _n)
 		: m(_m)
@@ -45,7 +66,7 @@ public:
 
 	bool operator[](std::pair<M, N> const& p) const
 	{
-		return (data[p.first].find(p.second) == data[p.first].end());
+		return (data[p.first].find(p.second) != data[p.first].end());
 	}
 
 	void set(std::pair<M, N> const& p, bool value = true)
@@ -75,9 +96,14 @@ public:
 	{
 		assert(m == n);
 
-		std::set<M> visited;
-		for(size_t i = 0; i < m; ++i)
-			transitive_helper(i, visited);
+		sparse_unit_matrix_t<M, M> tc(m, m);
+		for(size_t i = 0; i < m; ++i) {
+			transitive_helper(i, i, tc);
+		}
+
+		for(size_t i = 0; i < m; ++i) {
+			set(i, tc[i]);
+		}
 	}
 
 	sparse_unit_matrix_t<N, M> transpose() const
@@ -88,6 +114,19 @@ public:
 				result.data[j].insert(i);
 		});
 		return result;
+	}
+
+	template<typename F>
+	bool find_cyclic(F const& f) const
+	{
+		for(size_t i = 0; i < m; ++i) {
+			std::set<M> visited;
+			if (dfs(i, i, visited, f)) {
+				f(i);
+				return true;
+			}
+		}
+		return false;
 	}
 };
 

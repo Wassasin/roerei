@@ -19,6 +19,7 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 			("help,h", "display this message")
 			("silent,s", "do not print progress")
 			("no-prior,P", "do not use prior datasets, if applicable")
+      ("no-cv,C", "do not use crossvalidation, if applicable")
 			("corpii,c", boost::program_options::value(&corpii), "select which corpii to sample or generate, possibly comma separated (default: all)")
 			("methods,m", boost::program_options::value(&methods), "select which methods to use, possibly comma separated (default: all)")
 			("strats,r", boost::program_options::value(&strats), "select which poset consistency strategies to use, possibly comma separated (default: all)")
@@ -84,6 +85,10 @@ int cli::read_options(cli_options& opt, int argc, char** argv)
 	if (vm.count("no-prior")) {
 		opt.prior = false;
 	}
+
+  if (vm.count("no-cv")) {
+    opt.cv = false;
+  }
 
 	if(!vm.count("action"))
 	{

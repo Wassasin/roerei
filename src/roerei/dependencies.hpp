@@ -47,18 +47,20 @@ public:
 	{
 		dependant_obj_matrix_t dependants_objs(d.objects.size(), d.objects.size());
 		d.dependency_matrix.citerate([&](dataset_t::dependency_matrix_t::const_row_proxy_t const& xs) {
-			for(auto const& kvp : xs)
-			{
-				if(kvp.second > 0)
-				{
-					auto it = dependency_map.find(kvp.first);
-					if(it == dependency_map.end())
-						return;
-					dependants_objs.set(std::make_pair(it->second, xs.row_i));
+			for(auto const& kvp : xs) {
+				if(kvp.second <= 0) {
+					continue;
 				}
+
+				auto it = dependency_map.find(kvp.first);
+				if(it == dependency_map.end()) {
+					continue;
+				}
+
+				// Dependency -> dependant
+				dependants_objs.set(std::make_pair(it->second, xs.row_i));
 			}
 		});
-
 		return dependants_objs;
 	}
 

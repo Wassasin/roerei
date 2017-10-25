@@ -40,6 +40,10 @@ public:
 		auto const d(posetcons_canonical::consistentize(d_orig));
 
 		posetcons_pessimistic pc(d);
+		auto depmap(d.create_dependency_map());
+
+		auto obj_dependants(dependencies::create_obj_dependants(d));
+		//obj_dependants.transitive();
 
 		d.objects.iterate([&](object_id_t i, uri_t const& uri) {
 			if(filter && uri.find(*filter) == std::string::npos)
@@ -89,6 +93,25 @@ public:
 				}
 			})();
 
+			auto print_dep_obj_f = ([&](dependency_id_t const d_id, bool print_failure) {
+				auto it = depmap.find(d_id);
+				if (it == depmap.end()) {
+					return std::string("");
+				}
+				std::stringstream sstr;
+				sstr << "(obj " << it->second.unseal() << ") ";
+
+				if(obj_dependants[std::make_pair(it->second, i)]) {
+					sstr << "D ";
+					if(obj_dependants[std::make_pair(i, it->second)]) {
+						sstr << "R ";
+					}
+				} else if(print_failure){
+					sstr << "FAILURE ";
+				}
+				return sstr.str();
+			});
+
 			std::cout << i.unseal() << " " << d.objects[i] << " ";
 			print(d.feature_matrix[i]);
 			std::cout << std::endl;
@@ -103,7 +126,8 @@ public:
 				for(auto const& kvp : d.dependency_matrix[i])
 				{
 					empty = false;
-					std::cout << kvp.second << "*" << kvp.first.unseal() << " " << d.dependencies[kvp.first] << std::endl;
+					std::cout << kvp.second << "*" << kvp.first.unseal() << " " <<
+						print_dep_obj_f(kvp.first, true) << d.dependencies[kvp.first] << std::endl;
 				}
 				if(empty)
 					std::cout << "Empty set" << std::endl;
@@ -116,7 +140,7 @@ public:
 				if(std::binary_search(result.required_deps.begin(), result.required_deps.end(), kvp.first))
 					std::cout << "! ";
 
-				std::cout << kvp.second << " <= " << kvp.first.unseal() << " " << d.dependencies[kvp.first] << std::endl;
+				std::cout << kvp.second << " <= " << kvp.first.unseal() << " " << print_dep_obj_f(kvp.first, false) << d.dependencies[kvp.first] << std::endl;
 			}
 
 			std::cout << "-- Missing" << std::endl;

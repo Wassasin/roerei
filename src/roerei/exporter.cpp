@@ -7,6 +7,7 @@
 #include <roerei/export/data_dump.hpp>
 
 #include <roerei/structure_exporter.hpp>
+#include <roerei/ml/cv.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -59,12 +60,14 @@ namespace roerei
 		std::string const& source_path,
     std::string const& output_path,
 		posetcons_type const p = posetcons_type::pessimistic,
-		bool const prior = true
+    bool const prior = true,
+    size_t const cv_n = cv::default_n,
+    size_t const cv_k = cv::default_k
 	)
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-      if(result.prior == prior && result.ml == ml_type::knn && result.strat == p && result.corpus == dataset) {
+      if(result.n == cv_n && result.k == cv_k && result.prior == prior && result.ml == ml_type::knn && result.strat == p && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -101,7 +104,8 @@ namespace roerei
     {
         std::vector<cv_result_t> results;
         storage::read_result([&](cv_result_t const& result) {
-            if(result.prior && result.ml == ml_type::adarank && result.strat == p && result.corpus == dataset) {
+            if(result.n == cv::default_n && result.k == cv::default_k &&
+               result.prior && result.ml == ml_type::adarank && result.strat == p && result.corpus == dataset) {
                 results.emplace_back(result);
             }
         }, source_path);
@@ -161,7 +165,8 @@ namespace roerei
 	{
 		std::vector<cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-      if(result.prior && result.ml == ml_type::naive_bayes && result.strat == p && result.corpus == dataset) {
+      if(result.n == cv::default_n && result.k == cv::default_k &&
+         result.prior && result.ml == ml_type::naive_bayes && result.strat == p && result.corpus == dataset) {
 				results.emplace_back(result);
 			}
 		}, source_path);
@@ -299,12 +304,14 @@ namespace roerei
       std::string const& dataset,
       std::string const& source_path,
       std::string const& output_path,
-      posetcons_type const p = posetcons_type::pessimistic
+      posetcons_type const p = posetcons_type::pessimistic,
+      size_t const cv_n = cv::default_n,
+      size_t const cv_k = cv::default_k
   )
   {
     std::map<ml_type, cv_result_t> results;
 		storage::read_result([&](cv_result_t const& result) {
-      if(result.prior && result.strat == p && result.corpus == dataset) {
+      if(result.n == cv_n && result.k == cv::default_k && result.prior && result.strat == p && result.corpus == dataset) {
         auto it = results.find(result.ml);
         if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
           return;

@@ -120,7 +120,7 @@ void cli::exec_measure(cli_options& opt)
 	for(auto&& corpus : opt.corpii) {
 		for(auto&& strat : opt.strats) {
 			for(auto&& method : opt.methods) {
-				tester::order(m, corpus, strat, method, opt.prior, opt.silent);
+        tester::order(m, corpus, strat, method, opt.prior, opt.silent, opt.cv);
 			}
 		}
 	}

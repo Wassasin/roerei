@@ -30,9 +30,10 @@ private:
 	tester() = delete;
 
 public:
-	inline static void order(multitask& m, std::string const& corpus, posetcons_type strat, ml_type method, bool prior=true, bool silent=false, uint_fast32_t seed = 1337)
+	inline static void order(multitask& m, std::string const& corpus, posetcons_type strat, ml_type method, bool prior=true, bool silent=false, bool do_cv = true, uint_fast32_t seed = 1337)
 	{
-		size_t const cv_n = 10, cv_k = 1;
+		size_t const cv_n = do_cv ? cv::default_n : 1;
+		size_t const cv_k = do_cv ? cv::default_k : 1;
 
 		std::set<knn_params_t> ks;
 		std::set<nb_params_t> nbs;
@@ -188,6 +189,13 @@ public:
 					[d_ptr, gen_trainset_sane_f_ptr, knn_params](cv::trainset_t const& trainset) {
 						return [&, gen_trainset_sane_f_ptr, knn_params](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
+							{
+								size_t c = 0;
+								trainset_sane.citerate([&c](auto) {
+									c++;
+								});
+								std::cerr << "true train " << c << std::endl;
+							}
 							knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, *d_ptr);
 							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row));
 						};
