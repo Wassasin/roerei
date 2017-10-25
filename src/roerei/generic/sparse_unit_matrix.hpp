@@ -128,6 +128,52 @@ public:
 		}
 		return false;
 	}
+
+	/**
+	 * Implementation of Kahn's algorithm
+	 * Emits order of elements via f
+	 */
+	template<typename F>
+	void topological_sort(F const& f) const
+	{
+		auto matrix = *this;
+
+		auto find_nodes_without_incoming_f = [&]() {
+			std::set<M> s;
+			M::iterate([&s](M i) {
+				s.emplace(i);
+			});
+
+			// Erase all nodes with incoming edges
+			M::iterate([&s](M i) {
+				s.erase(matrix.data[i].begin(), matrix.data[i].end());
+			});
+			return s;
+		};
+
+		std::set<M> s(find_nodes_without_incoming_f());
+		while (!s.empty()) {
+			auto it = s.begin();
+			M n = *it;
+			s.erase(it);
+
+			f(n);
+			std::set<M> e = data[n]; // Make copy
+			matrix.data[n].clear();
+
+			std::set<M> ss(find_nodes_without_incoming_f());
+			std::set_intersection(
+				e.begin(), e.end(),
+				ss.begin(), ss.end(),
+				std::inserter(s)
+			);
+		}
+
+		// If not empty then we were not operating on a DAG
+		M::iterate([&matrix](M i) {
+			assert(matrix.data[i].empty());
+		});
+	}
 };
 
 }

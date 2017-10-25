@@ -70,13 +70,13 @@ public:
 			std::exit(1);
 		}
 
-		/*for(size_t x = 0; x < d.objects.size(); ++x) {
+		for(size_t x = 0; x < d.objects.size(); ++x) {
 			for(size_t y = x+1; y < d.objects.size(); ++y) {
 				if (comp_f(objs_ordered[y], objs_ordered[x])) { // Inverse should never be true
 					std::cerr << "mystery " << x << " " << y << "(" << objs_ordered[x].unseal() << " " << objs_ordered[y].unseal() << ")" << std::endl;
 				}
 			}
-		}*/
+		}
 
 		encapsulated_vector<object_id_t, uri_t> objects;
 		objects.reserve(d.objects.size());

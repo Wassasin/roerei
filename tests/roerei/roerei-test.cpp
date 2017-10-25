@@ -135,15 +135,21 @@ START_TEST(test_compact_matrix_iter_eq) // Preserve values after init with iter 
 }
 END_TEST
 
+auto create_default_cyclic()
+{
+    roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(4, 4);
+    m.set(std::make_pair(0, 1));
+    m.set(std::make_pair(0, 2));
+    m.set(std::make_pair(1, 2));
+    m.set(std::make_pair(2, 0));
+    m.set(std::make_pair(2, 3));
+    m.set(std::make_pair(3, 3));
+    return m;
+}
+
 START_TEST(test_sparse_unit_matrix_transitive)
 {
-  roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(4, 4);
-  m.set(std::make_pair(0, 1));
-  m.set(std::make_pair(0, 2));
-  m.set(std::make_pair(1, 2));
-  m.set(std::make_pair(2, 0));
-  m.set(std::make_pair(2, 3));
-  m.set(std::make_pair(3, 3));
+  auto m(create_default_cyclic());
 
   m.transitive();
 
@@ -161,7 +167,7 @@ START_TEST(test_sparse_unit_matrix_transitive)
 }
 END_TEST
 
-START_TEST(test_sparse_unit_matrix_non_cyclic)
+auto create_default_non_cyclic()
 {
   roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(5, 5);
   m.set(std::make_pair(0, 1));
@@ -170,6 +176,60 @@ START_TEST(test_sparse_unit_matrix_non_cyclic)
   m.set(std::make_pair(1, 3));
   m.set(std::make_pair(3, 4));
   m.set(std::make_pair(2, 4));
+  return m;
+}
+
+auto generate_dag(size_t const elements, size_t const depth, size_t const edges)
+{
+  typedef size_t rank_t;
+  std::mt19937 gen(1337);
+
+  roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(elements, elements);
+
+  roerei::encapsulated_vector<roerei::object_id_t, rank_t> rank_map;
+  for(rank_t r = 0; r < depth; ++r) {
+    for(size_t i = 0; i <= elements/depth && rank_map.size() < elements; ++i) {
+      rank_map.emplace_back(r);
+    }
+  }
+  std::shuffle(rank_map.begin(), rank_map.end(), gen);
+
+  std::map<rank_t, std::vector<roerei::object_id_t>> ranks;
+  rank_map.iterate([&ranks](roerei::object_id_t i, rank_t r) {
+    ranks[r].emplace_back(i);
+  });
+
+  for(size_t i = 0; i < edges; ++i) {
+    do {
+      std::uniform_int_distribution<> from_dist(0, depth-2);
+      rank_t a = from_dist(gen);
+
+      std::uniform_int_distribution<> to_dist(a+1, depth-1);
+      rank_t b = to_dist(gen);
+
+      auto get_random_from_rank_f = [&](rank_t const r) {
+        std::uniform_int_distribution<> dist(0, ranks[r].size()-1);
+        return ranks[r][dist(gen)];
+      };
+
+      roerei::object_id_t x(get_random_from_rank_f(a));
+      roerei::object_id_t y(get_random_from_rank_f(b));
+
+      if (m[std::make_pair(x, y)]) {
+        continue;
+      }
+
+      m.set(std::make_pair(x, y));
+      break;
+    } while (true);
+  }
+
+  return m;
+}
+
+START_TEST(test_sparse_unit_matrix_non_cyclic)
+{
+  auto m(create_default_non_cyclic());
 
   m.transitive();
 
@@ -192,6 +252,54 @@ START_TEST(test_sparse_unit_matrix_non_cyclic)
 }
 END_TEST
 
+START_TEST(test_topological_sort)
+{
+  auto m(generate_dag(10, 2, 2));
+
+  m.transitive();
+
+  /*for(size_t i = 0; i < m.size_m(); ++i) {
+    m.set(std::make_pair(i, i), false);
+  }*/
+
+  for(size_t i = 0; i < m.size_m(); ++i) {
+    for(size_t j = 0; j < m.size_m(); ++j) {
+      std::cout << (int)m[std::make_pair(i, j)] << ' ';
+    }
+    std::cout << std::endl;
+  }
+
+  std::vector<size_t> xs(m.size_m());
+  std::iota(xs.begin(), xs.end(), 0);
+  std::reverse(xs.begin(), xs.end());
+
+  auto comp_f = [&](size_t i, size_t j) {
+    std::cout << i << ' ' << j << " - " << (int)m[std::make_pair(i, j)] << std::endl;
+    return m[std::make_pair(i, j)];
+  };
+
+  std::cout << std::endl;
+  std::stable_sort(xs.begin(), xs.end(), comp_f);
+
+  ck_assert(std::is_sorted(xs.begin(), xs.end(), comp_f));
+
+  std::cout << std::endl;
+
+  for(auto x : xs) {
+    std::cout << x << ' ';
+  }
+
+  std::cout << std::endl;
+  std::cout << std::endl;
+
+  for(size_t x = 0; x < m.size_m(); ++x) {
+    for(size_t y = x+1; y < m.size_m(); ++y) {
+      ck_assert(!comp_f(xs[y], xs[x]));
+    }
+  }
+}
+END_TEST
+
 Suite* roerei_suite(void)
 {
 	Suite* s = suite_create("roerei");
@@ -203,6 +311,7 @@ Suite* roerei_suite(void)
 	tcase_add_test(tc_core, test_compact_matrix_iter_eq);
   tcase_add_test(tc_core, test_sparse_unit_matrix_transitive);
   tcase_add_test(tc_core, test_sparse_unit_matrix_non_cyclic);
+  tcase_add_test(tc_core, test_topological_sort);
 
 	suite_add_tcase(s, tc_core);
 
