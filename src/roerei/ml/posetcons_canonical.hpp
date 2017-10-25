@@ -110,7 +110,6 @@ public:
 	template<typename TRAINSET, typename TESTROW>
 	static split_sparse_matrix_t<TRAINSET> exec(TRAINSET const& train_m, TESTROW const& test_row)
 	{
-		std::cout << "i " << test_row.row_i.unseal() << std::endl;
 		return split_sparse_matrix_t<TRAINSET>(train_m, test_row.row_i);
 	}
 };

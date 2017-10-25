@@ -15,14 +15,16 @@ class sparse_unit_matrix_t
 	const size_t m, n;
 	encapsulated_vector<M, std::set<N>> data;
 
-	void transitive_helper(M s, M v, sparse_unit_matrix_t<M, M>& tc) const
+	void transitive_helper(M i, std::set<M>& visited)
 	{
-		tc.set(std::make_pair(s, v));
+		if(!visited.emplace(i).second)
+			return;
 
-		for(M i : data[v]) {
-			if (!tc[std::make_pair(s, i)]) {
-				transitive_helper(s, i, tc);
-			}
+		std::set<M> const old_row = data[i]; // Copy
+		for(M j : old_row)
+		{
+			transitive_helper(j, visited);
+			data[i].insert(data[j].begin(), data[j].end());
 		}
 	}
 
@@ -55,7 +57,7 @@ class sparse_unit_matrix_t
 			return;
 		}
 
-		for(M const n : data[m]) {
+		for(auto n : data[m]) {
 			topological_sort_visit(n, marked, f);
 		}
 		marked.emplace(m);
@@ -110,14 +112,9 @@ public:
 	{
 		assert(m == n);
 
-		sparse_unit_matrix_t<M, M> tc(m, m);
-		for(size_t i = 0; i < m; ++i) {
-			transitive_helper(i, i, tc);
-		}
-
-		for(size_t i = 0; i < m; ++i) {
-			set(i, tc[i]);
-		}
+		std::set<M> visited;
+		for(size_t i = 0; i < m; ++i)
+			transitive_helper(i, visited);
 	}
 
 	sparse_unit_matrix_t<N, M> transpose() const

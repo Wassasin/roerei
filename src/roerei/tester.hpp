@@ -194,7 +194,6 @@ public:
 								trainset_sane.citerate([&c](auto) {
 									c++;
 								});
-								std::cerr << "true train " << c << std::endl;
 							}
 							knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, *d_ptr);
 							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row));

@@ -42,9 +42,6 @@ public:
 		posetcons_pessimistic pc(d);
 		auto depmap(d.create_dependency_map());
 
-		auto obj_dependants(dependencies::create_obj_dependants(d));
-		//obj_dependants.transitive();
-
 		d.objects.iterate([&](object_id_t i, uri_t const& uri) {
 			if(filter && uri.find(*filter) == std::string::npos)
 				return;
@@ -101,14 +98,6 @@ public:
 				std::stringstream sstr;
 				sstr << "(obj " << it->second.unseal() << ") ";
 
-				if(obj_dependants[std::make_pair(it->second, i)]) {
-					sstr << "D ";
-					if(obj_dependants[std::make_pair(i, it->second)]) {
-						sstr << "R ";
-					}
-				} else if(print_failure){
-					sstr << "FAILURE ";
-				}
 				return sstr.str();
 			});
 
