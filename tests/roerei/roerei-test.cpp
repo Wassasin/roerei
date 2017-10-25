@@ -192,6 +192,7 @@ auto generate_dag(size_t const elements, size_t const depth, size_t const edges)
       rank_map.emplace_back(r);
     }
   }
+
   std::shuffle(rank_map.begin(), rank_map.end(), gen);
 
   std::map<rank_t, std::vector<roerei::object_id_t>> ranks;
@@ -203,11 +204,15 @@ auto generate_dag(size_t const elements, size_t const depth, size_t const edges)
     do {
       std::uniform_int_distribution<> from_dist(0, depth-2);
       rank_t a = from_dist(gen);
-
       std::uniform_int_distribution<> to_dist(a+1, depth-1);
       rank_t b = to_dist(gen);
 
+      if (ranks[a].empty() || ranks[b].empty()) {
+        continue;
+      }
+
       auto get_random_from_rank_f = [&](rank_t const r) {
+        ck_assert(ranks[r].size() > 0);
         std::uniform_int_distribution<> dist(0, ranks[r].size()-1);
         return ranks[r][dist(gen)];
       };
@@ -254,8 +259,7 @@ END_TEST
 
 START_TEST(test_topological_sort)
 {
-  auto m(generate_dag(10, 2, 2));
-
+  auto m(generate_dag(1000, 500, 3000));
   m.transitive();
 
   for(size_t i = 0; i < m.size_m(); ++i) {
@@ -269,7 +273,6 @@ START_TEST(test_topological_sort)
   std::reverse(xs.begin(), xs.end());
 
   auto comp_f = [&](roerei::object_id_t i, roerei::object_id_t j) {
-    //std::cout << i << ' ' << j << " - " << (int)m[std::make_pair(i, j)] << std::endl;
     return m[std::make_pair(i, j)];
   };
 
@@ -279,6 +282,30 @@ START_TEST(test_topological_sort)
     for(size_t y = x+1; y < m.size_m(); ++y) {
       ck_assert(!comp_f(xs[y], xs[x]));
     }
+  }
+}
+END_TEST
+
+START_TEST(test_transitive)
+{
+  auto m(generate_dag(1000, 500, 3000));
+  m.transitive();
+
+  auto n(m); // Copy
+  n.transitive();
+
+  for(size_t i = 0; i < m.size_m(); ++i) {
+    if (m[i] != n[i]) {
+      for(auto x : m[i]) {
+        std::cout << x.unseal() << ' ';
+      }
+      std::cout << std::endl;
+      for(auto y : n[i]) {
+        std::cout << y.unseal() << ' ';
+      }
+      std::cout << std::endl;
+    }
+    ck_assert(m[i] == n[i]);
   }
 }
 END_TEST
@@ -295,6 +322,7 @@ Suite* roerei_suite(void)
   tcase_add_test(tc_core, test_sparse_unit_matrix_transitive);
   tcase_add_test(tc_core, test_sparse_unit_matrix_non_cyclic);
   tcase_add_test(tc_core, test_topological_sort);
+  tcase_add_test(tc_core, test_transitive);
 
 	suite_add_tcase(s, tc_core);
 
