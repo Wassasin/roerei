@@ -59,7 +59,7 @@ namespace roerei
 		std::string const& dataset,
 		std::string const& source_path,
     std::string const& output_path,
-		posetcons_type const p = posetcons_type::pessimistic,
+		posetcons_type const p = posetcons_type::canonical,
     bool const prior = true,
     size_t const cv_n = cv::default_n,
     size_t const cv_k = cv::default_k
@@ -99,7 +99,7 @@ namespace roerei
       std::string const& dataset,
       std::string const& source_path,
       std::string const& output_path,
-      posetcons_type const p = posetcons_type::pessimistic
+      posetcons_type const p = posetcons_type::canonical
     )
     {
         std::vector<cv_result_t> results;
@@ -160,7 +160,7 @@ namespace roerei
 		std::string const& dataset,
 		std::string const& source_path,
     std::string const& output_path,
-    posetcons_type const p = posetcons_type::pessimistic
+    posetcons_type const p = posetcons_type::canonical
 	)
 	{
 		std::vector<cv_result_t> results;
@@ -304,7 +304,7 @@ namespace roerei
       std::string const& dataset,
       std::string const& source_path,
       std::string const& output_path,
-      posetcons_type const p = posetcons_type::pessimistic,
+      posetcons_type const p = posetcons_type::canonical,
       size_t const cv_n = cv::default_n,
       size_t const cv_k = cv::default_k
   )
@@ -352,7 +352,7 @@ namespace roerei
 		std::string const& dataset,
 		std::string const& source_path,
     std::string const& output_path,
-		posetcons_type const p = posetcons_type::pessimistic
+		posetcons_type const p = posetcons_type::canonical
 	)
 	{
 		auto find_overwrite_f = [](std::map<ml_type, cv_result_t>& results, cv_result_t const& result) {
@@ -417,7 +417,7 @@ namespace roerei
 			auto prior_it = prior_results.find(mlt);
 			auto nonprior_it = nonprior_results.find(mlt);
 			if (prior_it == prior_results.end() || nonprior_it == nonprior_results.end()) {
-				throw std::runtime_error(std::string("Could not find ") + to_string(mlt) + " for " + dataset);
+				throw std::runtime_error(std::string("Could not find ") + to_string(mlt) + " for " + dataset + " (prior or nonprior)");
 			}
 
 			emit_f(prior_it->second, nonprior_it->second);
