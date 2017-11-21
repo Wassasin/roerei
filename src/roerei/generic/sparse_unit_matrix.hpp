@@ -151,10 +151,10 @@ public:
 		while(marked.size() != size_m()) { // While there are unmarked nodes
 			size_t i = 0;
 			for(auto m : marked) {
-				if (m == i) {
-					++i;
-					continue;
+				if (m.unseal() != i) {
+					break;
 				}
+				++i;
 			}
 			topological_sort_visit(i, marked, f);
 		}

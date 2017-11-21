@@ -179,10 +179,10 @@ auto create_default_non_cyclic()
   return m;
 }
 
-auto generate_dag(size_t const elements, size_t const depth, size_t const edges)
+auto generate_dag(size_t const elements, size_t const depth, size_t const edges, size_t seed = 1337)
 {
   typedef size_t rank_t;
-  std::mt19937 gen(1337);
+  std::mt19937 gen(seed);
 
   roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(elements, elements);
 
@@ -259,29 +259,35 @@ END_TEST
 
 START_TEST(test_topological_sort)
 {
-  auto m(generate_dag(1000, 500, 3000));
-  m.transitive();
+  auto f = [](size_t seed) {
+    auto m(generate_dag(2000, 500, 7000, seed));
+    m.transitive();
 
-  for(size_t i = 0; i < m.size_m(); ++i) {
-    m.set(std::make_pair(i, i), false);
-  }
+    for(size_t i = 0; i < m.size_m(); ++i) {
+      m.set(std::make_pair(i, i), false);
+    }
 
-  std::vector<roerei::object_id_t> xs;
-  m.topological_sort([&xs](roerei::object_id_t x) {
-    xs.emplace_back(x);
-  });
-  std::reverse(xs.begin(), xs.end());
+    std::vector<roerei::object_id_t> xs;
+    m.topological_sort([&xs](roerei::object_id_t x) {
+      xs.emplace_back(x);
+    });
+    std::reverse(xs.begin(), xs.end());
 
-  auto comp_f = [&](roerei::object_id_t i, roerei::object_id_t j) {
-    return m[std::make_pair(i, j)];
+    auto comp_f = [&](roerei::object_id_t i, roerei::object_id_t j) {
+      return m[std::make_pair(i, j)];
+    };
+
+    ck_assert(std::is_sorted(xs.begin(), xs.end(), comp_f));
+
+    for(size_t x = 0; x < m.size_m(); ++x) {
+      for(size_t y = x+1; y < m.size_m(); ++y) {
+        ck_assert(!comp_f(xs[y], xs[x]));
+      }
+    }
   };
 
-  ck_assert(std::is_sorted(xs.begin(), xs.end(), comp_f));
-
-  for(size_t x = 0; x < m.size_m(); ++x) {
-    for(size_t y = x+1; y < m.size_m(); ++y) {
-      ck_assert(!comp_f(xs[y], xs[x]));
-    }
+  for (size_t i = 1337; i < 1338; ++i) {
+    f(i);
   }
 }
 END_TEST

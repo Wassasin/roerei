@@ -39,14 +39,16 @@ public:
 	{
 		auto const d(posetcons_canonical::consistentize(d_orig));
 
-		posetcons_pessimistic pc(d);
+		//posetcons_canonical pc(d);
 		auto depmap(d.create_dependency_map());
+
+		std::cout << "d size " << d.dependencies.size() << std::endl;
 
 		d.objects.iterate([&](object_id_t i, uri_t const& uri) {
 			if(filter && uri.find(*filter) == std::string::npos)
 				return;
 
-			auto feature_matrix(pc.exec(d.feature_matrix, i));
+			auto feature_matrix(posetcons_canonical::exec(d.feature_matrix, d.feature_matrix[i]));
 			std::shared_ptr<nb_preload_data_t> nb_data;
 
 			performance::result_t result = ([&]() {
@@ -93,7 +95,15 @@ public:
 			auto print_dep_obj_f = ([&](dependency_id_t const d_id, bool print_failure) {
 				auto it = depmap.find(d_id);
 				if (it == depmap.end()) {
-					return std::string("");
+					std::stringstream ss;
+					ss << "nope ";
+					uri_t u = d.dependencies[d_id];
+					d.objects.iterate([&](object_id_t o_id, uri_t v) {
+						if (u == v) {
+							ss << o_id.unseal() << ' ';
+						}
+					});
+					return ss.str();
 				}
 				std::stringstream sstr;
 				sstr << "(obj " << it->second.unseal() << ") ";

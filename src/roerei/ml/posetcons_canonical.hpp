@@ -30,43 +30,6 @@ public:
 		});
 		std::reverse(objs_ordered.begin(), objs_ordered.end());
 
-		for(size_t x = 0; x < d.objects.size(); ++x) {
-			for(size_t y = x+1; y < d.objects.size(); ++y) {
-				if (dependants[std::make_pair(x, y)] && dependants[std::make_pair(y, x)]) { // Should never be reflexive
-					std::cerr << "reflexive " << x << " " << y << "(" << objs_ordered[x].unseal() << " " << objs_ordered[y].unseal() << ")" << std::endl;
-					//std::exit(1);
-				}
-			}
-		}
-
-		/*for(size_t x = 0; x < d.objects.size(); ++x) {
-			if (dependants[x] != dependants_double[x]) {
-				std::cerr << "relation is not transitive" << std::endl;
-				std::exit(1);
-			}
-		}*/
-
-		boost::optional<object_id_t> object_opt;
-		if (dependants.find_cyclic([&](object_id_t i) {
-			std::cerr << " <- " << i.unseal() << " " << d.objects[i];
-			object_opt = i;
-		})) {
-			std::cerr << std::endl;
-			for(auto const& kvp : d.dependency_matrix[*object_opt]) {
-				std::cerr << kvp.second << "*" << kvp.first.unseal() << " " << d.dependencies[kvp.first] << std::endl;
-			}
-			std::cerr << "CYCLIC DETECTED" << std::endl;
-			std::exit(1);
-		}
-
-		for(size_t x = 0; x < d.objects.size(); ++x) {
-			for(size_t y = x+1; y < d.objects.size(); ++y) {
-				if (dependants[std::make_pair(objs_ordered[y], objs_ordered[x])]) { // Inverse should never be true
-					std::cerr << "mystery " << x << " " << y << "(" << objs_ordered[x].unseal() << " " << objs_ordered[y].unseal() << ")" << std::endl;
-				}
-			}
-		}
-
 		encapsulated_vector<object_id_t, uri_t> objects;
 		objects.reserve(d.objects.size());
 		objs_ordered.iterate([&](object_id_t /*new_id*/, object_id_t old_id) {
