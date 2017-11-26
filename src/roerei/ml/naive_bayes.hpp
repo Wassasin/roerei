@@ -36,13 +36,12 @@ struct nb_preload_data_t
 
 		d.objects.keys([&](object_id_t i) {
 			std::vector<dependency_id_t> wl, bl;
-			for(object_id_t forbidden : dependants_trans[i])
-			{
+			dependants_trans.citerate(i, [&](object_id_t forbidden) {
 				auto it = dependency_revmap.find(forbidden);
-				if(it == dependency_revmap.end())
-					continue;
-				bl.emplace_back(it->second);
-			}
+				if(it != dependency_revmap.end()) {
+					bl.emplace_back(it->second);
+				}
+			});
 
 			std::sort(bl.begin(), bl.end());
 
@@ -79,8 +78,13 @@ private:
 	MATRIX const& trainingset;
 
 private:
+	struct rank_buffers_t {
+		std::vector<object_id_t> dependant_objs;
+		std::vector<object_id_t> candidates;
+	};
+
 	template<typename ROW>
-	float rank(dependency_id_t phi_id, ROW const& test_row, std::vector<object_id_t> const& whitelist) const
+	float rank(dependency_id_t phi_id, ROW const& test_row, std::vector<object_id_t> const& whitelist, rank_buffers_t& buffers) const
 	{
 		// Feature -> set of objects with feature
 		// Intersect with proofs which use phi
@@ -91,25 +95,28 @@ private:
 
 		// TODO encapsulate feature weight (might yield better performance)
 
-		std::set<object_id_t> const& dependant_objs = pld.dependants[phi_id];
-		std::vector<object_id_t> candidates;
-		candidates.reserve(std::min(whitelist.size(), dependant_objs.size())); // Upper bound reserve
-
-		set_binary_intersect(whitelist, dependant_objs, [&](object_id_t i) {
-			candidates.emplace_back(i);
+		buffers.dependant_objs.clear();
+		pld.dependants.citerate(phi_id, [&](object_id_t const i) {
+			buffers.dependant_objs.emplace_back(i);
 		});
 
-		if(candidates.empty())
+		buffers.candidates.clear();
+
+		set_binary_intersect(whitelist, buffers.dependant_objs, [&](object_id_t i) {
+			buffers.candidates.emplace_back(i);
+		});
+
+		if(buffers.candidates.empty())
 			return -INFINITY;
 
-		size_t P = candidates.size() + tau;
+		size_t P = buffers.candidates.size() + tau;
 		float log_p = std::log(static_cast<float>(P));
 		float result = log_p;
 
 		for(auto const& kvp_j : test_row)
 		{
 			size_t p_j = tau;
-			set_smart_intersect(pld.feature_occurance[kvp_j.first], candidates, [&](object_id_t) { p_j++; });
+			set_smart_intersect(pld.feature_occurance[kvp_j.first], buffers.candidates, [&](object_id_t) { p_j++; });
 
 			if(p_j == 0)
 				result += kvp_j.second * sigma;
@@ -171,9 +178,14 @@ public:
 			return ranks;
 
 		ranks.reserve(pld.allowed_dependencies.size());
+
+		rank_buffers_t buffers;
+		buffers.dependant_objs.reserve(d.objects.size());
+		buffers.candidates.reserve(d.objects.size());
+
 		for(dependency_id_t phi_id : pld.allowed_dependencies[test_row_id])
 		{
-			float r = rank(phi_id, test_row, whitelist);
+			float r = rank(phi_id, test_row, whitelist, buffers);
 
 			if(r <= 0.0f)
 				continue;

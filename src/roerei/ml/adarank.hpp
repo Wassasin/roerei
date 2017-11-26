@@ -74,7 +74,7 @@ private:
 
 		auto dependants = dependencies::create_dependants(d);
 		d.dependencies.keys([&](dependency_id_t dep_id) {
-			for (object_id_t obj_id : dependants[dep_id]) {
+			dependants.citerate(dep_id, [&](object_id_t const obj_id) {
 				try {
 					for (std::pair<feature_id_t, float> kvp : trainingset[obj_id]) {
 						if (kvp.second > 0.0f) {
@@ -84,7 +84,7 @@ private:
 				} catch (std::out_of_range) {
 					// Do nothing
 				}
-			}
+			});
 		});
 
 		return document_query_summary;

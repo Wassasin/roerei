@@ -4,6 +4,7 @@
 #include <roerei/generic/sliced_sparse_matrix.hpp>
 #include <roerei/generic/compact_sparse_matrix.hpp>
 #include <roerei/generic/sparse_unit_matrix.hpp>
+#include <roerei/generic/full_unit_matrix.hpp>
 
 #include <roerei/generic/id_t.hpp>
 
@@ -137,7 +138,7 @@ END_TEST
 
 auto create_default_cyclic()
 {
-    roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(4, 4);
+    roerei::full_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(4, 4);
     m.set(std::make_pair(0, 1));
     m.set(std::make_pair(0, 2));
     m.set(std::make_pair(1, 2));
@@ -169,7 +170,7 @@ END_TEST
 
 auto create_default_non_cyclic()
 {
-  roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(5, 5);
+  roerei::full_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(5, 5);
   m.set(std::make_pair(0, 1));
   m.set(std::make_pair(0, 2));
   m.set(std::make_pair(2, 1));
@@ -184,7 +185,7 @@ auto generate_dag(size_t const elements, size_t const depth, size_t const edges,
   typedef size_t rank_t;
   std::mt19937 gen(seed);
 
-  roerei::sparse_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(elements, elements);
+  roerei::full_unit_matrix_t<roerei::object_id_t, roerei::object_id_t> m(elements, elements);
 
   roerei::encapsulated_vector<roerei::object_id_t, rank_t> rank_map;
   for(rank_t r = 0; r < depth; ++r) {
@@ -301,17 +302,9 @@ START_TEST(test_transitive)
   n.transitive();
 
   for(size_t i = 0; i < m.size_m(); ++i) {
-    if (m[i] != n[i]) {
-      for(auto x : m[i]) {
-        std::cout << x.unseal() << ' ';
-      }
-      std::cout << std::endl;
-      for(auto y : n[i]) {
-        std::cout << y.unseal() << ' ';
-      }
-      std::cout << std::endl;
+    for(size_t j = 0; j < m.size_n(); ++j) {
+      ck_assert(m[std::make_pair(i, j)] == n[std::make_pair(i, j)]);
     }
-    ck_assert(m[i] == n[i]);
   }
 }
 END_TEST

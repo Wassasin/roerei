@@ -1,31 +1,33 @@
 #pragma once
 
-#include <roerei/generic/encapsulated_vector.hpp>
-
 #include <vector>
-#include <set>
 #include <algorithm>
 
 namespace roerei
 {
 
 template<typename M, typename N>
-class sparse_unit_matrix_t
+class full_unit_matrix_t
 {
 	const size_t m, n;
-	encapsulated_vector<M, std::set<N>> data;
+	std::vector<bool> data;
 
-	void transitive_helper(M i, std::set<M>& visited)
+	void transitive_helper(M i, std::vector<bool>& visited)
 	{
-		if(!visited.emplace(i).second)
-			return;
+		auto it = visited.begin() + i.unseal();
 
-		std::set<M> const old_row = data[i]; // Copy
-		for(M j : old_row)
-		{
-			transitive_helper(j, visited);
-			data[i].insert(data[j].begin(), data[j].end());
+		if (*it) {
+			return;
 		}
+
+		(*it) = true;
+
+		citerate(i, [&](M j) {
+			transitive_helper(j, visited);
+			citerate(j, [&](M k) {
+				set(std::make_pair(i, k));
+			});
+		});
 	}
 
 	template<typename F>
@@ -35,7 +37,7 @@ class sparse_unit_matrix_t
 			return false;
 		}
 
-		for(M y : data[x]) {
+		citerate(x, [&](M y) {
 			if (y == needle) {
 				f(y);
 				return true;
@@ -45,7 +47,7 @@ class sparse_unit_matrix_t
 				f(y);
 				return true;
 			}
-		}
+		});
 
 		return false;
 	}
@@ -57,45 +59,47 @@ class sparse_unit_matrix_t
 			return;
 		}
 
-		for(auto ni : data[mi]) {
+		citerate(mi, [&](N ni) {
 			topological_sort_visit(ni, marked, f);
-		}
+		});
+
 		marked.emplace(mi);
 		f(mi);
 	}
 
 public:
-	sparse_unit_matrix_t(sparse_unit_matrix_t&&) = default;
-	//sparse_unit_matrix_t(sparse_unit_matrix_t&) = delete;
-	sparse_unit_matrix_t(sparse_unit_matrix_t const&) = default;
+	full_unit_matrix_t(full_unit_matrix_t&&) = default;
+	full_unit_matrix_t(full_unit_matrix_t const&) = default;
 
-	sparse_unit_matrix_t(size_t const _m, size_t const _n)
+	full_unit_matrix_t(size_t const _m, size_t const _n)
 		: m(_m)
 		, n(_n)
-		, data(m)
+		, data(m*n)
 	{}
-
-	std::set<N> const& operator[](M const i) const
-	{
-		return data[i];
-	}
 
 	bool operator[](std::pair<M, N> const& p) const
 	{
-		return (data[p.first].find(p.second) != data[p.first].end());
+		return data[p.first.unseal()*n+p.second.unseal()];
 	}
 
 	void set(std::pair<M, N> const& p, bool value = true)
 	{
-		if(value)
-			data[p.first].emplace_hint(data[p.first].end(), p.second);
-		else
-			data[p.first].erase(p.second);
+		data[p.first.unseal()*n+p.second.unseal()] = value;
 	}
 
-	void set(M const& i, std::set<N> const& js)
+	template<typename F>
+	void citerate(M mi, F&& f) const
 	{
-		data[i].insert(js.begin(), js.end());
+		auto it = data.begin() + mi.unseal()*n;
+		auto it_end = data.begin() + (mi.unseal()+1)*n;
+
+		size_t ni = 0;
+		for (; it != it_end; ++it) {
+			if (*it) {
+				f(N(ni));
+			}
+			ni++;
+		}
 	}
 
 	size_t size_m() const
@@ -112,18 +116,23 @@ public:
 	{
 		assert(m == n);
 
-		std::set<M> visited;
-		for(size_t i = 0; i < m; ++i)
+		std::vector<bool> visited(m);
+		for(size_t i = 0; i < m; ++i) {
 			transitive_helper(i, visited);
+		}
 	}
 
-	sparse_unit_matrix_t<N, M> transpose() const
+	full_unit_matrix_t<N, M> transpose() const
 	{
-		sparse_unit_matrix_t<N, M> result(n, m);
-		data.iterate([&result](M i, std::set<N> const& js) {
-			for(N j : js)
-				result.data[j].insert(i);
-		});
+		full_unit_matrix_t<N, M> result(n, m);
+		for(size_t ni = 0; ni < n; ++ni) {
+			for(size_t mi = 0; mi < m; ++mi) {
+				if (this->operator [](std::make_pair(mi, ni))) {
+					result.set(std::make_pair(ni, mi));
+				}
+			}
+		}
+
 		return result;
 	}
 
@@ -150,8 +159,8 @@ public:
 		std::set<M> marked;
 		while(marked.size() != size_m()) { // While there are unmarked nodes
 			size_t i = 0;
-			for(auto mi : marked) {
-				if (mi.unseal() != i) {
+			for(auto j : marked) {
+				if (j.unseal() != i) {
 					break;
 				}
 				++i;

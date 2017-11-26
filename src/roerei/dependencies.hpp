@@ -1,6 +1,6 @@
 #pragma once
 
-#include <roerei/generic/sparse_unit_matrix.hpp>
+#include <roerei/generic/full_unit_matrix.hpp>
 #include <roerei/generic/create_map.hpp>
 
 #include <roerei/dataset.hpp>
@@ -13,8 +13,8 @@ class dependencies
 	dependencies() = delete;
 
 public:
-	typedef sparse_unit_matrix_t<dependency_id_t, object_id_t> dependant_matrix_t;
-	typedef sparse_unit_matrix_t<object_id_t, object_id_t> dependant_obj_matrix_t;
+	typedef full_unit_matrix_t<dependency_id_t, object_id_t> dependant_matrix_t;
+	typedef full_unit_matrix_t<object_id_t, object_id_t> dependant_obj_matrix_t;
 
 private:
 	template<typename F>
@@ -24,9 +24,9 @@ private:
 			return;
 
 		yield(i);
-                for(object_id_t const& j : dependants[i]) {
+		dependants.citerate(i, [&](object_id_t const j) {
 			_iterate_dependants_helper(dependants, j, yield, visited);
-                }
+		});
 	}
 
 public:

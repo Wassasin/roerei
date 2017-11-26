@@ -13,7 +13,7 @@ namespace roerei
 class posetcons_canonical
 {
 public:
-	static dataset_t consistentize(dataset_t const& d, boost::optional<uint64_t> seed = boost::none)
+	static dataset_t consistentize(dataset_t const& d, boost::optional<uint64_t> /*seed*/ = boost::none)
 	{
 		auto dependants(dependencies::create_obj_dependants(d));
 		dependants.transitive();

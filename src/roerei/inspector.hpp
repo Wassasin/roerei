@@ -92,7 +92,7 @@ public:
 				}
 			})();
 
-			auto print_dep_obj_f = ([&](dependency_id_t const d_id, bool print_failure) {
+			auto print_dep_obj_f = ([&](dependency_id_t const d_id, bool /*print_failure*/) {
 				auto it = depmap.find(d_id);
 				if (it == depmap.end()) {
 					std::stringstream ss;

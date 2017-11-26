@@ -189,12 +189,6 @@ public:
 					[d_ptr, gen_trainset_sane_f_ptr, knn_params](cv::trainset_t const& trainset) {
 						return [&, gen_trainset_sane_f_ptr, knn_params](cv::testrow_t const& test_row) {
 							auto const trainset_sane((*gen_trainset_sane_f_ptr)(trainset, test_row));
-							{
-								size_t c = 0;
-								trainset_sane.citerate([&c](auto) {
-									c++;
-								});
-							}
 							knn<decltype(trainset_sane)> ml(knn_params.k, trainset_sane, *d_ptr);
 							return performance::measure(*d_ptr, test_row.row_i, ml.predict(test_row));
 						};

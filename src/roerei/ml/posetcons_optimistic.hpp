@@ -23,8 +23,9 @@ private:
 
 		decltype(parents_real) parents_real(parents_trans.size_m());
 		d.objects.keys([&](object_id_t i) {
-			std::set<object_id_t> const& objs = parents_trans[i];
-			parents_real[i].insert(parents_real[i].end(), objs.begin(), objs.end());
+			parents_trans.citerate(i, [&](object_id_t const j) {
+				parents_real[i].emplace_back(j);
+			});
 		});
 		return parents_real;
 	}
