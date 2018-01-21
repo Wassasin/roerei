@@ -5,6 +5,7 @@
 
 #include <roerei/generic/sparse_unit_matrix.hpp>
 #include <roerei/generic/wl_sparse_matrix.hpp>
+#include <roerei/generic/sparse_readonly_unit_matrix.hpp>
 
 #include <roerei/util/performance.hpp>
 
@@ -20,7 +21,7 @@ struct nb_preload_data_t
 	nb_preload_data_t(nb_preload_data_t const&) = delete;
 	nb_preload_data_t(nb_preload_data_t&&) = default;
 
-	dependencies::dependant_matrix_t dependants;
+	sparse_readonly_unit_matrix_t<dependency_id_t, object_id_t> dependants;
 	encapsulated_vector<object_id_t, std::vector<dependency_id_t>> allowed_dependencies;
 	encapsulated_vector<feature_id_t, std::vector<object_id_t>> feature_occurance;
 
@@ -79,7 +80,6 @@ private:
 
 private:
 	struct rank_buffers_t {
-		std::vector<object_id_t> dependant_objs;
 		std::vector<object_id_t> candidates;
 	};
 
@@ -95,14 +95,9 @@ private:
 
 		// TODO encapsulate feature weight (might yield better performance)
 
-		buffers.dependant_objs.clear();
-		pld.dependants.citerate(phi_id, [&](object_id_t const i) {
-			buffers.dependant_objs.emplace_back(i);
-		});
-
 		buffers.candidates.clear();
 
-		set_binary_intersect(whitelist, buffers.dependant_objs, [&](object_id_t i) {
+		set_binary_intersect(whitelist, pld.dependants[phi_id], [&](object_id_t i) {
 			buffers.candidates.emplace_back(i);
 		});
 
@@ -180,7 +175,6 @@ public:
 		ranks.reserve(pld.allowed_dependencies.size());
 
 		rank_buffers_t buffers;
-		buffers.dependant_objs.reserve(d.objects.size());
 		buffers.candidates.reserve(d.objects.size());
 
 		for(dependency_id_t phi_id : pld.allowed_dependencies[test_row_id])
