@@ -55,11 +55,11 @@ let main () =
                 Util.print path;
                 let body_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.body.xml.gz" path in
                 let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
-                let types_uri = Parser.parse_constanttypes types_path in 
-                let (type_id, _type_name, type_aconstr) = Parser.parse_constanttype path in
+                let types_uri = Acicparser.parse_constanttypes types_path in 
+                let (type_id, _type_name, type_aconstr) = Acicparser.parse_constanttype path in
                 let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 type_aconstr) in
                 if Sys.file_exists body_path then
-                    let (body_id, body_uri, body_aconstr) = Parser.parse_constantbody body_path in
+                    let (body_id, body_uri, body_aconstr) = Acicparser.parse_constantbody body_path in
                     assert (type_id = body_id);
                     let (body_uris, body_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 body_aconstr) in
                     yield_obj (corpus, path, types_uri, (type_uris, type_depths), (Some (body_uris, body_depths)))
@@ -72,8 +72,8 @@ let main () =
             else (
                 Util.print path;
                 let types_path = Str.global_replace (Str.regexp "\\.ind\\.xml\\.gz") ".ind.types.xml.gz" path in
-                let types_uri = Parser.parse_constanttypes types_path in 
-                let ind = Parser.parse_inductivedef path in
+                let types_uri = Acicparser.parse_constanttypes types_path in 
+                let ind = Acicparser.parse_inductivedef path in
                 if not path_loaded_in_repo then (
                     let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_type_uris f ind) in
                     yield_obj (corpus, path, types_uri, (type_uris, type_depths), None)
