@@ -1,4 +1,4 @@
-module StringSet = Set.Make (String) ;;
+module StringSet = Set.Make (String)
 
 let analyze_all : ((Prelude.uri -> int -> unit) -> unit) -> (Object.freq_item list * Object.freq_item list) = fun f ->
     let counter_map : Counter.t ref = ref Counter.empty in
@@ -57,6 +57,7 @@ let main () =
                 let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
                 let types_uri = Acicparser.parse_constanttypes types_path in 
                 let (type_id, _type_name, type_aconstr) = Acicparser.parse_constanttype path in
+                Util.print (Tiny_json.Json.show (Acic.json_of_aconstr type_aconstr));
                 let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 type_aconstr) in
                 if Sys.file_exists body_path then
                     let (body_id, body_uri, body_aconstr) = Acicparser.parse_constantbody body_path in

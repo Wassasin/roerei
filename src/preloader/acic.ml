@@ -2,6 +2,8 @@
 (* See coq/plugins/xml/acic.ml *)
 
 open Prelude
+open Tiny_json
+open Json_conv
 
 type aconstr =
   | ARel       of id * int * id * identifier
@@ -24,6 +26,7 @@ and ainductivefun =
 and acoinductivefun =
  id * identifier * aconstr * aconstr
 and explicit_named_substitution = id option * (uri * aconstr) list
+with conv(json)
 
 type acontext = (id * aconstr hypothesis) list
 type aconjecture = id * existential_key * acontext * aconstr
