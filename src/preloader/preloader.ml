@@ -49,6 +49,12 @@ let main () =
         Printf.printf "Ignoring %i entries\n%!" (StringSet.cardinal !loaded_mapping)
     ) else ();
 
+    let save_json file string =
+        let channel = open_out file in
+        output_string channel string;
+        close_out channel
+    in
+
     let os_repo = open_out_gen [Open_creat; Open_append; Open_binary] 0o644 Storage.repository_file in
     let os_mapping = open_out_gen [Open_creat; Open_append; Open_binary] 0o644 Storage.mapping_file in
     let yield_obj : Object.summary -> unit = fun summary ->
@@ -74,10 +80,11 @@ let main () =
                 let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
                 let types_uri = Acicparser.parse_constanttypes types_path in 
                 let (type_id, _type_name, type_aconstr) = Acicparser.parse_constanttype path in
-                Util.print (pretty_print (Acic.json_of_aconstr type_aconstr));
+                save_json (Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.json" path) (pretty_print (Acic.json_of_aconstr type_aconstr));
                 let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 type_aconstr) in
                 if Sys.file_exists body_path then
                     let (body_id, body_uri, body_aconstr) = Acicparser.parse_constantbody body_path in
+                    save_json (Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.body.json" path) (pretty_print (Acic.json_of_aconstr body_aconstr));
                     assert (type_id = body_id);
                     let (body_uris, body_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 body_aconstr) in
                     yield_obj (corpus, path, types_uri, (type_uris, type_depths), (Some (body_uris, body_depths)))
