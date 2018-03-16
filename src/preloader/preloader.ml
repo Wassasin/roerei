@@ -12,6 +12,23 @@ let analyze_all : ((Prelude.uri -> int -> unit) -> unit) -> (Object.freq_item li
 let repo_merge corpus path =
     Printf.sprintf "%s:%s" corpus path
 
+let pretty_print =
+  let rec show_aux depth = function
+    | Tiny_json.Json.String s -> "\"" ^s^ "\""
+    | Tiny_json.Json.Number x -> Printf.sprintf "%s" x
+    | Tiny_json.Json.Object fs ->
+	let indent d = String.make d '\t' in
+	"{\n"
+	^indent depth^ Tiny_json.Util.slist (",\n"^ indent depth) (fun (k,v) -> "\"" ^k^"\": "^ (show_aux (depth+1)) v) fs
+	^"\n"^indent(depth-1)^"}"
+    | Tiny_json.Json.Array xs -> "[" ^Tiny_json.Util.slist "," (show_aux depth) xs ^ "]"
+    | Tiny_json.Json.Bool true -> "true"
+    | Tiny_json.Json.Bool false -> "false"
+    | Tiny_json.Json.Null -> "null"
+  in
+  show_aux 1
+
+
 let main () =
     let loaded_repo = ref StringSet.empty in
     let loaded_mapping = ref StringSet.empty in
@@ -57,7 +74,7 @@ let main () =
                 let types_path = Str.global_replace (Str.regexp "\\.con\\.xml\\.gz") ".con.types.xml.gz" path in
                 let types_uri = Acicparser.parse_constanttypes types_path in 
                 let (type_id, _type_name, type_aconstr) = Acicparser.parse_constanttype path in
-                Util.print (Tiny_json.Json.show (Acic.json_of_aconstr type_aconstr));
+                Util.print (pretty_print (Acic.json_of_aconstr type_aconstr));
                 let (type_uris, type_depths) = analyze_all (fun f -> Interpreter.fetch_uris f 0 type_aconstr) in
                 if Sys.file_exists body_path then
                     let (body_id, body_uri, body_aconstr) = Acicparser.parse_constantbody body_path in

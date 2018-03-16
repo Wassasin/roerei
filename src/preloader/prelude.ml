@@ -4,6 +4,7 @@
 open Msgpack_conv
 open Json_conv
 open Tiny_json
+open Treeprint
 
 type existential_key = int with conv(json)  (* from Term *)
 type identifier = string with conv(json)  (* from Names *)

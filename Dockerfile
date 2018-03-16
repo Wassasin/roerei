@@ -37,4 +37,7 @@ RUN opam init -a --comp=4.01.0 && \
         extlib \
         msgpack.1.2.1 \
         meta_conv \
-        coq.8.4pl4
+        coq.8.4pl4 \
+        tiny_json \
+        tiny_json_conv \
+        treeprint
