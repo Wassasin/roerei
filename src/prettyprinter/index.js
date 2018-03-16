@@ -25,7 +25,7 @@ const guard = (f, x, indent, multiline) => {
     }
 
     const result = f(x, indent, false);
-    if (result.length < 80) {
+    if (result.length < 140) {
         return result;
     }
 
@@ -60,9 +60,9 @@ const render_tuple = (array, indent, multiline) => {
 
     let result = '';
 
-    result += `(${newline}`;
+    result += `[${newline}`;
     result += array.map(value => create_tabs(indent+1, multiline) + guard(render_value, value, indent+1, multiline)).join(`,${newline}`)+newline;
-    result += `${tabs})`;
+    result += `${tabs}]`;
 
     return result;
 };
@@ -74,7 +74,7 @@ const render_variant = (variant, indent = 0, multiline = true) => {
 
     const [key, values] = Object.entries(variant)[0];
     const tabs = create_tabs(indent, multiline);
-    const newline = multiline ? "\n" : "";
+    const newline = multiline ? "\n" : " ";
 
     let result = '';
 
