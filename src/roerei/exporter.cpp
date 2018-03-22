@@ -499,7 +499,7 @@ namespace roerei
 
 	void exporter::exec(std::string const& source_path, std::string const& output_path)
 	{
-		export_counts(output_path);
+		/*export_counts(output_path);
 
     // Prior vs non-prior
 		export_prior("CoRN.frequency", source_path, output_path);
@@ -539,7 +539,7 @@ namespace roerei
 		export_best("MathClasses.frequency", source_path, output_path);
 		export_best("mathcomp.frequency", source_path, output_path);
 
-		export_relative_kaliszyk(source_path, output_path);
+		export_relative_kaliszyk(source_path, output_path);*/
 
 		structure_exporter::exec(output_path);
 	}
