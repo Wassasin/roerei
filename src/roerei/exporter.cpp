@@ -55,6 +55,18 @@ namespace roerei
     return result + '-' + to_string(p);
 	}
 
+	inline static std::string make_prefix(ml_type ml, posetcons_type const p)
+	{
+		std::string result(to_string(ml));
+		std::transform(result.begin(), result.end(), result.begin(), [](const int c) {
+			if(c == '.') {
+				return static_cast<int>('-');
+			}
+			return ::tolower(c);
+		});
+    return result + '-' + to_string(p);
+	}
+
 	void export_knn(
 		std::string const& dataset,
 		std::string const& source_path,
@@ -348,6 +360,55 @@ namespace roerei
 		}
 	}
 
+	void export_best_method(
+      ml_type ml,
+      std::string const& source_path,
+      std::string const& output_path,
+      posetcons_type const p = posetcons_type::canonical,
+      size_t const cv_n = cv::default_n,
+      size_t const cv_k = cv::default_k
+  )
+  {
+    std::map<std::string, cv_result_t> results;
+		storage::read_result([&](cv_result_t const& result) {
+      if(result.n == cv_n && result.k == cv::default_k && result.prior && result.strat == p && result.ml == ml) {
+        auto it = results.find(result.corpus);
+        if(it != results.end() && it->second.metrics.oocover >= result.metrics.oocover) {
+          return;
+        } 
+
+        results[result.corpus] = result;
+			}
+		}, source_path);
+
+    std::ofstream os(output_path+"/best-"+make_prefix(ml, p)+".dat");
+    data_dump t(os);
+
+		std::map<std::string, std::string> labels = {
+			{"Coq.frequency", "coq"},
+			{"CoRN.frequency", "corn"},
+			{"ch2o.frequency", "formalin"},
+			{"MathClasses.frequency", "mathclasses"},
+			{"mathcomp.frequency", "mathcomp"},
+		};
+
+		auto emit_f = [&](auto const& row) {
+      t.write_row({
+        labels.at(row.corpus),
+        round_print(row.metrics.oocover, 3),
+      });
+		};
+
+		for(std::string corpus : {"Coq.frequency", "CoRN.frequency", "ch2o.frequency", "MathClasses.frequency", "mathcomp.frequency"}) {
+			auto it = results.find(corpus);
+			if (it == results.end()) {
+				throw std::runtime_error(std::string("Could not find ") + corpus + " for " + to_string(ml));
+			}
+
+			emit_f(it->second);
+		}
+	}
+
 	void export_prior(
 		std::string const& dataset,
 		std::string const& source_path,
@@ -499,7 +560,7 @@ namespace roerei
 
 	void exporter::exec(std::string const& source_path, std::string const& output_path)
 	{
-		/*export_counts(output_path);
+		export_counts(output_path);
 
     // Prior vs non-prior
 		export_prior("CoRN.frequency", source_path, output_path);
@@ -539,8 +600,14 @@ namespace roerei
 		export_best("MathClasses.frequency", source_path, output_path);
 		export_best("mathcomp.frequency", source_path, output_path);
 
-		export_relative_kaliszyk(source_path, output_path);*/
+		export_best_method(ml_type::knn, source_path, output_path);
+		export_best_method(ml_type::knn_adaptive, source_path, output_path);
+		export_best_method(ml_type::naive_bayes, source_path, output_path);
+		export_best_method(ml_type::ensemble, source_path, output_path);
+		export_best_method(ml_type::adarank, source_path, output_path);
 
-		structure_exporter::exec(output_path);
+		export_relative_kaliszyk(source_path, output_path);
+
+		//structure_exporter::exec(output_path);
 	}
 }

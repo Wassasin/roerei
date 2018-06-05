@@ -286,10 +286,6 @@ public:
 			[](auto f) { storage::read_mapping(f); },
 			[](auto f) {
 				storage::read_summaries([&](summary_t&& s) {
-					for(auto&& t : s.type_uris) {
-						std::cout << s.uri << " <- " << t.freq << "*" << t.uri << std::endl;
-					}
-
 					auto rebrand_corpus = [](std::string const& new_corpus, summary_t t) -> summary_t { // Make a copy
 						t.corpus = new_corpus;
 						return t;
