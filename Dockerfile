@@ -41,3 +41,5 @@ RUN opam init -a --comp=4.01.0 && \
         tiny_json \
         tiny_json_conv \
         treeprint
+
+RUN echo 'eval `opam config env`' >> ~/.bashrc
